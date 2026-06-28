@@ -14,9 +14,9 @@ import '../features/profile/domain/profile_repository.dart';
 final supabaseServiceProvider =
     Provider<SupabaseService>((ref) => const SupabaseService());
 
-final appDatabaseProvider = Provider<AppDatabase>((ref) {
-  final db = AppDatabase();
-  ref.onDispose(db.close);
+final appDatabaseProvider = Provider<AppDatabase?>((ref) {
+  final db = openLocalDatabaseOrNull();
+  if (db != null) ref.onDispose(db.close);
   return db;
 });
 
