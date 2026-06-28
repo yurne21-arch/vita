@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 part 'app_database.g.dart';
 
@@ -34,4 +35,16 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   int get schemaVersion => 1;
+}
+
+/// Abre la base local SOLO en plataformas nativas (Android/iOS). En Web
+/// devuelve null: el caché local queda deshabilitado y la app usa Supabase
+/// como fuente de verdad. Así la versión web nunca se cae al iniciar.
+AppDatabase? openLocalDatabaseOrNull() {
+  if (kIsWeb) return null;
+  try {
+    return AppDatabase();
+  } catch (_) {
+    return null;
+  }
 }
