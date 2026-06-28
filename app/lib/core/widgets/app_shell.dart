@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../l10n/app_localizations.dart';
-
-/// Contenedor de las 5 pestañas principales. La navegación es dinámica:
-/// en sprints posteriores la IA podrá destacar pestañas según el contexto.
 class AppShell extends StatelessWidget {
   const AppShell({required this.navigationShell, super.key});
 
@@ -12,8 +8,6 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: NavigationBar(
@@ -22,30 +16,30 @@ class AppShell extends StatelessWidget {
           index,
           initialLocation: index == navigationShell.currentIndex,
         ),
-        destinations: [
+        destinations: const [
           NavigationDestination(
-            icon: const Icon(Icons.wb_sunny_outlined),
-            selectedIcon: const Icon(Icons.wb_sunny),
-            label: l10n.tabMiVida,
+            icon: Icon(Icons.wb_sunny_outlined),
+            selectedIcon: Icon(Icons.wb_sunny),
+            label: 'Mi Vida',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.favorite_outline),
-            selectedIcon: const Icon(Icons.favorite),
-            label: l10n.tabSalud,
+            icon: Icon(Icons.favorite_outline),
+            selectedIcon: Icon(Icons.favorite),
+            label: 'Salud',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.flag_outlined),
-            selectedIcon: const Icon(Icons.flag),
-            label: l10n.tabProyectos,
+            icon: Icon(Icons.flag_outlined),
+            selectedIcon: Icon(Icons.flag),
+            label: 'Proyectos',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.calendar_today_outlined),
-            selectedIcon: const Icon(Icons.calendar_today),
-            label: l10n.tabCalendario,
+            icon: Icon(Icons.calendar_today_outlined),
+            selectedIcon: Icon(Icons.calendar_today),
+            label: 'Calendario',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.more_horiz),
-            label: l10n.tabMas,
+            icon: Icon(Icons.more_horiz),
+            label: 'Más',
           ),
         ],
       ),
