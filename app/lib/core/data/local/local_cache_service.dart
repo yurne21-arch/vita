@@ -3,21 +3,22 @@ import 'package:flutter/foundation.dart';
 
 import 'app_database.dart';
 
-/// Envoltura de la base local. Todas las operaciones son **best-effort**:
-/// si el almacenamiento local no está disponible (p. ej. Web sin los assets
-/// de Drift), la app sigue funcionando porque Supabase es la fuente de verdad.
+/// Envoltura de la base local. Best-effort: si no hay base (p. ej. en Web),
+/// no hace nada y la app sigue funcionando (Supabase es la fuente de verdad).
 class LocalCacheService {
   LocalCacheService(this._db);
 
-  final AppDatabase _db;
+  final AppDatabase? _db;
 
   Future<void> saveProfile({
     required String id,
     String? displayName,
     String? locale,
   }) async {
+    final db = _db;
+    if (db == null) return;
     try {
-      await _db.into(_db.cachedProfiles).insertOnConflictUpdate(
+      await db.into(db.cachedProfiles).insertOnConflictUpdate(
             CachedProfilesCompanion.insert(
               id: id,
               displayName: Value(displayName),
