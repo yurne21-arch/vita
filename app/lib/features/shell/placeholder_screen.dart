@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_spacing.dart';
-import '../../l10n/app_localizations.dart';
 
-/// Placeholder para las pestañas que aún no se construyen en el Sprint 0.
 class PlaceholderScreen extends StatelessWidget {
   const PlaceholderScreen({required this.title, super.key});
 
@@ -11,7 +9,6 @@ class PlaceholderScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -25,13 +22,10 @@ class PlaceholderScreen extends StatelessWidget {
               Icon(Icons.hourglass_empty,
                   size: 40, color: theme.colorScheme.onSurfaceVariant),
               const SizedBox(height: AppSpacing.md),
-              Text(
-                l10n.comingSoon,
-                style: theme.textTheme.titleMedium,
-              ),
+              const Text('Próximamente'),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                l10n.sprintZeroNote,
+                'Cimientos (Sprint 0). Esta sección aún no se construye.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
