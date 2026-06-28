@@ -7,10 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/mi_vida/presentation/mi_vida_screen.dart';
 import '../../features/shell/placeholder_screen.dart';
-import '../../l10n/app_localizations.dart';
 import '../widgets/app_shell.dart';
 
-/// Crea el router. La sesión de Supabase decide si se ve el login o la app.
 GoRouter createRouter() {
   final auth = Supabase.instance.client.auth;
 
@@ -32,19 +30,14 @@ GoRouter createRouter() {
         branches: [
           StatefulShellBranch(
             routes: [
-              GoRoute(
-                path: '/mi-vida',
-                builder: (_, __) => const MiVidaScreen(),
-              ),
+              GoRoute(path: '/mi-vida', builder: (_, __) => const MiVidaScreen()),
             ],
           ),
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: '/salud',
-                builder: (context, __) => PlaceholderScreen(
-                  title: AppLocalizations.of(context).tabSalud,
-                ),
+                builder: (_, __) => const PlaceholderScreen(title: 'Salud'),
               ),
             ],
           ),
@@ -52,9 +45,7 @@ GoRouter createRouter() {
             routes: [
               GoRoute(
                 path: '/proyectos',
-                builder: (context, __) => PlaceholderScreen(
-                  title: AppLocalizations.of(context).tabProyectos,
-                ),
+                builder: (_, __) => const PlaceholderScreen(title: 'Proyectos'),
               ),
             ],
           ),
@@ -62,9 +53,7 @@ GoRouter createRouter() {
             routes: [
               GoRoute(
                 path: '/calendario',
-                builder: (context, __) => PlaceholderScreen(
-                  title: AppLocalizations.of(context).tabCalendario,
-                ),
+                builder: (_, __) => const PlaceholderScreen(title: 'Calendario'),
               ),
             ],
           ),
@@ -72,9 +61,7 @@ GoRouter createRouter() {
             routes: [
               GoRoute(
                 path: '/mas',
-                builder: (context, __) => PlaceholderScreen(
-                  title: AppLocalizations.of(context).tabMas,
-                ),
+                builder: (_, __) => const PlaceholderScreen(title: 'Más'),
               ),
             ],
           ),
@@ -84,8 +71,6 @@ GoRouter createRouter() {
   );
 }
 
-/// Convierte un Stream en un Listenable para refrescar el router
-/// cuando cambia el estado de autenticación.
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
     notifyListeners();
