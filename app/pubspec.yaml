@@ -1,0 +1,39 @@
+name: vita
+description: "VITA — Sistema Operativo Personal impulsado por IA. Sprint 0 (Cimientos)."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+
+  # Estado (mainstream, sin codegen en el MVP)
+  flutter_riverpod: ^2.6.1
+
+  # Navegación
+  go_router: ^14.6.2
+
+  # Backend
+  supabase_flutter: ^2.8.0
+
+  # Base local (offline, esqueleto en el Sprint 0)
+  drift: ^2.22.0
+  drift_flutter: ^0.2.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.4.13
+  drift_dev: ^2.22.0
+
+flutter:
+  generate: true
+  uses-material-design: true

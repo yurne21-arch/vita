@@ -1,0 +1,12 @@
+# Configuración mínima de Supabase CLI para VITA (Sprint 0).
+# El project_id real se obtiene al hacer `supabase link` con tu proyecto.
+project_id = "vita-dev"
+
+[db]
+major_version = 15
+
+[auth]
+enable_signup = true
+
+[storage]
+enabled = true
