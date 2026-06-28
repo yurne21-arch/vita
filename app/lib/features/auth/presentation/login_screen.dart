@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_spacing.dart';
-import '../../../l10n/app_localizations.dart';
 import 'auth_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -25,9 +24,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     final state = ref.watch(authControllerProvider);
     final isLoading = state.isLoading;
+    final theme = Theme.of(context);
 
     ref.listen(authControllerProvider, (_, next) {
       if (next.hasError && !next.isLoading) {
@@ -49,31 +48,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    l10n.signInTitle,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                    'Bienvenida a VITA',
+                    style: theme.textTheme.headlineMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    l10n.signInSubtitle,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                    'Tu sistema operativo personal.',
+                    style: theme.textTheme.bodyLarge
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   TextField(
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,
-                    autofillHints: const [AutofillHints.email],
-                    decoration: InputDecoration(labelText: l10n.email),
+                    decoration: const InputDecoration(labelText: 'Correo'),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   TextField(
                     controller: _password,
                     obscureText: true,
-                    autofillHints: const [AutofillHints.password],
-                    decoration: InputDecoration(labelText: l10n.password),
+                    decoration: const InputDecoration(labelText: 'Contraseña'),
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   FilledButton(
@@ -88,7 +83,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             width: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Text(l10n.signInButton),
+                        : const Text('Iniciar sesión'),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   TextButton(
@@ -97,7 +92,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         : () => ref
                             .read(authControllerProvider.notifier)
                             .signUp(_email.text, _password.text),
-                    child: Text(l10n.signUpButton),
+                    child: const Text('Crear cuenta'),
                   ),
                 ],
               ),
