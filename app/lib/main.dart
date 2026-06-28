@@ -8,40 +8,29 @@ import 'core/config/env.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (!Env.isConfigured) {
-    // Sin llaves no se puede arrancar. Se inyectan con --dart-define.
-    runApp(const _MissingConfigApp());
-    return;
-  }
-
-  await Supabase.initialize(
-    url: Env.supabaseUrl,
-    publishableKey: Env.supabaseAnonKey,
-  );
-
-  runApp(const ProviderScope(child: VitaApp()));
-}
-
-/// Pantalla mínima si faltan las llaves de Supabase.
-class _MissingConfigApp extends StatelessWidget {
-  const _MissingConfigApp();
-
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        body: Center(
+  // Nunca dejar la pantalla en blanco: si algo falla, mostrar el motivo.
+  ErrorWidget.builder = (details) => Material(
+        child: Center(
           child: Padding(
-            padding: EdgeInsets.all(24),
+            padding: const EdgeInsets.all(24),
             child: Text(
-              'Faltan SUPABASE_URL y SUPABASE_ANON_KEY.\n'
-              'Pásalas con --dart-define al ejecutar o compilar.',
+              'Ocurrió un error:\n${details.exception}',
               textAlign: TextAlign.center,
             ),
           ),
         ),
-      ),
-    );
+      );
+
+  try {
+    if (Env.isConfigured) {
+      await Supabase.initialize(
+        url: Env.supabaseUrl,
+        anonKey: Env.supabaseAnonKey,
+      );
+    }
+  } catch (e) {
+    debugPrint('Supabase no se pudo iniciar: $e');
   }
+
+  runApp(const ProviderScope(child: VitaApp()));
 }
