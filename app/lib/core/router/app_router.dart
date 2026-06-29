@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/mi_vida/presentation/mi_vida_screen.dart';
+import '../../features/agenda/presentation/calendario_screen.dart';
 import '../../features/shell/placeholder_screen.dart';
 import '../widgets/app_shell.dart';
 
@@ -53,7 +54,7 @@ GoRouter createRouter() {
             routes: [
               GoRoute(
                 path: '/calendario',
-                builder: (_, __) => const PlaceholderScreen(title: 'Calendario'),
+                builder: (_, __) => const CalendarioScreen(),
               ),
             ],
           ),
