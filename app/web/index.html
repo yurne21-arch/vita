@@ -7,6 +7,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="description" content="VITA — Sistema Operativo Personal impulsado por IA.">
 
+  <!-- No cachear el index: siempre carga la última versión -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
   <!-- iOS PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -18,6 +23,14 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <script>
+    // Limpia versiones viejas guardadas y recarga sola una vez si hace falta.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        for (var r of regs) { r.update(); }
+      });
+    }
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
