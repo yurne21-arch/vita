@@ -13,22 +13,33 @@ class ProfileRepositoryImpl implements ProfileRepository {
   Future<Profile?> loadOwnProfile() async {
     final user = _supabase.client.auth.currentUser;
     if (user == null) return null;
+    final client = _supabase.client;
 
-    final fallbackName =
-        (user.userMetadata?['display_name'] as String?) ??
-            user.email?.split('@').first ??
-            'VITA';
-
-    // Round-trip con Supabase: upsert (respeta RLS) + lectura de la fila propia.
-    final row = await _supabase.client
+    // 1. Lee el perfil existente (respeta el display_name ya guardado).
+    final existing = await client
         .from('profiles')
-        .upsert({'id': user.id, 'display_name': fallbackName}, onConflict: 'id')
         .select()
-        .single();
+        .eq('id', user.id)
+        .maybeSingle();
+
+    Map<String, dynamic> row;
+    if (existing != null) {
+      row = existing; // ya existe -> NO se sobrescribe el nombre
+    } else {
+      // 2. Solo si no existe, lo crea con un nombre inicial.
+      final fallbackName =
+          (user.userMetadata?['display_name'] as String?) ??
+              user.email?.split('@').first ??
+              'VITA';
+      row = await client
+          .from('profiles')
+          .insert({'id': user.id, 'display_name': fallbackName})
+          .select()
+          .single();
+    }
 
     final profile = Profile.fromMap(row);
 
-    // Caché local best-effort (no rompe si no está disponible).
     await _cache.saveProfile(
       id: profile.id,
       displayName: profile.displayName,
