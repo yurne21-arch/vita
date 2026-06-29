@@ -723,7 +723,7 @@ class _Agenda extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(agendaControllerProvider);
+    final async = ref.watch(eventosEnRangoProvider(rangoHoy()));
     final ahora = DateTime.now();
     final eventosHoy = (async.valueOrNull ?? const <Evento>[])
         .where((e) =>
@@ -769,15 +769,15 @@ class _Agenda extends ConsumerWidget {
                 onTap: () =>
                     mostrarEditorEvento(context, ref, existente: e),
                 onMenu: (op) {
-                  final ctrl = ref.read(agendaControllerProvider.notifier);
+                  final acc = ref.read(agendaAccionesProvider);
                   if (op == 'realizado') {
-                    ctrl.cambiarEstado(e.id, 'realizado');
+                    acc.cambiarEstado(e.id, 'realizado');
                   } else if (op == 'pendiente') {
-                    ctrl.cambiarEstado(e.id, 'pendiente');
+                    acc.cambiarEstado(e.id, 'pendiente');
                   } else if (op == 'cancelado') {
-                    ctrl.cambiarEstado(e.id, 'cancelado');
+                    acc.cambiarEstado(e.id, 'cancelado');
                   } else if (op == 'eliminar') {
-                    ctrl.eliminar(e.id);
+                    acc.eliminar(e.id);
                   }
                 },
               ),
