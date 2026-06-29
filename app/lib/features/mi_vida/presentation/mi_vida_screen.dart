@@ -682,3 +682,73 @@ class _EmptyHint extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.xs),
+        Text(subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant, height: 1.45)),
+        if (action != null) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text(action!,
+              style: theme.textTheme.labelLarge?.copyWith(
+                  color: AppColors.olive, fontWeight: FontWeight.w600)),
+        ],
+      ],
+    );
+  }
+}
+
+class _HabitoRow extends StatelessWidget {
+  const _HabitoRow({required this.habito, required this.onTap});
+  final Habito habito;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final done = habito.hecho;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSpacing.radius),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        child: Row(
+          children: [
+            Text(habito.emoji ?? '•', style: const TextStyle(fontSize: 18)),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                habito.nombre,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  decoration: done ? TextDecoration.lineThrough : null,
+                  color: done ? theme.colorScheme.onSurfaceVariant : null,
+                ),
+              ),
+            ),
+            Icon(
+              done ? Icons.check_circle : Icons.circle_outlined,
+              color:
+                  done ? AppColors.olive : theme.colorScheme.onSurfaceVariant,
+              size: 22,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================ util ============================
+
+String _fechaLarga(DateTime d) {
+  const dias = [
+    'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'
+  ];
+  const meses = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+  ];
+  final dia = dias[d.weekday - 1];
+  final mes = meses[d.month - 1];
+  final capit = dia[0].toUpperCase() + dia.substring(1);
+  return '$capit ${d.day} de $mes';
+}
