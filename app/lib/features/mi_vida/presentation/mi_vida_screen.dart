@@ -6,6 +6,8 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/vita_card.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../profile/presentation/profile_controller.dart';
+import '../../salud/data/estado_repository.dart';
+import '../../salud/presentation/estado_controller.dart';
 import '../data/habitos_repository.dart';
 import 'habitos_controller.dart';
 
@@ -364,30 +366,62 @@ class _Prioridades extends StatelessWidget {
   }
 }
 
-class _EstadoGeneral extends StatelessWidget {
+class _EstadoGeneral extends ConsumerWidget {
   const _EstadoGeneral();
 
   @override
-  Widget build(BuildContext context) {
-    return VitaCard(
-      padding: _kCardPad,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          _Eyebrow('CÓMO ESTÁS HOY'),
-          SizedBox(height: AppSpacing.lg),
-          Row(
-            children: [
-              _Metric(label: 'Peso'),
-              _Metric(label: 'Energía'),
-              _Metric(label: 'Sueño'),
-              _Metric(label: 'Ánimo'),
-            ],
-          ),
-        ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    final estado = ref.watch(estadoControllerProvider).valueOrNull;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _abrirRegistroEstado(context, ref, estado),
+      child: VitaCard(
+        padding: _kCardPad,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: const [
+                _Eyebrow('CÓMO ESTÁS HOY'),
+                Icon(Icons.add, size: 18, color: AppColors.olive),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              children: [
+                _Metric(label: 'Peso', value: _fmtPeso(estado?.peso)),
+                _Metric(label: 'Energía', value: _fmt15(estado?.energia)),
+                _Metric(label: 'Sueño', value: _fmtSueno(estado?.sueno)),
+                _Metric(label: 'Ánimo', value: _fmt15(estado?.animo)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
+}
+
+String _numEs(double v) {
+  final s = (v == v.roundToDouble())
+      ? v.toInt().toString()
+      : v.toStringAsFixed(1);
+  return s.replaceAll('.', ',');
+}
+
+String _fmtPeso(double? v) => v == null ? '—' : '${_numEs(v)} kg';
+String _fmtSueno(double? v) => v == null ? '—' : '${_numEs(v)} h';
+String _fmt15(int? v) => v == null ? '—' : '$v/5';
+
+Future<void> _abrirRegistroEstado(
+    BuildContext context, WidgetRef ref, EstadoHoy? actual) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => _RegistrarEstadoSheet(actual: actual),
+  );
 }
 
 class _Agenda extends StatelessWidget {
@@ -601,19 +635,33 @@ class _Eyebrow extends StatelessWidget {
 }
 
 class _Metric extends StatelessWidget {
-  const _Metric({required this.label});
+  const _Metric({required this.label, required this.value});
   final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final vacio = value == '—';
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('—',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w600)),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: vacio ? theme.colorScheme.onSurfaceVariant : null,
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 2),
           Text(label,
               style: theme.textTheme.bodySmall
@@ -754,4 +802,198 @@ String _fechaLarga(DateTime d) {
   final mes = meses[d.month - 1];
   final capit = dia[0].toUpperCase() + dia.substring(1);
   return '$capit ${d.day} de $mes';
+}
+
+
+// ============================ REGISTRO ESTADO ============================
+
+class _RegistrarEstadoSheet extends ConsumerStatefulWidget {
+  const _RegistrarEstadoSheet({this.actual});
+  final EstadoHoy? actual;
+
+  @override
+  ConsumerState<_RegistrarEstadoSheet> createState() =>
+      _RegistrarEstadoSheetState();
+}
+
+class _RegistrarEstadoSheetState
+    extends ConsumerState<_RegistrarEstadoSheet> {
+  late final TextEditingController _peso;
+  late final TextEditingController _sueno;
+  int? _energia;
+  int? _animo;
+  bool _guardando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final a = widget.actual;
+    _peso = TextEditingController(
+        text: a?.peso != null ? _numEs(a!.peso!) : '');
+    _sueno = TextEditingController(
+        text: a?.sueno != null ? _numEs(a!.sueno!) : '');
+    _energia = a?.energia;
+    _animo = a?.animo;
+  }
+
+  @override
+  void dispose() {
+    _peso.dispose();
+    _sueno.dispose();
+    super.dispose();
+  }
+
+  double? _parse(String t) {
+    final limpio = t.trim().replaceAll(',', '.');
+    if (limpio.isEmpty) return null;
+    return double.tryParse(limpio);
+  }
+
+  Future<void> _guardar() async {
+    setState(() => _guardando = true);
+    try {
+      await ref.read(estadoControllerProvider.notifier).registrar(
+            peso: _parse(_peso.text),
+            energia: _energia,
+            sueno: _parse(_sueno.text),
+            animo: _animo,
+          );
+      if (mounted) Navigator.of(context).pop();
+    } catch (_) {
+      if (mounted) {
+        setState(() => _guardando = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo guardar. Intenta de nuevo.')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg + bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('¿Cómo estás hoy?',
+              style: theme.textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: AppSpacing.xs),
+          Text('Registra lo que quieras. No tienes que llenar todo.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _peso,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Peso',
+                    suffixText: 'kg',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: TextField(
+                  controller: _sueno,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Sueño',
+                    suffixText: 'h',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text('Energía',
+              style: theme.textTheme.labelLarge
+                  ?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: AppSpacing.sm),
+          _Escala(
+            value: _energia,
+            onChanged: (v) => setState(() => _energia = v),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text('Ánimo',
+              style: theme.textTheme.labelLarge
+                  ?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: AppSpacing.sm),
+          _Escala(
+            value: _animo,
+            onChanged: (v) => setState(() => _animo = v),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _guardando ? null : _guardar,
+              child: _guardando
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Guardar'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Selector 1–5 (energía / ánimo). Pulsar de nuevo el mismo número lo limpia.
+class _Escala extends StatelessWidget {
+  const _Escala({required this.value, required this.onChanged});
+  final int? value;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        for (var i = 1; i <= 5; i++) ...[
+          if (i > 1) const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(value == i ? null : i),
+              child: Container(
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: value == i
+                      ? AppColors.olive
+                      : theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(AppSpacing.radius),
+                ),
+                child: Text(
+                  '$i',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: value == i
+                        ? Colors.white
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 }
