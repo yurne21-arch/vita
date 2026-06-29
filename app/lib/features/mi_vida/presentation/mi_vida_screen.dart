@@ -9,7 +9,9 @@ import '../../profile/presentation/profile_controller.dart';
 import '../../salud/data/estado_repository.dart';
 import '../../salud/presentation/estado_controller.dart';
 import '../data/habitos_repository.dart';
+import '../data/prioridades_repository.dart';
 import 'habitos_controller.dart';
+import 'prioridades_controller.dart';
 
 const EdgeInsets _kCardPad = EdgeInsets.fromLTRB(20, 18, 20, 18);
 const double _kGap = 12;
@@ -326,12 +328,15 @@ class _Reflexion extends StatelessWidget {
   }
 }
 
-class _Prioridades extends StatelessWidget {
+class _Prioridades extends ConsumerWidget {
   const _Prioridades();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final async = ref.watch(prioridadesControllerProvider);
+    final prioridades = async.valueOrNull ?? const <Prioridad>[];
+
     return Container(
       width: double.infinity,
       padding: _kCardPad,
@@ -350,20 +355,219 @@ class _Prioridades extends StatelessWidget {
             style: theme.textTheme.titleLarge
                 ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.2),
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'VITA elegirá lo esencial y te dirá por qué.',
-            style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant, height: 1.4),
-          ),
           const SizedBox(height: AppSpacing.md),
-          _PrioridadFantasma(),
-          _PrioridadFantasma(),
-          _PrioridadFantasma(),
+          if (async.isLoading && prioridades.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (prioridades.isEmpty)
+            _PrioridadesVacio(
+              onAgregar: () => _dialogoPrioridad(context, ref),
+            )
+          else ...[
+            ReorderableListView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              onReorder: (oldI, newI) {
+                if (newI > oldI) newI -= 1;
+                final lista = [...prioridades];
+                final item = lista.removeAt(oldI);
+                lista.insert(newI, item);
+                ref
+                    .read(prioridadesControllerProvider.notifier)
+                    .reordenar(lista);
+              },
+              children: [
+                for (var i = 0; i < prioridades.length; i++)
+                  _PrioridadRow(
+                    key: ValueKey(prioridades[i].id),
+                    index: i,
+                    prioridad: prioridades[i],
+                    onToggle: () => ref
+                        .read(prioridadesControllerProvider.notifier)
+                        .alternar(prioridades[i]),
+                    onEditar: () => _dialogoPrioridad(context, ref,
+                        existente: prioridades[i]),
+                  ),
+              ],
+            ),
+            if (prioridades.length < 3)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.xs),
+                child: _AgregarPrioridad(
+                  onTap: () => _dialogoPrioridad(context, ref),
+                ),
+              ),
+          ],
         ],
       ),
     );
   }
+}
+
+class _PrioridadesVacio extends StatelessWidget {
+  const _PrioridadesVacio({required this.onAgregar});
+  final VoidCallback onAgregar;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Aún no defines lo esencial de hoy.',
+          style: theme.textTheme.bodyMedium
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _AgregarPrioridad(onTap: onAgregar),
+      ],
+    );
+  }
+}
+
+class _AgregarPrioridad extends StatelessWidget {
+  const _AgregarPrioridad({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.olive,
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+        ),
+        icon: const Icon(Icons.add, size: 18),
+        label: const Text('Agregar prioridad'),
+      ),
+    );
+  }
+}
+
+class _PrioridadRow extends StatelessWidget {
+  const _PrioridadRow({
+    required super.key,
+    required this.index,
+    required this.prioridad,
+    required this.onToggle,
+    required this.onEditar,
+  });
+
+  final int index;
+  final Prioridad prioridad;
+  final VoidCallback onToggle;
+  final VoidCallback onEditar;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final done = prioridad.completada;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: onToggle,
+            behavior: HitTestBehavior.opaque,
+            child: Icon(
+              done ? Icons.check_circle : Icons.circle_outlined,
+              size: 22,
+              color: done ? AppColors.olive : theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: GestureDetector(
+              onTap: onEditar,
+              behavior: HitTestBehavior.opaque,
+              child: Text(
+                prioridad.texto,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  decoration: done ? TextDecoration.lineThrough : null,
+                  color: done ? theme.colorScheme.onSurfaceVariant : null,
+                ),
+              ),
+            ),
+          ),
+          ReorderableDragStartListener(
+            index: index,
+            child: Padding(
+              padding: const EdgeInsets.only(left: AppSpacing.sm),
+              child: Icon(Icons.drag_indicator,
+                  size: 20, color: theme.colorScheme.outlineVariant),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<void> _dialogoPrioridad(
+  BuildContext context,
+  WidgetRef ref, {
+  Prioridad? existente,
+}) async {
+  final controller = TextEditingController(text: existente?.texto ?? '');
+  final esEdicion = existente != null;
+  final notifier = ref.read(prioridadesControllerProvider.notifier);
+
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) {
+      final theme = Theme.of(ctx);
+      return AlertDialog(
+        title: Text(esEdicion ? 'Editar prioridad' : 'Nueva prioridad'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 120,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            hintText: '¿Qué es lo esencial hoy?',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          if (esEdicion)
+            TextButton(
+              onPressed: () {
+                notifier.eliminar(existente.id);
+                Navigator.of(ctx).pop();
+              },
+              style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+              child: const Text('Eliminar'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final txt = controller.text.trim();
+              if (txt.isEmpty) return;
+              if (esEdicion) {
+                notifier.editarTexto(existente.id, txt);
+              } else {
+                notifier.agregar(txt);
+              }
+              Navigator.of(ctx).pop();
+            },
+            child: Text(esEdicion ? 'Guardar' : 'Agregar'),
+          ),
+        ],
+      );
+    },
+  );
+  controller.dispose();
 }
 
 class _EstadoGeneral extends ConsumerWidget {
@@ -692,33 +896,6 @@ class _Metric extends StatelessWidget {
 }
 
 
-class _PrioridadFantasma extends StatelessWidget {
-  const _PrioridadFantasma();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Row(
-        children: [
-          Icon(Icons.radio_button_unchecked,
-              size: 16, color: theme.colorScheme.outlineVariant),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Container(
-              height: 8,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _EmptyHint extends StatelessWidget {
   const _EmptyHint({
@@ -1103,3 +1280,4 @@ class _SuenoSelector extends StatelessWidget {
     );
   }
 }
+Listo
