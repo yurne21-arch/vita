@@ -8,6 +8,7 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/mi_vida/presentation/mi_vida_screen.dart';
 import '../../features/agenda/presentation/calendario_screen.dart';
 import '../../features/shell/placeholder_screen.dart';
+import '../../features/proyectos/presentation/proyectos_screen.dart';
 import '../widgets/app_shell.dart';
 
 GoRouter createRouter() {
@@ -46,7 +47,7 @@ GoRouter createRouter() {
             routes: [
               GoRoute(
                 path: '/proyectos',
-                builder: (_, __) => const PlaceholderScreen(title: 'Proyectos'),
+                builder: (_, __) => const ProyectosScreen(),
               ),
             ],
           ),
