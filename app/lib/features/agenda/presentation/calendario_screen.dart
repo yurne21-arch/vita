@@ -9,6 +9,30 @@ import 'evento_editor.dart';
 
 enum _Vista { hoy, semana, mes }
 
+/// Color sutil por categoría (apagado, no saturado).
+Color colorCategoria(String? c) {
+  switch (c) {
+    case 'Trabajo / Empresa':
+      return const Color(0xFF4A6B8A); // azul apagado
+    case 'Personal':
+      return const Color(0xFF6B7A4F); // oliva
+    case 'Familia':
+      return const Color(0xFFB07A5A); // terracota suave
+    case 'Salud':
+      return const Color(0xFF4E7A51); // verde salud
+    case 'Colegio / Juan Miguel':
+      return const Color(0xFF6F6391); // índigo suave
+    case 'Finanzas':
+      return const Color(0xFF9A8231); // dorado apagado
+    case 'Viaje':
+      return const Color(0xFF3F7E78); // teal
+    case 'Otro':
+      return const Color(0xFF7A7568); // gris cálido
+    default:
+      return const Color(0xFF7A7568);
+  }
+}
+
 class CalendarioScreen extends ConsumerStatefulWidget {
   const CalendarioScreen({super.key});
 
@@ -17,8 +41,8 @@ class CalendarioScreen extends ConsumerStatefulWidget {
 }
 
 class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
-  _Vista _vista = _Vista.hoy;
-  late DateTime _mesAncla; // primer día del mes visible
+  _Vista _vista = _Vista.mes;
+  late DateTime _mesAncla;
   late DateTime _diaSeleccionado;
 
   @override
@@ -52,7 +76,6 @@ class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
   void _mes(int delta) {
     setState(() {
       _mesAncla = DateTime(_mesAncla.year, _mesAncla.month + delta, 1);
-      // Si hoy cae en el mes nuevo, selecciónalo; si no, el día 1.
       final h = _hoy;
       _diaSeleccionado =
           (h.year == _mesAncla.year && h.month == _mesAncla.month)
@@ -91,14 +114,17 @@ class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(
                 AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.sm),
-            child: SegmentedButton<_Vista>(
-              segments: const [
-                ButtonSegment(value: _Vista.hoy, label: Text('Hoy')),
-                ButtonSegment(value: _Vista.semana, label: Text('Semana')),
-                ButtonSegment(value: _Vista.mes, label: Text('Mes')),
-              ],
-              selected: {_vista},
-              onSelectionChanged: (s) => setState(() => _vista = s.first),
+            child: SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<_Vista>(
+                segments: const [
+                  ButtonSegment(value: _Vista.hoy, label: Text('Hoy')),
+                  ButtonSegment(value: _Vista.semana, label: Text('Semana')),
+                  ButtonSegment(value: _Vista.mes, label: Text('Mes')),
+                ],
+                selected: {_vista},
+                onSelectionChanged: (s) => setState(() => _vista = s.first),
+              ),
             ),
           ),
           Expanded(
@@ -114,12 +140,11 @@ class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
               data: (eventos) {
                 switch (_vista) {
                   case _Vista.hoy:
-                    return _ListaDia(
+                    return _VistaHoy(
                       eventos: eventos,
                       onTap: (e) =>
                           mostrarEditorEvento(context, ref, existente: e),
                       onMenu: _accion,
-                      vacioTexto: 'Sin eventos para hoy.',
                     );
                   case _Vista.semana:
                     return _VistaSemana(
@@ -127,6 +152,8 @@ class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
                       onTap: (e) =>
                           mostrarEditorEvento(context, ref, existente: e),
                       onMenu: _accion,
+                      onCrearDia: (d) => mostrarEditorEvento(context, ref,
+                          fechaSugerida: d),
                     );
                   case _Vista.mes:
                     return _VistaMes(
@@ -153,10 +180,10 @@ class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
   }
 }
 
-// ---------------- Vista Semana ----------------
+// ====================== VISTA HOY ======================
 
-class _VistaSemana extends StatelessWidget {
-  const _VistaSemana({
+class _VistaHoy extends StatelessWidget {
+  const _VistaHoy({
     required this.eventos,
     required this.onTap,
     required this.onMenu,
@@ -168,78 +195,32 @@ class _VistaSemana extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final n = DateTime.now();
-    final base = DateTime(n.year, n.month, n.day);
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md, 0, AppSpacing.md, 96),
-      itemCount: 7,
-      itemBuilder: (_, i) {
-        final dia = base.add(Duration(days: i));
-        final delDia = eventos.where((e) => _mismoDia(e.inicio, dia)).toList();
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(
-                  top: AppSpacing.lg, bottom: AppSpacing.sm),
-              child: Text(
-                _etiquetaDia(dia, i),
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: i == 0 ? AppColors.olive : null,
-                    ),
-              ),
-            ),
-            if (delDia.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                child: Text('Sin eventos.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color:
-                            Theme.of(context).colorScheme.onSurfaceVariant)),
-              )
-            else
-              for (final e in delDia)
-                _EventoTile(evento: e, onTap: () => onTap(e), onMenu: (op) => onMenu(e, op)),
-            const Divider(height: AppSpacing.lg),
-          ],
-        );
-      },
-    );
-  }
-}
-
-// ---------------- Vista Día (Hoy) ----------------
-
-class _ListaDia extends StatelessWidget {
-  const _ListaDia({
-    required this.eventos,
-    required this.onTap,
-    required this.onMenu,
-    required this.vacioTexto,
-  });
-
-  final List<Evento> eventos;
-  final ValueChanged<Evento> onTap;
-  final void Function(Evento, String) onMenu;
-  final String vacioTexto;
-
-  @override
-  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     if (eventos.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.xl),
-          child: Text(vacioTexto,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.event_available_outlined,
+                  size: 36, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(height: AppSpacing.sm),
+              Text('Sin eventos para hoy.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant)),
+              const SizedBox(height: AppSpacing.xs),
+              Text('Toca el botón + para agendar.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant)),
+            ],
+          ),
         ),
       );
     }
     return ListView(
-      padding:
-          const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, 96),
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md, AppSpacing.sm, AppSpacing.md, 96),
       children: [
         for (final e in eventos)
           _EventoTile(
@@ -249,7 +230,250 @@ class _ListaDia extends StatelessWidget {
   }
 }
 
-// ---------------- Vista Mes ----------------
+// ====================== VISTA SEMANA ======================
+
+class _VistaSemana extends StatelessWidget {
+  const _VistaSemana({
+    required this.eventos,
+    required this.onTap,
+    required this.onMenu,
+    required this.onCrearDia,
+  });
+
+  final List<Evento> eventos;
+  final ValueChanged<Evento> onTap;
+  final void Function(Evento, String) onMenu;
+  final ValueChanged<DateTime> onCrearDia;
+
+  @override
+  Widget build(BuildContext context) {
+    final n = DateTime.now();
+    final base = DateTime(n.year, n.month, n.day);
+    return LayoutBuilder(
+      builder: (context, c) {
+        final ancho = c.maxWidth >= 760;
+        if (ancho) {
+          return _SemanaColumnas(
+            base: base,
+            eventos: eventos,
+            onTap: onTap,
+            onCrearDia: onCrearDia,
+          );
+        }
+        return _SemanaLista(
+          base: base,
+          eventos: eventos,
+          onTap: onTap,
+          onMenu: onMenu,
+        );
+      },
+    );
+  }
+}
+
+class _SemanaLista extends StatelessWidget {
+  const _SemanaLista({
+    required this.base,
+    required this.eventos,
+    required this.onTap,
+    required this.onMenu,
+  });
+
+  final DateTime base;
+  final List<Evento> eventos;
+  final ValueChanged<Evento> onTap;
+  final void Function(Evento, String) onMenu;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, 96),
+      itemCount: 7,
+      itemBuilder: (_, i) {
+        final dia = base.add(Duration(days: i));
+        final delDia = eventos.where((e) => _mismoDia(e.inicio, dia)).toList();
+        final vacio = delDia.isEmpty;
+        return Container(
+          margin: const EdgeInsets.only(top: AppSpacing.sm),
+          padding: EdgeInsets.fromLTRB(
+              AppSpacing.md, AppSpacing.sm, AppSpacing.md,
+              vacio ? AppSpacing.sm : AppSpacing.xs),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest
+                .withValues(alpha: vacio ? 0.25 : 0.5),
+            borderRadius: BorderRadius.circular(AppSpacing.radius),
+            border: Border.all(
+              color: i == 0
+                  ? AppColors.olive.withValues(alpha: 0.5)
+                  : theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    _etiquetaDia(dia, i),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: i == 0 ? AppColors.olive : null),
+                  ),
+                  const Spacer(),
+                  if (!vacio)
+                    Text('${delDia.length}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant)),
+                ],
+              ),
+              if (vacio)
+                Text('Sin eventos.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant))
+              else
+                for (final e in delDia)
+                  _EventoTile(
+                      evento: e,
+                      onTap: () => onTap(e),
+                      onMenu: (op) => onMenu(e, op)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SemanaColumnas extends StatelessWidget {
+  const _SemanaColumnas({
+    required this.base,
+    required this.eventos,
+    required this.onTap,
+    required this.onCrearDia,
+  });
+
+  final DateTime base;
+  final List<Evento> eventos;
+  final ValueChanged<Evento> onTap;
+  final ValueChanged<DateTime> onCrearDia;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, 96),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < 7; i++) ...[
+              if (i > 0) const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _ColumnaDia(
+                  dia: base.add(Duration(days: i)),
+                  esHoy: i == 0,
+                  eventos: eventos
+                      .where((e) => _mismoDia(e.inicio, base.add(Duration(days: i))))
+                      .toList(),
+                  onTap: onTap,
+                  onCrear: () => onCrearDia(base.add(Duration(days: i))),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ColumnaDia extends StatelessWidget {
+  const _ColumnaDia({
+    required this.dia,
+    required this.esHoy,
+    required this.eventos,
+    required this.onTap,
+    required this.onCrear,
+  });
+
+  final DateTime dia;
+  final bool esHoy;
+  final List<Evento> eventos;
+  final ValueChanged<Evento> onTap;
+  final VoidCallback onCrear;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest
+            .withValues(alpha: esHoy ? 0.55 : 0.3),
+        borderRadius: BorderRadius.circular(AppSpacing.radius),
+        border: Border.all(
+          color: esHoy
+              ? AppColors.olive.withValues(alpha: 0.6)
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 8, 4, 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_diaCorto(dia.weekday),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700)),
+                Text('${dia.day}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: esHoy ? AppColors.olive : null)),
+              ],
+            ),
+          ),
+          if (eventos.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text('—',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant)),
+            )
+          else
+            for (final e in eventos)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(6, 0, 6, 6),
+                child: _EventoChip(
+                    evento: e,
+                    onTap: () => onTap(e)),
+              ),
+          InkWell(
+            onTap: onCrear,
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Row(
+                children: [
+                  Icon(Icons.add,
+                      size: 16, color: theme.colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 2),
+                  Text('Agregar',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ====================== VISTA MES ======================
 
 class _VistaMes extends StatelessWidget {
   const _VistaMes({
@@ -280,88 +504,80 @@ class _VistaMes extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primerGrid = mesAncla.subtract(Duration(days: mesAncla.weekday - 1));
-    final conEventos = <String>{
-      for (final e in eventos) _clave(e.inicio),
-    };
     final delDia =
         eventos.where((e) => _mismoDia(e.inicio, diaSeleccionado)).toList();
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md, 0, AppSpacing.md, 96),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, 96),
       children: [
-        // Encabezado mes con navegación
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             IconButton(
-              onPressed: onMesAnterior,
-              icon: const Icon(Icons.chevron_left),
-            ),
-            Text(
-              '${_mesNombre(mesAncla.month)} ${mesAncla.year}',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
-            ),
+                onPressed: onMesAnterior,
+                icon: const Icon(Icons.chevron_left)),
+            Text('${_mesNombre(mesAncla.month)} ${mesAncla.year}',
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700)),
             IconButton(
-              onPressed: onMesSiguiente,
-              icon: const Icon(Icons.chevron_right),
-            ),
+                onPressed: onMesSiguiente,
+                icon: const Icon(Icons.chevron_right)),
           ],
         ),
-        const SizedBox(height: AppSpacing.xs),
-        // Etiquetas de día
         Row(
           children: [
             for (final d in const ['L', 'M', 'M', 'J', 'V', 'S', 'D'])
               Expanded(
                 child: Center(
-                  child: Text(d,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w700)),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                    child: Text(d,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w700)),
+                  ),
                 ),
               ),
           ],
         ),
-        const SizedBox(height: AppSpacing.xs),
-        // Cuadrícula 6x7
         for (var fila = 0; fila < 6; fila++)
           Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (var col = 0; col < 7; col++)
-                _CeldaDia(
-                  dia: primerGrid.add(Duration(days: fila * 7 + col)),
-                  mesActual: mesAncla.month,
-                  hoy: hoy,
-                  seleccionado: _mismoDia(
-                      primerGrid.add(Duration(days: fila * 7 + col)),
-                      diaSeleccionado),
-                  tieneEventos: conEventos.contains(_clave(
-                      primerGrid.add(Duration(days: fila * 7 + col)))),
-                  onTap: () =>
-                      onDia(primerGrid.add(Duration(days: fila * 7 + col))),
+                Expanded(
+                  child: _CeldaMes(
+                    dia: primerGrid.add(Duration(days: fila * 7 + col)),
+                    mesActual: mesAncla.month,
+                    hoy: hoy,
+                    seleccionado: _mismoDia(
+                        primerGrid.add(Duration(days: fila * 7 + col)),
+                        diaSeleccionado),
+                    eventos: eventos
+                        .where((e) => _mismoDia(e.inicio,
+                            primerGrid.add(Duration(days: fila * 7 + col))))
+                        .toList(),
+                    onTap: () =>
+                        onDia(primerGrid.add(Duration(days: fila * 7 + col))),
+                  ),
                 ),
             ],
           ),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: AppSpacing.sm),
         const Divider(),
-        // Eventos del día seleccionado
         Padding(
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(
-                  _fechaLarga(diaSeleccionado),
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
+                child: Text(_fechaLarga(diaSeleccionado),
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700)),
               ),
               TextButton.icon(
                 onPressed: onCrearEnDia,
-                style: TextButton.styleFrom(foregroundColor: AppColors.olive),
+                style:
+                    TextButton.styleFrom(foregroundColor: AppColors.olive),
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Crear'),
               ),
@@ -378,19 +594,21 @@ class _VistaMes extends StatelessWidget {
         else
           for (final e in delDia)
             _EventoTile(
-                evento: e, onTap: () => onTap(e), onMenu: (op) => onMenu(e, op)),
+                evento: e,
+                onTap: () => onTap(e),
+                onMenu: (op) => onMenu(e, op)),
       ],
     );
   }
 }
 
-class _CeldaDia extends StatelessWidget {
-  const _CeldaDia({
+class _CeldaMes extends StatelessWidget {
+  const _CeldaMes({
     required this.dia,
     required this.mesActual,
     required this.hoy,
     required this.seleccionado,
-    required this.tieneEventos,
+    required this.eventos,
     required this.onTap,
   });
 
@@ -398,7 +616,7 @@ class _CeldaDia extends StatelessWidget {
   final int mesActual;
   final DateTime hoy;
   final bool seleccionado;
-  final bool tieneEventos;
+  final List<Evento> eventos;
   final VoidCallback onTap;
 
   @override
@@ -406,63 +624,202 @@ class _CeldaDia extends StatelessWidget {
     final theme = Theme.of(context);
     final esDeMes = dia.month == mesActual;
     final esHoy = _mismoDia(dia, hoy);
+    const maxBarras = 2;
+    final extra = eventos.length - maxBarras;
 
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: AspectRatio(
-          aspectRatio: 1,
-          child: Container(
-            margin: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              color: seleccionado
-                  ? AppColors.olive
-                  : (esHoy
-                      ? const Color(0x146B7A4F)
-                      : Colors.transparent),
-              borderRadius: BorderRadius.circular(AppSpacing.radius),
-              border: esHoy && !seleccionado
-                  ? Border.all(color: AppColors.olive)
-                  : null,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '${dia.day}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: esHoy ? FontWeight.w700 : FontWeight.w500,
-                    color: seleccionado
-                        ? Colors.white
-                        : (esDeMes
-                            ? null
-                            : theme.colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.4)),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Container(
-                  width: 5,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: tieneEventos
-                        ? (seleccionado ? Colors.white : AppColors.olive)
-                        : Colors.transparent,
-                  ),
-                ),
-              ],
-            ),
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        height: 82,
+        margin: const EdgeInsets.all(1.5),
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: seleccionado
+              ? AppColors.olive.withValues(alpha: 0.14)
+              : (esDeMes
+                  ? theme.colorScheme.surfaceContainerHighest
+                      .withValues(alpha: 0.35)
+                  : theme.colorScheme.surfaceContainerHighest
+                      .withValues(alpha: 0.12)),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: seleccionado
+                ? AppColors.olive
+                : (esHoy
+                    ? AppColors.olive.withValues(alpha: 0.7)
+                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.4)),
+            width: seleccionado ? 1.4 : 0.6,
           ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Número de día
+            SizedBox(
+              height: 18,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: esHoy
+                    ? Container(
+                        width: 18,
+                        height: 18,
+                        alignment: Alignment.center,
+                        decoration: const BoxDecoration(
+                          color: AppColors.olive,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text('${dia.day}',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700)),
+                      )
+                    : Text('${dia.day}',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: esDeMes
+                              ? null
+                              : theme.colorScheme.onSurfaceVariant
+                                  .withValues(alpha: 0.4),
+                        )),
+              ),
+            ),
+            const SizedBox(height: 1),
+            // Eventos (barras compactas)
+            for (final e in eventos.take(maxBarras))
+              _MiniEventoBar(evento: e),
+            if (extra > 0)
+              Padding(
+                padding: const EdgeInsets.only(left: 2, top: 1),
+                child: Text('+$extra más',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                        fontSize: 9,
+                        color: theme.colorScheme.onSurfaceVariant)),
+              ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ---------------- Tile de evento + menú ----------------
+class _MiniEventoBar extends StatelessWidget {
+  const _MiniEventoBar({required this.evento});
+  final Evento evento;
 
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cat = colorCategoria(evento.categoria);
+    final critico = evento.importancia == 'critico';
+    final importante = evento.importancia == 'importante';
+    final tachado = evento.realizado || evento.cancelado;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+      decoration: BoxDecoration(
+        color: cat.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(3),
+        border: Border(left: BorderSide(color: cat, width: 2.5)),
+      ),
+      child: Row(
+        children: [
+          if (critico)
+            Container(
+              width: 4,
+              height: 4,
+              margin: const EdgeInsets.only(right: 2),
+              decoration: const BoxDecoration(
+                  color: AppColors.danger, shape: BoxShape.circle),
+            ),
+          Expanded(
+            child: Text(
+              evento.todoElDia
+                  ? evento.titulo
+                  : '${_horaDe(evento.inicio)} ${evento.titulo}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontSize: 9.5,
+                height: 1.1,
+                fontWeight: importante ? FontWeight.w700 : FontWeight.w500,
+                decoration: tachado ? TextDecoration.lineThrough : null,
+                color: tachado
+                    ? theme.colorScheme.onSurfaceVariant
+                    : theme.colorScheme.onSurface,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ====================== TILES DE EVENTO ======================
+
+/// Chip compacto para columnas (semana desktop).
+class _EventoChip extends StatelessWidget {
+  const _EventoChip({
+    required this.evento,
+    required this.onTap,
+  });
+
+  final Evento evento;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cat = colorCategoria(evento.categoria);
+    final critico = evento.importancia == 'critico';
+    final importante = evento.importancia == 'importante';
+    final tachado = evento.realizado || evento.cancelado;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        decoration: BoxDecoration(
+          color: cat.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(6),
+          border: Border(
+            left: BorderSide(color: cat, width: importante || critico ? 4 : 2.5),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!evento.todoElDia)
+              Text(_horaDe(evento.inicio),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurfaceVariant)),
+            Text(
+              evento.titulo,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                decoration: tachado ? TextDecoration.lineThrough : null,
+                color: tachado ? theme.colorScheme.onSurfaceVariant : null,
+              ),
+            ),
+            if (critico)
+              Text('Crítico',
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: AppColors.danger, fontSize: 9)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Tile completo para listas (Hoy, Semana móvil, detalle de día en Mes).
 class _EventoTile extends StatelessWidget {
   const _EventoTile({
     required this.evento,
@@ -477,92 +834,134 @@ class _EventoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final cat = colorCategoria(evento.categoria);
     final done = evento.realizado;
     final cancel = evento.cancelado;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppSpacing.radius),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 52,
-              child: Text(
-                evento.todoElDia ? 'Todo\nel día' : _horaDe(evento.inicio),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurfaceVariant,
+    final tachado = done || cancel;
+    final critico = evento.importancia == 'critico';
+    final importante = evento.importancia == 'importante';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.radius),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: critico
+                ? AppColors.danger.withValues(alpha: 0.06)
+                : (importante
+                    ? AppColors.olive.withValues(alpha: 0.05)
+                    : theme.colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.4)),
+            borderRadius: BorderRadius.circular(AppSpacing.radius),
+            border: Border(
+              left: BorderSide(
+                  color: cat, width: importante || critico ? 5 : 3),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 50,
+                child: Text(
+                  evento.todoElDia ? 'Todo\nel día' : _horaDe(evento.inicio),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurfaceVariant),
                 ),
               ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            _PuntoImportancia(importancia: evento.importancia),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    evento.titulo,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      decoration: (done || cancel)
-                          ? TextDecoration.lineThrough
-                          : null,
-                      color: (done || cancel)
-                          ? theme.colorScheme.onSurfaceVariant
-                          : null,
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            evento.titulo,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              decoration:
+                                  tachado ? TextDecoration.lineThrough : null,
+                              color: tachado
+                                  ? theme.colorScheme.onSurfaceVariant
+                                  : null,
+                            ),
+                          ),
+                        ),
+                        if (critico) ...[
+                          const SizedBox(width: AppSpacing.xs),
+                          const _EtiquetaCritico(),
+                        ],
+                      ],
                     ),
-                  ),
-                  if (evento.categoria != null)
-                    Text(evento.categoria!,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant)),
-                  if (evento.descripcion != null)
-                    Text(evento.descripcion!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant)),
-                  if (cancel)
-                    Text('Cancelado',
-                        style: theme.textTheme.labelSmall
-                            ?.copyWith(color: AppColors.danger)),
-                ],
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration:
+                              BoxDecoration(color: cat, shape: BoxShape.circle),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Flexible(
+                          child: Text(
+                            evento.categoria ?? 'Sin categoría',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (evento.descripcion != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(evento.descripcion!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant)),
+                      ),
+                    if (cancel)
+                      Text('Cancelado',
+                          style: theme.textTheme.labelSmall
+                              ?.copyWith(color: AppColors.danger)),
+                  ],
+                ),
               ),
-            ),
-            _MenuEvento(evento: evento, onMenu: onMenu),
-          ],
+              _MenuEvento(evento: evento, onMenu: onMenu),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _PuntoImportancia extends StatelessWidget {
-  const _PuntoImportancia({required this.importancia});
-  final String importancia;
+class _EtiquetaCritico extends StatelessWidget {
+  const _EtiquetaCritico();
 
   @override
   Widget build(BuildContext context) {
-    Color color;
-    switch (importancia) {
-      case 'critico':
-        color = AppColors.danger;
-      case 'importante':
-        color = const Color(0xFFC9933F); // ámbar discreto
-      default:
-        color = Theme.of(context).colorScheme.outlineVariant;
-    }
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: AppColors.danger.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(4),
       ),
+      child: const Text('Crítico',
+          style: TextStyle(
+              color: AppColors.danger,
+              fontSize: 10,
+              fontWeight: FontWeight.w700)),
     );
   }
 }
@@ -621,17 +1020,20 @@ class _MenuEvento extends StatelessWidget {
   }
 }
 
-// ---------------- utilidades ----------------
+// ====================== utilidades ======================
 
 bool _mismoDia(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
-
-String _clave(DateTime d) => '${d.year}-${d.month}-${d.day}';
 
 String _horaDe(DateTime d) {
   final h = d.hour.toString().padLeft(2, '0');
   final m = d.minute.toString().padLeft(2, '0');
   return '$h:$m';
+}
+
+String _diaCorto(int weekday) {
+  const d = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  return d[weekday - 1];
 }
 
 String _mesNombre(int m) {
