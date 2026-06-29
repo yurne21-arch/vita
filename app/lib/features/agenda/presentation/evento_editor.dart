@@ -1,9 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../data/agenda_repository.dart';
 import 'agenda_controller.dart';
+
+/// Categorías disponibles para los eventos.
+const List<String> kCategorias = [
+  'Trabajo / Empresa',
+  'Personal',
+  'Familia',
+  'Salud',
+  'Colegio / Juan Miguel',
+  'Finanzas',
+  'Viaje',
+  'Otro',
+];
+
+/// Opciones de recordatorio: etiqueta -> minutos antes (null = sin recordatorio).
+const Map<String, int?> kRecordatorios = {
+  'Sin recordatorio': null,
+  '10 min antes': 10,
+  '30 min antes': 30,
+  '1 hora antes': 60,
+  '1 día antes': 1440,
+};
 
 /// Abre el editor de evento (crear o editar) como hoja inferior.
 Future<void> mostrarEditorEvento(
@@ -39,6 +61,9 @@ class _EventoEditorState extends ConsumerState<_EventoEditor> {
   bool _todoElDia = false;
   TimeOfDay? _horaInicio;
   TimeOfDay? _horaFin;
+  String? _categoria;
+  String _importancia = 'normal';
+  int? _recordatorio; // minutos antes (null = sin)
   bool _guardando = false;
 
   bool get _esEdicion => widget.existente != null;
@@ -56,8 +81,21 @@ class _EventoEditorState extends ConsumerState<_EventoEditor> {
       _horaInicio = TimeOfDay.fromDateTime(e.inicio);
       if (e.fin != null) _horaFin = TimeOfDay.fromDateTime(e.fin!);
     } else if (e == null) {
-      final ahora = TimeOfDay.now();
-      _horaInicio = ahora;
+      _horaInicio = TimeOfDay.now();
+    }
+    _categoria =
+        (e?.categoria != null && kCategorias.contains(e!.categoria))
+            ? e.categoria
+            : null;
+    _importancia = e?.importancia ?? 'normal';
+    if (_esEdicion) _cargarRecordatorio();
+  }
+
+  Future<void> _cargarRecordatorio() async {
+    final offsets =
+        await ref.read(agendaAccionesProvider).recordatoriosDe(widget.existente!.id);
+    if (mounted && offsets.isNotEmpty) {
+      setState(() => _recordatorio = offsets.first);
     }
   }
 
@@ -86,8 +124,7 @@ class _EventoEditorState extends ConsumerState<_EventoEditor> {
   Future<void> _elegirHora({required bool inicio}) async {
     final sel = await showTimePicker(
       context: context,
-      initialTime:
-          (inicio ? _horaInicio : _horaFin) ?? TimeOfDay.now(),
+      initialTime: (inicio ? _horaInicio : _horaFin) ?? TimeOfDay.now(),
     );
     if (sel != null) {
       setState(() {
@@ -111,31 +148,40 @@ class _EventoEditorState extends ConsumerState<_EventoEditor> {
       if (fin.isBefore(inicio)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('La hora de término no puede ser antes del inicio.')),
+              content:
+                  Text('La hora de término no puede ser antes del inicio.')),
         );
         return;
       }
     }
 
+    final recordatorios = _recordatorio == null ? <int>[] : [_recordatorio!];
+
     setState(() => _guardando = true);
     try {
-      final ctrl = ref.read(agendaControllerProvider.notifier);
+      final acc = ref.read(agendaAccionesProvider);
       if (_esEdicion) {
-        await ctrl.editar(
+        await acc.editar(
           widget.existente!.id,
           titulo: titulo,
           inicio: inicio,
           descripcion: _descripcion.text,
           fin: fin,
           todoElDia: _todoElDia,
+          categoria: _categoria,
+          importancia: _importancia,
+          recordatorios: recordatorios,
         );
       } else {
-        await ctrl.crear(
+        await acc.crear(
           titulo: titulo,
           inicio: inicio,
           descripcion: _descripcion.text,
           fin: fin,
           todoElDia: _todoElDia,
+          categoria: _categoria,
+          importancia: _importancia,
+          recordatorios: recordatorios,
         );
       }
       if (mounted) Navigator.of(context).pop();
@@ -143,7 +189,8 @@ class _EventoEditorState extends ConsumerState<_EventoEditor> {
       if (mounted) {
         setState(() => _guardando = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo guardar. Intenta de nuevo.')),
+          const SnackBar(
+              content: Text('No se pudo guardar. Intenta de nuevo.')),
         );
       }
     }
@@ -210,6 +257,76 @@ class _EventoEditorState extends ConsumerState<_EventoEditor> {
                 ],
               ),
             const SizedBox(height: AppSpacing.md),
+
+            // Categoría
+            DropdownButtonFormField<String>(
+              initialValue: _categoria,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Categoría',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                const DropdownMenuItem<String>(
+                  value: null,
+                  child: Text('Sin categoría'),
+                ),
+                for (final c in kCategorias)
+                  DropdownMenuItem<String>(value: c, child: Text(c)),
+              ],
+              onChanged: (v) => setState(() => _categoria = v),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // Importancia
+            Text('Importancia',
+                style: theme.textTheme.labelLarge
+                    ?.copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: AppSpacing.xs),
+            Wrap(
+              spacing: AppSpacing.sm,
+              children: [
+                _ChipImportancia(
+                  label: 'Normal',
+                  valor: 'normal',
+                  seleccionado: _importancia == 'normal',
+                  onTap: () => setState(() => _importancia = 'normal'),
+                ),
+                _ChipImportancia(
+                  label: 'Importante',
+                  valor: 'importante',
+                  seleccionado: _importancia == 'importante',
+                  onTap: () => setState(() => _importancia = 'importante'),
+                ),
+                _ChipImportancia(
+                  label: 'Crítico',
+                  valor: 'critico',
+                  seleccionado: _importancia == 'critico',
+                  onTap: () => setState(() => _importancia = 'critico'),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // Recordatorio
+            DropdownButtonFormField<int?>(
+              initialValue: _recordatorio,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Recordatorio',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final entry in kRecordatorios.entries)
+                  DropdownMenuItem<int?>(
+                    value: entry.value,
+                    child: Text(entry.key),
+                  ),
+              ],
+              onChanged: (v) => setState(() => _recordatorio = v),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
             TextField(
               controller: _descripcion,
               maxLines: 2,
@@ -235,6 +352,35 @@ class _EventoEditorState extends ConsumerState<_EventoEditor> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ChipImportancia extends StatelessWidget {
+  const _ChipImportancia({
+    required this.label,
+    required this.valor,
+    required this.seleccionado,
+    required this.onTap,
+  });
+
+  final String label;
+  final String valor;
+  final bool seleccionado;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ChoiceChip(
+      label: Text(label),
+      selected: seleccionado,
+      onSelected: (_) => onTap(),
+      selectedColor: AppColors.olive,
+      labelStyle: TextStyle(
+        color: seleccionado ? Colors.white : theme.colorScheme.onSurface,
+        fontWeight: FontWeight.w600,
       ),
     );
   }
