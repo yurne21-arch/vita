@@ -2,25 +2,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/estado_repository.dart';
 
-/// Expone el estado de hoy y permite registrar nuevas métricas.
+/// Expone el estado de hoy y permite registrar (rápido diario + peso).
 class EstadoController extends AsyncNotifier<EstadoHoy> {
   @override
   Future<EstadoHoy> build() {
     return ref.read(estadoRepositoryProvider).estadoDeHoy();
   }
 
-  Future<void> registrar({
-    double? peso,
+  Future<void> registrarDiario({
     int? energia,
-    double? sueno,
     int? animo,
+    int? suenoCalidad,
+    double? suenoHoras,
   }) async {
-    await ref.read(estadoRepositoryProvider).registrar(
-          peso: peso,
+    await ref.read(estadoRepositoryProvider).registrarDiario(
           energia: energia,
-          sueno: sueno,
           animo: animo,
+          suenoCalidad: suenoCalidad,
+          suenoHoras: suenoHoras,
         );
+    ref.invalidateSelf();
+    await future;
+  }
+
+  Future<void> registrarPeso(double peso) async {
+    await ref.read(estadoRepositoryProvider).registrarPeso(peso);
     ref.invalidateSelf();
     await future;
   }
