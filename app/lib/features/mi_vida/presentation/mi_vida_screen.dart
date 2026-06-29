@@ -390,9 +390,15 @@ class _EstadoGeneral extends ConsumerWidget {
             const SizedBox(height: AppSpacing.lg),
             Row(
               children: [
-                _Metric(label: 'Peso', value: _fmtPeso(estado?.peso)),
+                _Metric(
+                    label: 'Peso',
+                    value: _fmtPesoCard(
+                        estado?.pesoUltimo, estado?.pesoTendencia)),
                 _Metric(label: 'Energía', value: _fmt15(estado?.energia)),
-                _Metric(label: 'Sueño', value: _fmtSueno(estado?.sueno)),
+                _Metric(
+                    label: 'Sueño',
+                    value: _fmtSuenoCard(
+                        estado?.suenoCalidad, estado?.suenoHoras)),
                 _Metric(label: 'Ánimo', value: _fmt15(estado?.animo)),
               ],
             ),
@@ -410,9 +416,22 @@ String _numEs(double v) {
   return s.replaceAll('.', ',');
 }
 
-String _fmtPeso(double? v) => v == null ? '—' : '${_numEs(v)} kg';
-String _fmtSueno(double? v) => v == null ? '—' : '${_numEs(v)} h';
 String _fmt15(int? v) => v == null ? '—' : '$v/5';
+
+String _fmtPesoCard(double? p, double? t) {
+  if (p == null) return '—';
+  var s = '${_numEs(p)} kg';
+  if (t != null && t.abs() >= 0.05) s += t > 0 ? '  ↑' : '  ↓';
+  return s;
+}
+
+const _suenoPalabra = {1: 'Mal', 2: 'Regular', 3: 'Bien'};
+
+String _fmtSuenoCard(int? calidad, double? horas) {
+  if (calidad != null) return _suenoPalabra[calidad] ?? '—';
+  if (horas != null) return '${_numEs(horas)} h';
+  return '—';
+}
 
 Future<void> _abrirRegistroEstado(
     BuildContext context, WidgetRef ref, EstadoHoy? actual) {
@@ -818,28 +837,32 @@ class _RegistrarEstadoSheet extends ConsumerStatefulWidget {
 
 class _RegistrarEstadoSheetState
     extends ConsumerState<_RegistrarEstadoSheet> {
-  late final TextEditingController _peso;
-  late final TextEditingController _sueno;
   int? _energia;
   int? _animo;
+  int? _sueno; // 1 mal, 2 regular, 3 bien
+  late final TextEditingController _horas;
+  late final TextEditingController _peso;
+  bool _mostrarPeso = false;
   bool _guardando = false;
 
   @override
   void initState() {
     super.initState();
     final a = widget.actual;
-    _peso = TextEditingController(
-        text: a?.peso != null ? _numEs(a!.peso!) : '');
-    _sueno = TextEditingController(
-        text: a?.sueno != null ? _numEs(a!.sueno!) : '');
     _energia = a?.energia;
     _animo = a?.animo;
+    _sueno = a?.suenoCalidad;
+    _horas = TextEditingController(
+        text: a?.suenoHoras != null ? _numEs(a!.suenoHoras!) : '');
+    _peso = TextEditingController();
+    // El peso solo se sugiere si aún no se registró esta semana.
+    _mostrarPeso = a != null && !a.pesoEstaSemana;
   }
 
   @override
   void dispose() {
+    _horas.dispose();
     _peso.dispose();
-    _sueno.dispose();
     super.dispose();
   }
 
@@ -852,18 +875,22 @@ class _RegistrarEstadoSheetState
   Future<void> _guardar() async {
     setState(() => _guardando = true);
     try {
-      await ref.read(estadoControllerProvider.notifier).registrar(
-            peso: _parse(_peso.text),
-            energia: _energia,
-            sueno: _parse(_sueno.text),
-            animo: _animo,
-          );
+      final ctrl = ref.read(estadoControllerProvider.notifier);
+      await ctrl.registrarDiario(
+        energia: _energia,
+        animo: _animo,
+        suenoCalidad: _sueno,
+        suenoHoras: _parse(_horas.text),
+      );
+      final peso = _parse(_peso.text);
+      if (peso != null) await ctrl.registrarPeso(peso);
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
       if (mounted) {
         setState(() => _guardando = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo guardar. Intenta de nuevo.')),
+          const SnackBar(
+              content: Text('No se pudo guardar. Intenta de nuevo.')),
         );
       }
     }
@@ -876,82 +903,111 @@ class _RegistrarEstadoSheetState
     return Padding(
       padding: EdgeInsets.fromLTRB(
           AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg + bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('¿Cómo estás hoy?',
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: AppSpacing.xs),
-          Text('Registra lo que quieras. No tienes que llenar todo.',
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          const SizedBox(height: AppSpacing.lg),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _peso,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                    labelText: 'Peso',
-                    suffixText: 'kg',
-                    border: OutlineInputBorder(),
-                  ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('¿Cómo estás hoy?',
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: AppSpacing.xs),
+            Text('Registra solo cómo te sientes hoy.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: AppSpacing.lg),
+
+            _CampoLabel('Energía del día'),
+            const SizedBox(height: AppSpacing.sm),
+            _Escala(
+              value: _energia,
+              onChanged: (v) => setState(() => _energia = v),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            _CampoLabel('Ánimo del día'),
+            const SizedBox(height: AppSpacing.sm),
+            _Escala(
+              value: _animo,
+              onChanged: (v) => setState(() => _animo = v),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            _CampoLabel('Sueño'),
+            const SizedBox(height: AppSpacing.sm),
+            _SuenoSelector(
+              value: _sueno,
+              onChanged: (v) => setState(() => _sueno = v),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: _horas,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Horas de sueño (opcional)',
+                suffixText: 'h',
+                border: OutlineInputBorder(),
+              ),
+            ),
+
+            if (_mostrarPeso) ...[
+              const SizedBox(height: AppSpacing.lg),
+              _CampoLabel('Pesaje semanal · opcional'),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: _peso,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Peso',
+                  suffixText: 'kg',
+                  border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: TextField(
-                  controller: _sueno,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                    labelText: 'Sueño',
-                    suffixText: 'h',
-                    border: OutlineInputBorder(),
-                  ),
+            ] else ...[
+              const SizedBox(height: AppSpacing.md),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => setState(() => _mostrarPeso = true),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Registrar peso'),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Text('Energía',
-              style: theme.textTheme.labelLarge
-                  ?.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: AppSpacing.sm),
-          _Escala(
-            value: _energia,
-            onChanged: (v) => setState(() => _energia = v),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Text('Ánimo',
-              style: theme.textTheme.labelLarge
-                  ?.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: AppSpacing.sm),
-          _Escala(
-            value: _animo,
-            onChanged: (v) => setState(() => _animo = v),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _guardando ? null : _guardar,
-              child: _guardando
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Guardar'),
+
+            const SizedBox(height: AppSpacing.lg),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _guardando ? null : _guardar,
+                child: _guardando
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Guardar'),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+}
+
+class _CampoLabel extends StatelessWidget {
+  const _CampoLabel(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Text(text,
+        style: theme.textTheme.labelLarge
+            ?.copyWith(fontWeight: FontWeight.w600));
   }
 }
 
@@ -985,6 +1041,56 @@ class _Escala extends StatelessWidget {
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: value == i
+                        ? Colors.white
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Selector de cualidad de sueño: Bien (3) / Regular (2) / Mal (1).
+class _SuenoSelector extends StatelessWidget {
+  const _SuenoSelector({required this.value, required this.onChanged});
+  final int? value;
+  final ValueChanged<int?> onChanged;
+
+  static const _opciones = [
+    (3, 'Bien'),
+    (2, 'Regular'),
+    (1, 'Mal'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        for (var i = 0; i < _opciones.length; i++) ...[
+          if (i > 0) const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(
+                  value == _opciones[i].$1 ? null : _opciones[i].$1),
+              child: Container(
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: value == _opciones[i].$1
+                      ? AppColors.olive
+                      : theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(AppSpacing.radius),
+                ),
+                child: Text(
+                  _opciones[i].$2,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: value == _opciones[i].$1
                         ? Colors.white
                         : theme.colorScheme.onSurfaceVariant,
                   ),
