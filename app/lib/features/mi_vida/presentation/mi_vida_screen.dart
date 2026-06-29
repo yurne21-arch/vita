@@ -9,9 +9,16 @@ import '../../profile/presentation/profile_controller.dart';
 import '../data/habitos_repository.dart';
 import 'habitos_controller.dart';
 
-/// ESQUELETO PREMIUM DE MI VIDA
-/// El centro de VITA: una narración vertical del día en 11 tarjetas, en orden
-/// fijo. Estados vacíos cálidos y contenido temporal donde aún no hay datos.
+/// Padding interno compacto y refinado para las tarjetas de Mi Vida.
+const EdgeInsets _kCardPad = EdgeInsets.fromLTRB(20, 18, 20, 18);
+
+/// Separación entre tarjetas: aire, pero sin espacio muerto.
+const double _kGap = 12;
+
+/// Ancho máximo del contenido en pantallas grandes (lectura cómoda, centrado).
+const double _kMaxWidth = 820;
+
+/// ESQUELETO PREMIUM DE MI VIDA — narración vertical del día en 11 tarjetas.
 /// Los hábitos son la tarjeta 10, no el centro.
 class MiVidaScreen extends ConsumerWidget {
   const MiVidaScreen({super.key});
@@ -20,6 +27,7 @@ class MiVidaScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: AppSpacing.lg,
         title: const Text('VITA'),
         actions: [
           IconButton(
@@ -28,35 +36,41 @@ class MiVidaScreen extends ConsumerWidget {
             onPressed: () =>
                 ref.read(authControllerProvider.notifier).signOut(),
           ),
+          const SizedBox(width: AppSpacing.sm),
         ],
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xxl),
-          children: const [
-            _BuenosDias(),
-            SizedBox(height: AppSpacing.xl),
-            _Versiculo(),
-            SizedBox(height: AppSpacing.md),
-            _Reflexion(),
-            SizedBox(height: AppSpacing.md),
-            _EstadoGeneral(),
-            SizedBox(height: AppSpacing.md),
-            _Prioridades(),
-            SizedBox(height: AppSpacing.md),
-            _Agenda(),
-            SizedBox(height: AppSpacing.md),
-            _ProyectoPrincipal(),
-            SizedBox(height: AppSpacing.md),
-            _Entrenamiento(),
-            SizedBox(height: AppSpacing.md),
-            _Menu(),
-            SizedBox(height: AppSpacing.md),
-            _Habitos(),
-            SizedBox(height: AppSpacing.md),
-            _CierreDelDia(),
-          ],
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: _kMaxWidth),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xxl),
+              children: const [
+                _BuenosDias(),
+                SizedBox(height: AppSpacing.lg),
+                _Versiculo(),
+                SizedBox(height: _kGap),
+                _Reflexion(),
+                SizedBox(height: _kGap),
+                _EstadoGeneral(),
+                SizedBox(height: _kGap),
+                _Prioridades(),
+                SizedBox(height: _kGap),
+                _Agenda(),
+                SizedBox(height: _kGap),
+                _ProyectoPrincipal(),
+                SizedBox(height: _kGap),
+                _Entrenamiento(),
+                SizedBox(height: _kGap),
+                _Menu(),
+                SizedBox(height: _kGap),
+                _Habitos(),
+                SizedBox(height: _kGap),
+                _CierreDelDia(),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -85,13 +99,13 @@ class _BuenosDias extends ConsumerWidget {
       children: [
         Text(
           '$saludo, $name.',
-          style: theme.textTheme.headlineLarge
-              ?.copyWith(fontWeight: FontWeight.w700, height: 1.1),
+          style: theme.textTheme.headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w600, height: 1.15),
         ),
-        const SizedBox(height: AppSpacing.xs),
+        const SizedBox(height: 2),
         Text(
           _fechaLarga(now),
-          style: theme.textTheme.titleMedium
+          style: theme.textTheme.bodyMedium
               ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
       ],
@@ -106,20 +120,21 @@ class _Versiculo extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return VitaCard(
+      padding: _kCardPad,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _Eyebrow('VERSÍCULO DEL DÍA'),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Todo lo puedo en Cristo que me fortalece.',
-            style: theme.textTheme.titleLarge
-                ?.copyWith(height: 1.35, fontWeight: FontWeight.w500),
-          ),
           const SizedBox(height: AppSpacing.sm),
           Text(
+            'Todo lo puedo en Cristo que me fortalece.',
+            style: theme.textTheme.titleMedium
+                ?.copyWith(height: 1.4, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
             'Filipenses 4:13',
-            style: theme.textTheme.bodyMedium
+            style: theme.textTheme.bodySmall
                 ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ],
@@ -135,20 +150,21 @@ class _Reflexion extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return VitaCard(
+      padding: _kCardPad,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _Eyebrow('REFLEXIÓN'),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             'La fortaleza no está en hacerlo todo hoy, sino en dar un paso '
             'con calma. Hoy basta con lo que sí puedes.',
-            style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
+            style: theme.textTheme.bodyMedium?.copyWith(height: 1.45),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             '¿Cuál es el único paso que importa hoy?',
-            style: theme.textTheme.bodyMedium?.copyWith(
+            style: theme.textTheme.bodySmall?.copyWith(
               fontStyle: FontStyle.italic,
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -165,11 +181,12 @@ class _EstadoGeneral extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return VitaCard(
+      padding: _kCardPad,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: const [
           _Eyebrow('CÓMO ESTÁS HOY'),
-          SizedBox(height: AppSpacing.lg),
+          SizedBox(height: AppSpacing.md),
           Row(
             children: [
               _Indicador(icon: Icons.monitor_weight_outlined, label: 'Peso'),
@@ -178,7 +195,7 @@ class _EstadoGeneral extends StatelessWidget {
               _Indicador(icon: Icons.spa_outlined, label: 'Modo'),
             ],
           ),
-          SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.sm),
           _HintLine('Toca para registrar cómo amaneciste.'),
         ],
       ),
@@ -193,22 +210,22 @@ class _Prioridades extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return VitaCard(
+      padding: _kCardPad,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _Eyebrow('HOY IMPORTA'),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Aquí verás tus tres prioridades del día.',
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w600),
-          ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'VITA elegirá lo esencial de toda tu vida y te dirá por qué. '
-            'Por ahora, este espacio te espera tranquilo.',
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant, height: 1.5),
+            'Aquí verás tus tres prioridades del día.',
+            style: theme.textTheme.bodyLarge
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'VITA elegirá lo esencial y te dirá por qué.',
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant, height: 1.4),
           ),
           const SizedBox(height: AppSpacing.md),
           _PrioridadFantasma(),
@@ -226,11 +243,12 @@ class _Agenda extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const VitaCard(
+      padding: _kCardPad,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _Eyebrow('TU DÍA'),
-          SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.sm),
           _EmptyHint(
             icon: Icons.event_available_outlined,
             title: 'Sin eventos para hoy.',
@@ -248,11 +266,12 @@ class _ProyectoPrincipal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const VitaCard(
+      padding: _kCardPad,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _Eyebrow('PROYECTO DEL MES'),
-          SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.sm),
           _EmptyHint(
             icon: Icons.flag_outlined,
             title: 'Aún no eliges tu proyecto del mes.',
@@ -271,15 +290,16 @@ class _Entrenamiento extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const VitaCard(
+      padding: _kCardPad,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _Eyebrow('MOVIMIENTO DE HOY'),
-          SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.sm),
           _EmptyHint(
             icon: Icons.fitness_center_outlined,
             title: 'Aún no tienes un programa.',
-            subtitle: 'Tu entrenamiento del día aparecerá aquí cuando empieces tu ciclo.',
+            subtitle: 'Tu entrenamiento del día aparecerá aquí cuando empieces.',
             action: 'Crear programa',
           ),
         ],
@@ -294,11 +314,12 @@ class _Menu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const VitaCard(
+      padding: _kCardPad,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _Eyebrow('TU MENÚ'),
-          SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.sm),
           _EmptyHint(
             icon: Icons.restaurant_outlined,
             title: 'Aún no tienes menú de la semana.',
@@ -311,8 +332,7 @@ class _Menu extends StatelessWidget {
   }
 }
 
-/// Tarjeta 10 — Hábitos. REAL: reutiliza el controlador existente.
-/// Ya no es el centro: es una tarjeta más, aquí abajo.
+/// Tarjeta 10 — Hábitos (real, reutiliza el controlador existente).
 class _Habitos extends ConsumerWidget {
   const _Habitos();
 
@@ -322,20 +342,19 @@ class _Habitos extends ConsumerWidget {
     final habitosAsync = ref.watch(habitosControllerProvider);
 
     return VitaCard(
+      padding: _kCardPad,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _Eyebrow('HÁBITOS'),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
           habitosAsync.when(
             loading: () => const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (e, _) => Text(
-              'No se pudieron cargar tus hábitos.',
-              style: theme.textTheme.bodyMedium,
-            ),
+            error: (e, _) => Text('No se pudieron cargar tus hábitos.',
+                style: theme.textTheme.bodyMedium),
             data: (habitos) {
               if (habitos.isEmpty) {
                 return const _EmptyHint(
@@ -348,12 +367,10 @@ class _Habitos extends ConsumerWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    '$hechos de ${habitos.length} hoy',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
+                  Text('$hechos de ${habitos.length} hoy',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant)),
+                  const SizedBox(height: AppSpacing.xs),
                   for (final h in habitos)
                     _HabitoRow(
                       habito: h,
@@ -378,42 +395,38 @@ class _CierreDelDia extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return VitaCard(
+      padding: _kCardPad,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _Eyebrow('CIERRE DEL DÍA'),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            '¿Cómo estuvo tu día?',
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
+          Text('¿Cómo estuvo tu día?',
+              style: theme.textTheme.bodyLarge
+                  ?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: AppSpacing.sm),
           Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md, vertical: 12),
             decoration: BoxDecoration(
               border: Border.all(color: theme.colorScheme.outlineVariant),
               borderRadius: BorderRadius.circular(AppSpacing.radius),
             ),
-            child: Text(
-              'Lo mejor de hoy fue…',
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
+            child: Text('Lo mejor de hoy fue…',
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Disponible esta noche. Sin prisa, sin culpa.',
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text('Disponible esta noche. Sin prisa, sin culpa.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
         ],
       ),
     );
   }
 }
 
-// ---------- Piezas reutilizables (estética premium) ----------
+// ---------- Piezas reutilizables ----------
 
 class _Eyebrow extends StatelessWidget {
   const _Eyebrow(this.text);
@@ -426,8 +439,9 @@ class _Eyebrow extends StatelessWidget {
       text,
       style: theme.textTheme.labelSmall?.copyWith(
         color: AppColors.olive,
-        letterSpacing: 1.4,
+        letterSpacing: 1.2,
         fontWeight: FontWeight.w600,
+        fontSize: 11,
       ),
     );
   }
@@ -444,10 +458,10 @@ class _Indicador extends StatelessWidget {
     return Expanded(
       child: Column(
         children: [
-          Icon(icon, size: 22, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(height: AppSpacing.xs),
+          Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(height: 2),
           Text('—',
-              style: theme.textTheme.titleMedium
+              style: theme.textTheme.titleSmall
                   ?.copyWith(fontWeight: FontWeight.w700)),
           Text(label,
               style: theme.textTheme.bodySmall
@@ -465,11 +479,9 @@ class _HintLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Text(
-      text,
-      style: theme.textTheme.bodySmall
-          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-    );
+    return Text(text,
+        style: theme.textTheme.bodySmall
+            ?.copyWith(color: theme.colorScheme.onSurfaceVariant));
   }
 }
 
@@ -484,14 +496,14 @@ class _PrioridadFantasma extends StatelessWidget {
       child: Row(
         children: [
           Icon(Icons.radio_button_unchecked,
-              size: 18, color: theme.colorScheme.outlineVariant),
-          const SizedBox(width: AppSpacing.md),
+              size: 16, color: theme.colorScheme.outlineVariant),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Container(
-              height: 10,
+              height: 8,
               decoration: BoxDecoration(
                 color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(4),
               ),
             ),
           ),
@@ -522,35 +534,24 @@ class _EmptyHint extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(icon, size: 22, color: theme.colorScheme.onSurfaceVariant),
+            Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
             const SizedBox(width: AppSpacing.md),
             Expanded(
-              child: Text(
-                title,
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w600),
-              ),
+              child: Text(title,
+                  style: theme.textTheme.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w600)),
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          subtitle,
-          style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant, height: 1.5),
-        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant, height: 1.45)),
         if (action != null) ...[
-          const SizedBox(height: AppSpacing.md),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              action!,
+          const SizedBox(height: AppSpacing.sm),
+          Text(action!,
               style: theme.textTheme.labelLarge?.copyWith(
-                color: AppColors.olive,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+                  color: AppColors.olive, fontWeight: FontWeight.w600)),
         ],
       ],
     );
@@ -573,12 +574,12 @@ class _HabitoRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
         child: Row(
           children: [
-            Text(habito.emoji ?? '•', style: const TextStyle(fontSize: 20)),
+            Text(habito.emoji ?? '•', style: const TextStyle(fontSize: 18)),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Text(
                 habito.nombre,
-                style: theme.textTheme.bodyLarge?.copyWith(
+                style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w500,
                   decoration: done ? TextDecoration.lineThrough : null,
                   color: done ? theme.colorScheme.onSurfaceVariant : null,
@@ -590,7 +591,7 @@ class _HabitoRow extends StatelessWidget {
               color: done
                   ? AppColors.olive
                   : theme.colorScheme.onSurfaceVariant,
-              size: 26,
+              size: 22,
             ),
           ],
         ),
