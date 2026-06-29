@@ -9,17 +9,18 @@ import '../../profile/presentation/profile_controller.dart';
 import '../data/habitos_repository.dart';
 import 'habitos_controller.dart';
 
-/// Padding interno compacto y refinado para las tarjetas de Mi Vida.
 const EdgeInsets _kCardPad = EdgeInsets.fromLTRB(20, 18, 20, 18);
-
-/// Separación entre tarjetas: aire, pero sin espacio muerto.
 const double _kGap = 12;
+const double _kDesktopMax = 1280;
 
-/// Ancho máximo del contenido en pantallas grandes (lectura cómoda, centrado).
-const double _kMaxWidth = 820;
+// Puntos de quiebre: escritorio ≥1000, tablet 640–1000, móvil <640.
+const double _kBpDesktop = 1000;
+const double _kBpTablet = 640;
 
-/// ESQUELETO PREMIUM DE MI VIDA — narración vertical del día en 11 tarjetas.
-/// Los hábitos son la tarjeta 10, no el centro.
+/// MI VIDA — escritorio editorial responsive. Tres composiciones reales:
+/// 12 columnas (desktop), 2 columnas (tablet), 1 columna (móvil).
+/// Orden: Saludo → Versículo+Reflexión → Hoy importa → Estado → Agenda →
+/// Proyecto → Entrenamiento → Menú → Hábitos → Cierre. Dios arriba.
 class MiVidaScreen extends ConsumerWidget {
   const MiVidaScreen({super.key});
 
@@ -40,42 +41,175 @@ class MiVidaScreen extends ConsumerWidget {
         ],
       ),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: _kMaxWidth),
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xxl),
-              children: const [
-                _BuenosDias(),
-                SizedBox(height: AppSpacing.lg),
-                _Versiculo(),
-                SizedBox(height: _kGap),
-                _Reflexion(),
-                SizedBox(height: _kGap),
-                _EstadoGeneral(),
-                SizedBox(height: _kGap),
-                _Prioridades(),
-                SizedBox(height: _kGap),
-                _Agenda(),
-                SizedBox(height: _kGap),
-                _ProyectoPrincipal(),
-                SizedBox(height: _kGap),
-                _Entrenamiento(),
-                SizedBox(height: _kGap),
-                _Menu(),
-                SizedBox(height: _kGap),
-                _Habitos(),
-                SizedBox(height: _kGap),
-                _CierreDelDia(),
-              ],
-            ),
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final w = constraints.maxWidth;
+            if (w >= _kBpDesktop) return const _DesktopLayout();
+            if (w >= _kBpTablet) return const _TabletLayout();
+            return const _MobileLayout();
+          },
         ),
       ),
     );
   }
 }
+
+// ============================ LAYOUTS ============================
+
+/// Escritorio: grid editorial de 12 columnas, centrado y limitado para no
+/// estirarse al infinito, pero aprovechando el ancho.
+class _DesktopLayout extends StatelessWidget {
+  const _DesktopLayout();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: _kDesktopMax),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.xxl),
+          children: [
+            const _BuenosDias(),
+            const SizedBox(height: AppSpacing.lg),
+            // Dios arriba: Versículo amplio (8) + Reflexión (4), igualados.
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: const [
+                  Expanded(flex: 8, child: _Versiculo()),
+                  SizedBox(width: _kGap),
+                  Expanded(flex: 4, child: _Reflexion()),
+                ],
+              ),
+            ),
+            const SizedBox(height: _kGap),
+            const _Prioridades(), // protagonista, ancho completo
+            const SizedBox(height: _kGap),
+            const _EstadoGeneral(), // compacta, ancho completo
+            const SizedBox(height: _kGap),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: const [
+                  Expanded(child: _Agenda()),
+                  SizedBox(width: _kGap),
+                  Expanded(child: _ProyectoPrincipal()),
+                ],
+              ),
+            ),
+            const SizedBox(height: _kGap),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Expanded(child: _Entrenamiento()),
+                SizedBox(width: _kGap),
+                Expanded(child: _Menu()),
+                SizedBox(width: _kGap),
+                Expanded(child: _Habitos()),
+              ],
+            ),
+            const SizedBox(height: _kGap),
+            const _CierreDelDia(), // franja final discreta
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Tablet: dos columnas. Mantiene el orden; pares donde tiene sentido.
+class _TabletLayout extends StatelessWidget {
+  const _TabletLayout();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xxl),
+      children: [
+        const _BuenosDias(),
+        const SizedBox(height: AppSpacing.lg),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: const [
+              Expanded(child: _Versiculo()),
+              SizedBox(width: _kGap),
+              Expanded(child: _Reflexion()),
+            ],
+          ),
+        ),
+        const SizedBox(height: _kGap),
+        const _Prioridades(),
+        const SizedBox(height: _kGap),
+        const _EstadoGeneral(),
+        const SizedBox(height: _kGap),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: const [
+              Expanded(child: _Agenda()),
+              SizedBox(width: _kGap),
+              Expanded(child: _ProyectoPrincipal()),
+            ],
+          ),
+        ),
+        const SizedBox(height: _kGap),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Expanded(child: _Entrenamiento()),
+            SizedBox(width: _kGap),
+            Expanded(child: _Menu()),
+          ],
+        ),
+        const SizedBox(height: _kGap),
+        const _Habitos(),
+        const SizedBox(height: _kGap),
+        const _CierreDelDia(),
+      ],
+    );
+  }
+}
+
+/// Móvil: una sola columna, orden exacto.
+class _MobileLayout extends StatelessWidget {
+  const _MobileLayout();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.xxl),
+      children: const [
+        _BuenosDias(),
+        SizedBox(height: AppSpacing.md),
+        _Versiculo(),
+        SizedBox(height: _kGap),
+        _Reflexion(),
+        SizedBox(height: _kGap),
+        _Prioridades(),
+        SizedBox(height: _kGap),
+        _EstadoGeneral(),
+        SizedBox(height: _kGap),
+        _Agenda(),
+        SizedBox(height: _kGap),
+        _ProyectoPrincipal(),
+        SizedBox(height: _kGap),
+        _Entrenamiento(),
+        SizedBox(height: _kGap),
+        _Menu(),
+        SizedBox(height: _kGap),
+        _Habitos(),
+        SizedBox(height: _kGap),
+        _CierreDelDia(),
+      ],
+    );
+  }
+}
+
+// ============================ TARJETAS ============================
 
 class _BuenosDias extends ConsumerWidget {
   const _BuenosDias();
@@ -123,13 +257,16 @@ class _Versiculo extends StatelessWidget {
       padding: _kCardPad,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const _Eyebrow('VERSÍCULO DEL DÍA'),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Todo lo puedo en Cristo que me fortalece.',
-            style: theme.textTheme.titleMedium
-                ?.copyWith(height: 1.4, fontWeight: FontWeight.w500),
+            '"Todo lo puedo en Cristo que me fortalece."',
+            style: theme.textTheme.titleMedium?.copyWith(
+                height: 1.4,
+                fontWeight: FontWeight.w500,
+                fontStyle: FontStyle.italic),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
@@ -153,12 +290,12 @@ class _Reflexion extends StatelessWidget {
       padding: _kCardPad,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const _Eyebrow('REFLEXIÓN'),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'La fortaleza no está en hacerlo todo hoy, sino en dar un paso '
-            'con calma. Hoy basta con lo que sí puedes.',
+            'Un paso con calma. Hoy basta con lo que sí puedes.',
             style: theme.textTheme.bodyMedium?.copyWith(height: 1.45),
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -169,6 +306,40 @@ class _Reflexion extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Prioridades extends StatelessWidget {
+  const _Prioridades();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return VitaCard(
+      padding: _kCardPad,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _Eyebrow('HOY IMPORTA'),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Tus tres prioridades del día.',
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'VITA elegirá lo esencial y te dirá por qué.',
+            style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant, height: 1.4),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _PrioridadFantasma(),
+          _PrioridadFantasma(),
+          _PrioridadFantasma(),
         ],
       ),
     );
@@ -197,40 +368,6 @@ class _EstadoGeneral extends StatelessWidget {
           ),
           SizedBox(height: AppSpacing.sm),
           _HintLine('Toca para registrar cómo amaneciste.'),
-        ],
-      ),
-    );
-  }
-}
-
-class _Prioridades extends StatelessWidget {
-  const _Prioridades();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return VitaCard(
-      padding: _kCardPad,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _Eyebrow('HOY IMPORTA'),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Aquí verás tus tres prioridades del día.',
-            style: theme.textTheme.bodyLarge
-                ?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'VITA elegirá lo esencial y te dirá por qué.',
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant, height: 1.4),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _PrioridadFantasma(),
-          _PrioridadFantasma(),
-          _PrioridadFantasma(),
         ],
       ),
     );
@@ -299,7 +436,7 @@ class _Entrenamiento extends StatelessWidget {
           _EmptyHint(
             icon: Icons.fitness_center_outlined,
             title: 'Aún no tienes un programa.',
-            subtitle: 'Tu entrenamiento del día aparecerá aquí cuando empieces.',
+            subtitle: 'Tu entrenamiento aparecerá aquí cuando empieces.',
             action: 'Crear programa',
           ),
         ],
@@ -322,7 +459,7 @@ class _Menu extends StatelessWidget {
           SizedBox(height: AppSpacing.sm),
           _EmptyHint(
             icon: Icons.restaurant_outlined,
-            title: 'Aún no tienes menú de la semana.',
+            title: 'Aún no tienes menú.',
             subtitle: 'Cuando lo generes, verás aquí qué comer hoy.',
             action: 'Generar menú',
           ),
@@ -332,7 +469,7 @@ class _Menu extends StatelessWidget {
   }
 }
 
-/// Tarjeta 10 — Hábitos (real, reutiliza el controlador existente).
+/// Tarjeta secundaria — Hábitos (real, reutiliza el controlador existente).
 class _Habitos extends ConsumerWidget {
   const _Habitos();
 
@@ -426,7 +563,7 @@ class _CierreDelDia extends StatelessWidget {
   }
 }
 
-// ---------- Piezas reutilizables ----------
+// ============================ PIEZAS ============================
 
 class _Eyebrow extends StatelessWidget {
   const _Eyebrow(this.text);
@@ -533,6 +670,7 @@ class _EmptyHint extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
             const SizedBox(width: AppSpacing.md),
@@ -544,74 +682,3 @@ class _EmptyHint extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.xs),
-        Text(subtitle,
-            style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant, height: 1.45)),
-        if (action != null) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Text(action!,
-              style: theme.textTheme.labelLarge?.copyWith(
-                  color: AppColors.olive, fontWeight: FontWeight.w600)),
-        ],
-      ],
-    );
-  }
-}
-
-class _HabitoRow extends StatelessWidget {
-  const _HabitoRow({required this.habito, required this.onTap});
-  final Habito habito;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final done = habito.hecho;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppSpacing.radius),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-        child: Row(
-          children: [
-            Text(habito.emoji ?? '•', style: const TextStyle(fontSize: 18)),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Text(
-                habito.nombre,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  decoration: done ? TextDecoration.lineThrough : null,
-                  color: done ? theme.colorScheme.onSurfaceVariant : null,
-                ),
-              ),
-            ),
-            Icon(
-              done ? Icons.check_circle : Icons.circle_outlined,
-              color: done
-                  ? AppColors.olive
-                  : theme.colorScheme.onSurfaceVariant,
-              size: 22,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ---------- util ----------
-
-String _fechaLarga(DateTime d) {
-  const dias = [
-    'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'
-  ];
-  const meses = [
-    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-  ];
-  final dia = dias[d.weekday - 1];
-  final mes = meses[d.month - 1];
-  final capit = dia[0].toUpperCase() + dia.substring(1);
-  return '$capit ${d.day} de $mes';
-}
