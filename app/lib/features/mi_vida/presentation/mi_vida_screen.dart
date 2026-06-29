@@ -523,7 +523,6 @@ Future<void> _dialogoPrioridad(
   await showDialog<void>(
     context: context,
     builder: (ctx) {
-      final theme = Theme.of(ctx);
       return AlertDialog(
         title: Text(esEdicion ? 'Editar prioridad' : 'Nueva prioridad'),
         content: TextField(
@@ -1280,4 +1279,3 @@ class _SuenoSelector extends StatelessWidget {
     );
   }
 }
-Listo
