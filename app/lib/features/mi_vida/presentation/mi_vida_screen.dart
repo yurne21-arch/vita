@@ -15,6 +15,11 @@ import '../../agenda/presentation/agenda_controller.dart';
 import '../../agenda/presentation/evento_editor.dart';
 import 'habitos_controller.dart';
 import 'prioridades_controller.dart';
+import 'package:go_router/go_router.dart';
+import '../../proyectos/data/projects_repository.dart';
+import '../../proyectos/presentation/projects_controller.dart';
+import '../../proyectos/presentation/proyecto_detalle_screen.dart';
+import '../../proyectos/presentation/proyectos_widgets.dart';
 
 const EdgeInsets _kCardPad = EdgeInsets.fromLTRB(20, 18, 20, 18);
 const double _kGap = 12;
@@ -888,30 +893,178 @@ String _horaCorta(DateTime d) {
   return '$h:$m';
 }
 
-class _ProyectoPrincipal extends StatelessWidget {
+class _ProyectoPrincipal extends ConsumerWidget {
   const _ProyectoPrincipal();
 
   @override
-  Widget build(BuildContext context) {
-    return const VitaCard(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(proyectoPrincipalProvider);
+    final p = async.valueOrNull;
+
+    if (async.isLoading && p == null) {
+      return const VitaCard(
+        padding: _kCardPad,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _Eyebrow('PROYECTO PRINCIPAL'),
+            SizedBox(height: AppSpacing.md),
+            Center(
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.sm),
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (p == null) {
+      return VitaCard(
+        padding: _kCardPad,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _Eyebrow('PROYECTO PRINCIPAL'),
+            const SizedBox(height: AppSpacing.sm),
+            const _EmptyHint(
+              icon: Icons.flag_outlined,
+              title: 'Todavía no elegiste tu proyecto principal.',
+              subtitle:
+                  'Cuando lo elijas, verás aquí tu progreso y el próximo paso.',
+            ),
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => context.go('/proyectos'),
+                style:
+                    FilledButton.styleFrom(backgroundColor: AppColors.olive),
+                child: const Text('Elegir proyecto'),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final tareas = ref.watch(tareasDeProyectoProvider(p.id)).valueOrNull ??
+        const <ProjectTask>[];
+    final progreso = p.progresoCon(tareas);
+    final proximo = ref.watch(proximoPasoProvider(p.id)).valueOrNull;
+    final bitacora = ref.watch(bitacoraDeProyectoProvider(p.id)).valueOrNull ??
+        const <ProjectLogEntry>[];
+    ProjectLogEntry? ultimo;
+    for (final e in bitacora) {
+      if (e.tipo == 'avance' || e.tipo == 'hito_completado') {
+        ultimo = e;
+        break;
+      }
+    }
+    final u = ultimo;
+
+    return VitaCard(
       padding: _kCardPad,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _Eyebrow('PROYECTO DEL MES'),
-          SizedBox(height: AppSpacing.sm),
-          _EmptyHint(
-            icon: Icons.flag_outlined,
-            title: 'Aún no eliges tu proyecto del mes.',
-            subtitle: 'Cuando lo hagas, verás aquí solo el siguiente paso.',
-            action: 'Elegir proyecto',
-          ),
-        ],
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+              builder: (_) => ProyectoDetalleScreen(proyecto: p)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const _Eyebrow('PROYECTO PRINCIPAL'),
+                const Spacer(),
+                Icon(Icons.chevron_right,
+                    size: 18, color: cs.onSurfaceVariant),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                AnilloProgreso(progreso: progreso, tamano: 52, grosor: 5),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(p.titulo,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700)),
+                      if (p.objetivo != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(p.objetivo!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall
+                                  ?.copyWith(color: cs.onSurfaceVariant)),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                const Icon(Icons.arrow_forward,
+                    size: 15, color: AppColors.oliveSoft),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(proximo?.texto ?? 'Sin pasos pendientes',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+            if (u != null && u.texto != null && u.texto!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(
+                  children: [
+                    Icon(Icons.history, size: 14, color: cs.onSurfaceVariant),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text('Último: ${u.texto!}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: cs.onSurfaceVariant)),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () =>
+                    ref.read(proyectosAccionesProvider).avanzar(p.id),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.olive,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                icon: const Icon(Icons.arrow_forward, size: 16),
+                label: const Text('Avanzar'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
-
 class _Entrenamiento extends StatelessWidget {
   const _Entrenamiento();
 
