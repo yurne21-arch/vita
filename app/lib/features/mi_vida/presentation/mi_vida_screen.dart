@@ -68,10 +68,10 @@ class _DesktopLayout extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: _kDesktopMax),
         child: ListView(
           padding: const EdgeInsets.fromLTRB(
-              AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.xxl),
+              AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.xxl),
           children: [
             const _BuenosDias(),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.xl),
             // Dios arriba: Versículo amplio (8) + Reflexión (4), igualados.
             IntrinsicHeight(
               child: Row(
@@ -102,11 +102,11 @@ class _DesktopLayout extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
-                Expanded(child: _Entrenamiento()),
+                Expanded(flex: 3, child: _Entrenamiento()),
                 SizedBox(width: _kGap),
-                Expanded(child: _Menu()),
+                Expanded(flex: 3, child: _Menu()),
                 SizedBox(width: _kGap),
-                Expanded(child: _Habitos()),
+                Expanded(flex: 4, child: _Habitos()),
               ],
             ),
             const SizedBox(height: _kGap),
@@ -126,7 +126,7 @@ class _TabletLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xxl),
+          AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.xxl),
       children: [
         const _BuenosDias(),
         const SizedBox(height: AppSpacing.lg),
@@ -181,7 +181,7 @@ class _MobileLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.xxl),
+          AppSpacing.md, AppSpacing.lg, AppSpacing.md, AppSpacing.xxl),
       children: const [
         _BuenosDias(),
         SizedBox(height: AppSpacing.md),
@@ -233,14 +233,15 @@ class _BuenosDias extends ConsumerWidget {
       children: [
         Text(
           '$saludo, $name.',
-          style: theme.textTheme.headlineSmall
-              ?.copyWith(fontWeight: FontWeight.w600, height: 1.15),
+          style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w600, height: 1.1, letterSpacing: -0.3),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: AppSpacing.xs),
         Text(
-          _fechaLarga(now),
-          style: theme.textTheme.bodyMedium
-              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          '${_fechaLarga(now)} · Tu día ya está preparado.',
+          style: theme.textTheme.titleSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w400),
         ),
       ],
     );
@@ -253,26 +254,37 @@ class _Versiculo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return VitaCard(
-      padding: _kCardPad,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const _Eyebrow('VERSÍCULO DEL DÍA'),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.md),
           Text(
             '"Todo lo puedo en Cristo que me fortalece."',
-            style: theme.textTheme.titleMedium?.copyWith(
-                height: 1.4,
-                fontWeight: FontWeight.w500,
-                fontStyle: FontStyle.italic),
+            style: TextStyle(
+              fontFamily: 'serif',
+              fontSize: 20,
+              height: 1.55,
+              fontStyle: FontStyle.italic,
+              color: theme.colorScheme.onSurface,
+            ),
           ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             'Filipenses 4:13',
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: TextStyle(
+              fontFamily: 'serif',
+              fontSize: 13,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -318,8 +330,14 @@ class _Prioridades extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return VitaCard(
+    return Container(
+      width: double.infinity,
       padding: _kCardPad,
+      decoration: BoxDecoration(
+        color: const Color(0x146B7A4F),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(color: const Color(0x336B7A4F)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -327,8 +345,8 @@ class _Prioridades extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Text(
             'Tus tres prioridades del día.',
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.2),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
@@ -357,17 +375,15 @@ class _EstadoGeneral extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: const [
           _Eyebrow('CÓMO ESTÁS HOY'),
-          SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.lg),
           Row(
             children: [
-              _Indicador(icon: Icons.monitor_weight_outlined, label: 'Peso'),
-              _Indicador(icon: Icons.bolt_outlined, label: 'Energía'),
-              _Indicador(icon: Icons.bedtime_outlined, label: 'Sueño'),
-              _Indicador(icon: Icons.spa_outlined, label: 'Modo'),
+              _Metric(label: 'Peso'),
+              _Metric(label: 'Energía'),
+              _Metric(label: 'Sueño'),
+              _Metric(label: 'Ánimo'),
             ],
           ),
-          SizedBox(height: AppSpacing.sm),
-          _HintLine('Toca para registrar cómo amaneciste.'),
         ],
       ),
     );
@@ -584,9 +600,8 @@ class _Eyebrow extends StatelessWidget {
   }
 }
 
-class _Indicador extends StatelessWidget {
-  const _Indicador({required this.icon, required this.label});
-  final IconData icon;
+class _Metric extends StatelessWidget {
+  const _Metric({required this.label});
   final String label;
 
   @override
@@ -594,12 +609,12 @@ class _Indicador extends StatelessWidget {
     final theme = Theme.of(context);
     return Expanded(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(height: 2),
           Text('—',
-              style: theme.textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w700)),
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 2),
           Text(label,
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
@@ -609,18 +624,6 @@ class _Indicador extends StatelessWidget {
   }
 }
 
-class _HintLine extends StatelessWidget {
-  const _HintLine(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Text(text,
-        style: theme.textTheme.bodySmall
-            ?.copyWith(color: theme.colorScheme.onSurfaceVariant));
-  }
-}
 
 class _PrioridadFantasma extends StatelessWidget {
   const _PrioridadFantasma();
