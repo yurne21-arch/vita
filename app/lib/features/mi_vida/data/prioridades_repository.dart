@@ -62,6 +62,8 @@ class PrioridadesRepository {
   Future<void> agregar(String texto) async {
     final user = _c.auth.currentUser;
     if (user == null) return;
+    final limpio = texto.trim();
+    if (limpio.isEmpty) return; // nunca guardar vacío
     final actuales = await prioridadesDeHoy();
     if (actuales.length >= 3) return; // tope
     final usados = actuales.map((p) => p.orden).toSet();
@@ -72,13 +74,15 @@ class PrioridadesRepository {
     await _c.from('daily_priorities').insert({
       'user_id': user.id,
       'fecha': _hoy,
-      'texto': texto,
+      'texto': limpio,
       'orden': orden,
     });
   }
 
   Future<void> editarTexto(String id, String texto) async {
-    await _c.from('daily_priorities').update({'texto': texto}).eq('id', id);
+    final limpio = texto.trim();
+    if (limpio.isEmpty) return; // nunca guardar vacío
+    await _c.from('daily_priorities').update({'texto': limpio}).eq('id', id);
   }
 
   Future<void> alternarCompletada(String id, bool actual) async {
