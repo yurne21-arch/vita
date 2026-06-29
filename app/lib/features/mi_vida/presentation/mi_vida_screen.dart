@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+  import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -366,33 +366,27 @@ class _Prioridades extends ConsumerWidget {
               onAgregar: () => _dialogoPrioridad(context, ref),
             )
           else ...[
-            ReorderableListView(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              buildDefaultDragHandles: false,
-              onReorder: (oldI, newI) {
-                if (newI > oldI) newI -= 1;
-                final lista = [...prioridades];
-                final item = lista.removeAt(oldI);
-                lista.insert(newI, item);
-                ref
+            for (var i = 0; i < prioridades.length; i++)
+              _PrioridadRow(
+                posicion: i + 1,
+                prioridad: prioridades[i],
+                puedeSubir: i > 0,
+                puedeBajar: i < prioridades.length - 1,
+                onToggle: () => ref
                     .read(prioridadesControllerProvider.notifier)
-                    .reordenar(lista);
-              },
-              children: [
-                for (var i = 0; i < prioridades.length; i++)
-                  _PrioridadRow(
-                    key: ValueKey(prioridades[i].id),
-                    index: i,
-                    prioridad: prioridades[i],
-                    onToggle: () => ref
-                        .read(prioridadesControllerProvider.notifier)
-                        .alternar(prioridades[i]),
-                    onEditar: () => _dialogoPrioridad(context, ref,
-                        existente: prioridades[i]),
-                  ),
-              ],
-            ),
+                    .alternar(prioridades[i]),
+                onEditar: () => _dialogoPrioridad(context, ref,
+                    existente: prioridades[i]),
+                onEliminar: () => ref
+                    .read(prioridadesControllerProvider.notifier)
+                    .eliminar(prioridades[i].id),
+                onSubir: () => ref
+                    .read(prioridadesControllerProvider.notifier)
+                    .mover(i, -1),
+                onBajar: () => ref
+                    .read(prioridadesControllerProvider.notifier)
+                    .mover(i, 1),
+              ),
             if (prioridades.length < 3)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.xs),
@@ -453,24 +447,34 @@ class _AgregarPrioridad extends StatelessWidget {
 
 class _PrioridadRow extends StatelessWidget {
   const _PrioridadRow({
-    required super.key,
-    required this.index,
+    required this.posicion,
     required this.prioridad,
+    required this.puedeSubir,
+    required this.puedeBajar,
     required this.onToggle,
     required this.onEditar,
+    required this.onEliminar,
+    required this.onSubir,
+    required this.onBajar,
   });
 
-  final int index;
+  final int posicion; // 1, 2, 3 (posición visible)
   final Prioridad prioridad;
+  final bool puedeSubir;
+  final bool puedeBajar;
   final VoidCallback onToggle;
   final VoidCallback onEditar;
+  final VoidCallback onEliminar;
+  final VoidCallback onSubir;
+  final VoidCallback onBajar;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final done = prioridad.completada;
+    final vacio = prioridad.texto.trim().isEmpty;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
           GestureDetector(
@@ -479,31 +483,90 @@ class _PrioridadRow extends StatelessWidget {
             child: Icon(
               done ? Icons.check_circle : Icons.circle_outlined,
               size: 22,
-              color: done ? AppColors.olive : theme.colorScheme.onSurfaceVariant,
+              color:
+                  done ? AppColors.olive : theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: AppSpacing.sm),
+          SizedBox(
+            width: 18,
+            child: Text(
+              '$posicion.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
           Expanded(
             child: GestureDetector(
               onTap: onEditar,
               behavior: HitTestBehavior.opaque,
               child: Text(
-                prioridad.texto,
+                vacio ? 'Prioridad sin texto' : prioridad.texto,
                 style: theme.textTheme.bodyLarge?.copyWith(
                   fontWeight: FontWeight.w500,
+                  fontStyle: vacio ? FontStyle.italic : null,
                   decoration: done ? TextDecoration.lineThrough : null,
-                  color: done ? theme.colorScheme.onSurfaceVariant : null,
+                  color: (vacio || done)
+                      ? theme.colorScheme.onSurfaceVariant
+                      : null,
                 ),
               ),
             ),
           ),
-          ReorderableDragStartListener(
-            index: index,
-            child: Padding(
-              padding: const EdgeInsets.only(left: AppSpacing.sm),
-              child: Icon(Icons.drag_indicator,
-                  size: 20, color: theme.colorScheme.outlineVariant),
-            ),
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert,
+                size: 20, color: theme.colorScheme.onSurfaceVariant),
+            tooltip: 'Opciones',
+            onSelected: (op) {
+              if (op == 'subir') {
+                onSubir();
+              } else if (op == 'bajar') {
+                onBajar();
+              } else if (op == 'editar') {
+                onEditar();
+              } else if (op == 'eliminar') {
+                onEliminar();
+              }
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem<String>(
+                value: 'subir',
+                enabled: puedeSubir,
+                child: const Row(children: [
+                  Icon(Icons.arrow_upward, size: 18),
+                  SizedBox(width: AppSpacing.sm),
+                  Text('Mover arriba'),
+                ]),
+              ),
+              PopupMenuItem<String>(
+                value: 'bajar',
+                enabled: puedeBajar,
+                child: const Row(children: [
+                  Icon(Icons.arrow_downward, size: 18),
+                  SizedBox(width: AppSpacing.sm),
+                  Text('Mover abajo'),
+                ]),
+              ),
+              const PopupMenuItem<String>(
+                value: 'editar',
+                child: Row(children: [
+                  Icon(Icons.edit_outlined, size: 18),
+                  SizedBox(width: AppSpacing.sm),
+                  Text('Editar'),
+                ]),
+              ),
+              const PopupMenuItem<String>(
+                value: 'eliminar',
+                child: Row(children: [
+                  Icon(Icons.delete_outline, size: 18),
+                  SizedBox(width: AppSpacing.sm),
+                  Text('Eliminar'),
+                ]),
+              ),
+            ],
           ),
         ],
       ),
@@ -549,18 +612,24 @@ Future<void> _dialogoPrioridad(
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('Cancelar'),
           ),
-          FilledButton(
-            onPressed: () {
-              final txt = controller.text.trim();
-              if (txt.isEmpty) return;
-              if (esEdicion) {
-                notifier.editarTexto(existente.id, txt);
-              } else {
-                notifier.agregar(txt);
-              }
-              Navigator.of(ctx).pop();
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (_, value, __) {
+              final txt = value.text.trim();
+              return FilledButton(
+                onPressed: txt.isEmpty
+                    ? null
+                    : () {
+                        if (esEdicion) {
+                          notifier.editarTexto(existente.id, txt);
+                        } else {
+                          notifier.agregar(txt);
+                        }
+                        Navigator.of(ctx).pop();
+                      },
+                child: Text(esEdicion ? 'Guardar' : 'Agregar'),
+              );
             },
-            child: Text(esEdicion ? 'Guardar' : 'Agregar'),
           ),
         ],
       );
