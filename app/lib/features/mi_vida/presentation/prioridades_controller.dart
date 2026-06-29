@@ -1,4 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+  import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/prioridades_repository.dart';
 
@@ -12,19 +12,33 @@ class PrioridadesController extends AsyncNotifier<List<Prioridad>> {
   PrioridadesRepository get _repo => ref.read(prioridadesRepositoryProvider);
 
   Future<void> agregar(String texto) async {
+    if (texto.trim().isEmpty) return; // no guardar vacío
     await _repo.agregar(texto);
     ref.invalidateSelf();
     await future;
   }
 
+  /// Mueve una prioridad arriba (delta -1) o abajo (delta +1) y persiste.
+  Future<void> mover(int index, int delta) async {
+    final actuales = [...(state.value ?? const <Prioridad>[])];
+    final destino = index + delta;
+    if (index < 0 || index >= actuales.length) return;
+    if (destino < 0 || destino >= actuales.length) return;
+    final item = actuales.removeAt(index);
+    actuales.insert(destino, item);
+    await reordenar(actuales);
+  }
+
   Future<void> editarTexto(String id, String texto) async {
+    final limpio = texto.trim();
+    if (limpio.isEmpty) return; // no guardar vacío
     final actuales = state.value ?? const <Prioridad>[];
     state = AsyncData([
       for (final p in actuales)
-        if (p.id == id) p.copyWith(texto: texto) else p,
+        if (p.id == id) p.copyWith(texto: limpio) else p,
     ]);
     try {
-      await _repo.editarTexto(id, texto);
+      await _repo.editarTexto(id, limpio);
     } catch (_) {
       ref.invalidateSelf();
     }
