@@ -1,4 +1,4 @@
-  import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -10,6 +10,9 @@ import '../../salud/data/estado_repository.dart';
 import '../../salud/presentation/estado_controller.dart';
 import '../data/habitos_repository.dart';
 import '../data/prioridades_repository.dart';
+import '../../agenda/data/agenda_repository.dart';
+import '../../agenda/presentation/agenda_controller.dart';
+import '../../agenda/presentation/evento_editor.dart';
 import 'habitos_controller.dart';
 import 'prioridades_controller.dart';
 
@@ -715,27 +718,174 @@ Future<void> _abrirRegistroEstado(
   );
 }
 
-class _Agenda extends StatelessWidget {
+class _Agenda extends ConsumerWidget {
   const _Agenda();
 
   @override
-  Widget build(BuildContext context) {
-    return const VitaCard(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(agendaControllerProvider);
+    final ahora = DateTime.now();
+    final eventosHoy = (async.valueOrNull ?? const <Evento>[])
+        .where((e) =>
+            e.inicio.year == ahora.year &&
+            e.inicio.month == ahora.month &&
+            e.inicio.day == ahora.day)
+        .toList();
+
+    return VitaCard(
       padding: _kCardPad,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Eyebrow('TU DÍA'),
-          SizedBox(height: AppSpacing.sm),
-          _EmptyHint(
-            icon: Icons.event_available_outlined,
-            title: 'Sin eventos para hoy.',
-            subtitle: 'Cuando agendes algo, tu día aparecerá aquí, en orden.',
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const _Eyebrow('TU DÍA'),
+              GestureDetector(
+                onTap: () => mostrarEditorEvento(context, ref,
+                    fechaSugerida: DateTime(
+                        ahora.year, ahora.month, ahora.day)),
+                behavior: HitTestBehavior.opaque,
+                child: const Icon(Icons.add, size: 18, color: AppColors.olive),
+              ),
+            ],
           ),
+          const SizedBox(height: AppSpacing.sm),
+          if (async.isLoading && eventosHoy.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (eventosHoy.isEmpty)
+            const _EmptyHint(
+              icon: Icons.event_available_outlined,
+              title: 'Sin eventos para hoy.',
+              subtitle: 'Toca + para agendar. Tu día aparecerá aquí, en orden.',
+            )
+          else
+            for (final e in eventosHoy)
+              _EventoHoyRow(
+                evento: e,
+                onTap: () =>
+                    mostrarEditorEvento(context, ref, existente: e),
+                onMenu: (op) {
+                  final ctrl = ref.read(agendaControllerProvider.notifier);
+                  if (op == 'realizado') {
+                    ctrl.cambiarEstado(e.id, 'realizado');
+                  } else if (op == 'pendiente') {
+                    ctrl.cambiarEstado(e.id, 'pendiente');
+                  } else if (op == 'cancelado') {
+                    ctrl.cambiarEstado(e.id, 'cancelado');
+                  } else if (op == 'eliminar') {
+                    ctrl.eliminar(e.id);
+                  }
+                },
+              ),
         ],
       ),
     );
   }
+}
+
+class _EventoHoyRow extends StatelessWidget {
+  const _EventoHoyRow({
+    required this.evento,
+    required this.onTap,
+    required this.onMenu,
+  });
+
+  final Evento evento;
+  final VoidCallback onTap;
+  final ValueChanged<String> onMenu;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tachado = evento.realizado || evento.cancelado;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSpacing.radius),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 44,
+              child: Text(
+                evento.todoElDia ? '— —' : _horaCorta(evento.inicio),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                evento.titulo,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  decoration: tachado ? TextDecoration.lineThrough : null,
+                  color: tachado ? theme.colorScheme.onSurfaceVariant : null,
+                ),
+              ),
+            ),
+            PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert,
+                  size: 18, color: theme.colorScheme.onSurfaceVariant),
+              tooltip: 'Opciones',
+              onSelected: onMenu,
+              itemBuilder: (_) => [
+                if (!evento.realizado)
+                  const PopupMenuItem<String>(
+                    value: 'realizado',
+                    child: Row(children: [
+                      Icon(Icons.check_circle_outline, size: 18),
+                      SizedBox(width: AppSpacing.sm),
+                      Text('Marcar realizado'),
+                    ]),
+                  )
+                else
+                  const PopupMenuItem<String>(
+                    value: 'pendiente',
+                    child: Row(children: [
+                      Icon(Icons.radio_button_unchecked, size: 18),
+                      SizedBox(width: AppSpacing.sm),
+                      Text('Marcar pendiente'),
+                    ]),
+                  ),
+                if (!evento.cancelado)
+                  const PopupMenuItem<String>(
+                    value: 'cancelado',
+                    child: Row(children: [
+                      Icon(Icons.block, size: 18),
+                      SizedBox(width: AppSpacing.sm),
+                      Text('Cancelar'),
+                    ]),
+                  ),
+                const PopupMenuItem<String>(
+                  value: 'eliminar',
+                  child: Row(children: [
+                    Icon(Icons.delete_outline, size: 18),
+                    SizedBox(width: AppSpacing.sm),
+                    Text('Eliminar'),
+                  ]),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _horaCorta(DateTime d) {
+  final h = d.hour.toString().padLeft(2, '0');
+  final m = d.minute.toString().padLeft(2, '0');
+  return '$h:$m';
 }
 
 class _ProyectoPrincipal extends StatelessWidget {
