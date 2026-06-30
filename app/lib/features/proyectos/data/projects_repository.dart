@@ -58,10 +58,17 @@ class Project {
   /// Si el proyecto no tiene pasos, usa `progresoManual` (o 0).
   int progresoCon(List<ProjectTask> tareas) {
     final pasos = tareas.where((t) => t.esPaso).toList();
-    if (pasos.isEmpty) return progresoManual ?? 0;
+    // Sin pasos: 0% (o el progreso manual real, si se definió uno > 0).
+    if (pasos.isEmpty) {
+      final m = progresoManual;
+      return (m != null && m > 0) ? m.clamp(0, 100) : 0;
+    }
     final hechos = pasos.where((t) => t.completada).length;
     return ((hechos / pasos.length) * 100).round();
   }
+
+  /// true si el proyecto tiene al menos un PASO creado (los hitos no cuentan).
+  bool tienePasos(List<ProjectTask> tareas) => tareas.any((t) => t.esPaso);
 
   Project copyWith({
     String? titulo,
