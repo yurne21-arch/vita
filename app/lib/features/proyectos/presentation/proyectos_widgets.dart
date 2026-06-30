@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+  import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -264,6 +264,128 @@ class RejillaFluida extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+// ╭──────────────────────────────────────────────────────────────╮
+// │ Barra "Próximo paso" — compacta, horizontal, siempre con      │
+// │ una acción clara (nunca un ícono suelto sin sentido).          │
+// ╰──────────────────────────────────────────────────────────────╯
+
+class BarraProximoPaso extends StatelessWidget {
+  const BarraProximoPaso({
+    required this.proximoTexto,
+    required this.tienePasos,
+    required this.activo,
+    required this.onAvanzar,
+    required this.onAgregarPaso,
+    this.compacta = false,
+    super.key,
+  });
+
+  /// Texto del próximo paso pendiente, o null si no hay ninguno.
+  final String? proximoTexto;
+
+  /// Si el proyecto ya tiene al menos un paso creado.
+  final bool tienePasos;
+
+  /// Si el proyecto está activo (solo entonces ofrecemos acción).
+  final bool activo;
+
+  /// Completar el próximo paso pendiente.
+  final Future<void> Function() onAvanzar;
+
+  /// Abrir el editor para agregar un paso.
+  final VoidCallback onAgregarPaso;
+
+  /// Versión más baja para tarjetas pequeñas.
+  final bool compacta;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final hay = proximoTexto != null;
+
+    // Texto principal según el estado real del proyecto.
+    final String texto;
+    if (hay) {
+      texto = proximoTexto!;
+    } else if (tienePasos) {
+      texto = 'No quedan pasos pendientes';
+    } else {
+      texto = 'Agrega tu primer paso';
+    }
+
+    // Acción: si hay paso -> Avanzar; si no hay paso -> + Paso. Solo si activo.
+    Widget? boton;
+    if (activo) {
+      if (hay) {
+        boton = FilledButton(
+          onPressed: onAvanzar,
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.olive,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          ),
+          child: const Text('Avanzar'),
+        );
+      } else {
+        boton = FilledButton.icon(
+          onPressed: onAgregarPaso,
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.olive,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          ),
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('Paso'),
+        );
+      }
+    }
+
+    return Container(
+      padding:
+          const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('PRÓXIMO PASO',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        letterSpacing: 0.6,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(
+                  texto,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: hay ? cs.onSurface : cs.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (boton != null) ...[
+            const SizedBox(width: AppSpacing.sm),
+            boton,
+          ],
+        ],
+      ),
     );
   }
 }
