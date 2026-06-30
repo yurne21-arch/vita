@@ -956,6 +956,10 @@ class _ProyectoPrincipal extends ConsumerWidget {
         const <ProjectTask>[];
     final progreso = p.progresoCon(tareas);
     final proximo = ref.watch(proximoPasoProvider(p.id)).valueOrNull;
+    final tienePasos = p.tienePasos(tareas);
+    final textoProximo = proximo != null
+        ? proximo.texto
+        : (tienePasos ? 'No quedan pasos pendientes' : 'Agrega tu primer paso');
     final bitacora = ref.watch(bitacoraDeProyectoProvider(p.id)).valueOrNull ??
         const <ProjectLogEntry>[];
     ProjectLogEntry? ultimo;
@@ -1021,7 +1025,7 @@ class _ProyectoPrincipal extends ConsumerWidget {
                     size: 15, color: AppColors.oliveSoft),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text(proximo?.texto ?? 'Agrega tu próximo paso',
+                  child: Text(textoProximo,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyMedium
@@ -1049,16 +1053,27 @@ class _ProyectoPrincipal extends ConsumerWidget {
             const SizedBox(height: AppSpacing.md),
             SizedBox(
               width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () => avanzarProyecto(context, ref,
-                    projectId: p.id, proximo: proximo),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.olive,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                icon: const Icon(Icons.arrow_forward, size: 16),
-                label: const Text('Avanzar'),
-              ),
+              child: (proximo == null && !tienePasos)
+                  ? FilledButton.icon(
+                      onPressed: () => mostrarEditorTarea(context, ref,
+                          projectId: p.id, tipoInicial: 'paso'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.olive,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('Agregar paso'),
+                    )
+                  : FilledButton.icon(
+                      onPressed: () => avanzarProyecto(context, ref,
+                          projectId: p.id, proximo: proximo),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.olive,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      icon: const Icon(Icons.arrow_forward, size: 16),
+                      label: const Text('Avanzar'),
+                    ),
             ),
           ],
         ),
