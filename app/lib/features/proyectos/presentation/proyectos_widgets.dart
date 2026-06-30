@@ -347,15 +347,31 @@ class BarraProximoPaso extends StatelessWidget {
     }
 
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHigh.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        color: hay
+            ? AppColors.olive.withValues(alpha: 0.08)
+            : cs.surfaceContainerHigh.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+            color: hay
+                ? AppColors.olive.withValues(alpha: 0.35)
+                : cs.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Row(
         children: [
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.olive.withValues(alpha: 0.16),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(hay ? Icons.flag_outlined : Icons.add_task,
+                size: 20, color: AppColors.olive),
+          ),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,12 +384,12 @@ class BarraProximoPaso extends StatelessWidget {
                         color: cs.onSurfaceVariant,
                         letterSpacing: 0.6,
                         fontWeight: FontWeight.w700)),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
                   texto,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
+                  style: theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: hay ? cs.onSurface : cs.onSurfaceVariant,
                   ),
@@ -382,7 +398,7 @@ class BarraProximoPaso extends StatelessWidget {
             ),
           ),
           if (boton != null) ...[
-            const SizedBox(width: AppSpacing.sm),
+            const SizedBox(width: AppSpacing.md),
             boton,
           ],
         ],
