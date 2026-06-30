@@ -206,3 +206,64 @@ class Eyebrow extends StatelessWidget {
             color: AppColors.oliveSoft));
   }
 }
+
+// ╭──────────────────────────────────────────────────────────────╮
+// │ Responsive — breakpoints reales para todo el módulo            │
+// │ Desktop ≥ 1000 · Tablet 700–999 · Mobile < 700                 │
+// ╰──────────────────────────────────────────────────────────────╯
+
+enum VitaBp { mobile, tablet, desktop }
+
+VitaBp bpDe(double ancho) => ancho >= 1000
+    ? VitaBp.desktop
+    : (ancho >= 700 ? VitaBp.tablet : VitaBp.mobile);
+
+/// Columnas de la cartera de proyectos según ancho.
+int colsCartera(double ancho) =>
+    ancho >= 1000 ? 3 : (ancho >= 700 ? 2 : 1);
+
+/// Padding horizontal del contenido según breakpoint.
+double padLateral(VitaBp bp) => switch (bp) {
+      VitaBp.desktop => 32,
+      VitaBp.tablet => 24,
+      VitaBp.mobile => 16,
+    };
+
+/// Ancho máximo del lienzo (evita líneas larguísimas en monitores enormes,
+/// pero mantiene un lienzo amplio, no una columna estrecha).
+const double kMaxLienzo = 1400;
+
+/// Rejilla fluida sin dependencias: reparte [hijos] en [columnas] usando Wrap,
+/// calculando el ancho de cada celda a partir del ancho disponible.
+class RejillaFluida extends StatelessWidget {
+  const RejillaFluida({
+    required this.columnas,
+    required this.hijos,
+    this.espacio = 16,
+    super.key,
+  });
+
+  final int columnas;
+  final List<Widget> hijos;
+  final double espacio;
+
+  @override
+  Widget build(BuildContext context) {
+    if (hijos.isEmpty) return const SizedBox.shrink();
+    return LayoutBuilder(
+      builder: (context, c) {
+        final cols = columnas < 1 ? 1 : columnas;
+        final ancho = c.maxWidth;
+        final celda =
+            cols == 1 ? ancho : (ancho - espacio * (cols - 1)) / cols;
+        return Wrap(
+          spacing: espacio,
+          runSpacing: espacio,
+          children: [
+            for (final h in hijos) SizedBox(width: celda, child: h),
+          ],
+        );
+      },
+    );
+  }
+}
