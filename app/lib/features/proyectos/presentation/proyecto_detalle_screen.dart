@@ -94,6 +94,7 @@ class _ProyectoDetalleScreenState
     final tareas = tareasAsync.valueOrNull ?? const <ProjectTask>[];
     final progreso = _p.progresoCon(tareas);
     final proximo = proximoAsync.valueOrNull;
+    final tienePasos = _p.tienePasos(tareas);
 
     return Scaffold(
       backgroundColor: bg,
@@ -148,11 +149,14 @@ class _ProyectoDetalleScreenState
                       children: [
                         _Cabecera(proyecto: _p, progreso: progreso, bp: bp),
                         const SizedBox(height: AppSpacing.md),
-                        _BarraProximoPaso(
-                          proximo: proximo,
-                          mostrarAvanzar: _p.activo,
+                        BarraProximoPaso(
+                          proximoTexto: proximo?.texto,
+                          tienePasos: tienePasos,
+                          activo: _p.activo,
                           onAvanzar: () => avanzarProyecto(context, ref,
                               projectId: _p.id, proximo: proximo),
+                          onAgregarPaso: () => mostrarEditorTarea(context, ref,
+                              projectId: _p.id, tipoInicial: 'paso'),
                         ),
                         const SizedBox(height: AppSpacing.lg),
                         _DashboardSecciones(
@@ -379,87 +383,6 @@ class _PillPrincipal extends StatelessWidget {
                   color: Colors.white,
                   fontSize: 11,
                   fontWeight: FontWeight.w700)),
-        ],
-      ),
-    );
-  }
-}
-
-/// Barra COMPACTA y horizontal del próximo paso. Nunca vertical:
-/// el texto vive en un Expanded de una sola línea.
-class _BarraProximoPaso extends StatelessWidget {
-  const _BarraProximoPaso({
-    required this.proximo,
-    required this.mostrarAvanzar,
-    required this.onAvanzar,
-  });
-  final ProjectTask? proximo;
-  final bool mostrarAvanzar;
-  final Future<void> Function() onAvanzar;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final hay = proximo != null;
-    return Container(
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md, vertical: 12),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHigh.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.olive.withValues(alpha: 0.16),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.arrow_forward,
-                size: 16, color: AppColors.oliveSoft),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('Próximo paso',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        letterSpacing: 0.5,
-                        fontWeight: FontWeight.w700)),
-                Text(
-                  hay ? proximo!.texto : 'Agrega tu próximo paso',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: hay ? cs.onSurface : cs.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (mostrarAvanzar) ...[
-            const SizedBox(width: AppSpacing.sm),
-            FilledButton(
-              onPressed: onAvanzar,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.olive,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 11),
-              ),
-              child: const Text('Avanzar'),
-            ),
-          ],
         ],
       ),
     );
