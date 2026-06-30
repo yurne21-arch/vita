@@ -132,147 +132,227 @@ class _ProyectoDetalleScreenState
         ],
       ),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760),
-            child: ListView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              children: [
-                _Cabecera(proyecto: _p, progreso: progreso),
-                if (_p.activo) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  _BotonAvanzar(
-                    proximo: proximo,
-                    onAvanzar: () => _acc.avanzar(_p.id),
+        child: LayoutBuilder(
+          builder: (context, c) {
+            final bp = bpDe(c.maxWidth);
+            final pad = padLateral(bp);
+            return SingleChildScrollView(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: kMaxLienzo),
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                        pad, AppSpacing.lg, pad, AppSpacing.xxl),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _Cabecera(proyecto: _p, progreso: progreso, bp: bp),
+                        const SizedBox(height: AppSpacing.md),
+                        _BarraProximoPaso(
+                          proximo: proximo,
+                          mostrarAvanzar: _p.activo,
+                          onAvanzar: () => avanzarProyecto(context, ref,
+                              projectId: _p.id, proximo: proximo),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        _DashboardSecciones(
+                          bp: bp,
+                          tareas: _SeccionTareas(
+                            tareasAsync: tareasAsync,
+                            acc: _acc,
+                            onNuevo: (tipo) => mostrarEditorTarea(context, ref,
+                                projectId: _p.id, tipoInicial: tipo),
+                            onEditar: (t) => mostrarEditorTarea(context, ref,
+                                projectId: _p.id, existente: t),
+                          ),
+                          bitacora: _SeccionBitacora(
+                            bitacoraAsync: bitacoraAsync,
+                            onAvance: () => mostrarRegistroBitacora(
+                                context, ref,
+                                projectId: _p.id, esNota: false),
+                            onNota: () => mostrarRegistroBitacora(context, ref,
+                                projectId: _p.id, esNota: true),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-                const SizedBox(height: AppSpacing.lg),
-                _SeccionTareas(
-                  proyecto: _p,
-                  tareasAsync: tareasAsync,
-                  acc: _acc,
-                  onNuevo: (tipo) => mostrarEditorTarea(context, ref,
-                      projectId: _p.id, tipoInicial: tipo),
-                  onEditar: (t) => mostrarEditorTarea(context, ref,
-                      projectId: _p.id, existente: t),
                 ),
-                const SizedBox(height: AppSpacing.lg),
-                _SeccionBitacora(
-                  proyecto: _p,
-                  bitacoraAsync: bitacoraAsync,
-                  onAvance: () => mostrarRegistroBitacora(context, ref,
-                      projectId: _p.id, esNota: false),
-                  onNota: () => mostrarRegistroBitacora(context, ref,
-                      projectId: _p.id, esNota: true),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
   }
 }
 
-// ───────────────── Cabecera ─────────────────
+/// Distribuye Pasos (izquierda, más ancho) y Bitácora (derecha) en escritorio
+/// y tablet; las apila en móvil.
+class _DashboardSecciones extends StatelessWidget {
+  const _DashboardSecciones({
+    required this.bp,
+    required this.tareas,
+    required this.bitacora,
+  });
+  final VitaBp bp;
+  final Widget tareas;
+  final Widget bitacora;
+
+  @override
+  Widget build(BuildContext context) {
+    if (bp == VitaBp.mobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          tareas,
+          const SizedBox(height: AppSpacing.lg),
+          bitacora,
+        ],
+      );
+    }
+    final flexTareas = bp == VitaBp.desktop ? 7 : 1;
+    final flexBitacora = bp == VitaBp.desktop ? 5 : 1;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(flex: flexTareas, child: tareas),
+        const SizedBox(width: AppSpacing.lg),
+        Expanded(flex: flexBitacora, child: bitacora),
+      ],
+    );
+  }
+}
+
+// ───────────────── Cabecera (héroe) ─────────────────
 
 class _Cabecera extends StatelessWidget {
-  const _Cabecera({required this.proyecto, required this.progreso});
+  const _Cabecera(
+      {required this.proyecto, required this.progreso, required this.bp});
   final Project proyecto;
   final int progreso;
+  final VitaBp bp;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    final esMovil = bp == VitaBp.mobile;
+
+    final info = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            ChipEstado(estado: proyecto.estado),
+            if (proyecto.esPrincipal) const _PillPrincipal(),
+            if (proyecto.area != null) EtiquetaArea(area: proyecto.area),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(proyecto.titulo,
+            style: theme.textTheme.headlineSmall
+                ?.copyWith(fontWeight: FontWeight.w800, height: 1.1)),
+        if (proyecto.objetivo != null) ...[
+          const SizedBox(height: 6),
+          Text(proyecto.objetivo!,
+              style: theme.textTheme.bodyLarge
+                  ?.copyWith(color: cs.onSurfaceVariant, height: 1.35)),
+        ],
+        if (proyecto.fechaObjetivo != null) ...[
+          const SizedBox(height: AppSpacing.sm),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              AnilloProgreso(progreso: progreso, tamano: 76, grosor: 7),
-              const SizedBox(width: AppSpacing.lg),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        ChipEstado(estado: proyecto.estado),
-                        if (proyecto.esPrincipal) ...[
-                          const SizedBox(width: AppSpacing.sm),
-                          const _PillPrincipal(),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(proyecto.titulo,
-                        style: theme.textTheme.titleLarge
-                            ?.copyWith(fontWeight: FontWeight.w700)),
-                    if (proyecto.area != null) ...[
-                      const SizedBox(height: 6),
-                      EtiquetaArea(area: proyecto.area),
-                    ],
-                  ],
-                ),
+              Icon(Icons.flag_outlined, size: 15, color: cs.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Text(
+                'Meta: ${proyecto.fechaObjetivo!.day}/${proyecto.fechaObjetivo!.month}/${proyecto.fechaObjetivo!.year}',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant),
               ),
             ],
           ),
-          if (proyecto.objetivo != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            Text('OBJETIVO',
-                style: TextStyle(
-                    fontSize: 11,
-                    letterSpacing: 0.8,
-                    fontWeight: FontWeight.w700,
-                    color: cs.onSurfaceVariant)),
-            const SizedBox(height: 3),
-            Text(proyecto.objetivo!,
-                style: theme.textTheme.bodyLarge?.copyWith(height: 1.35)),
-          ],
-          if (proyecto.descripcion != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.olive.withValues(alpha: 0.07),
-                borderRadius: BorderRadius.circular(12),
-                border:
-                    Border.all(color: AppColors.olive.withValues(alpha: 0.18)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.favorite_outline,
-                      size: 16, color: AppColors.oliveSoft),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(proyecto.descripcion!,
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(height: 1.35, color: cs.onSurfaceVariant)),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          if (proyecto.fechaObjetivo != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            Row(
+        ],
+      ],
+    );
+
+    return _Panel(
+      padding: EdgeInsets.all(esMovil ? AppSpacing.lg : AppSpacing.xl),
+      child: esMovil
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.flag_outlined,
-                    size: 16, color: cs.onSurfaceVariant),
-                const SizedBox(width: 6),
-                Text(
-                  'Meta: ${proyecto.fechaObjetivo!.day}/${proyecto.fechaObjetivo!.month}/${proyecto.fechaObjetivo!.year}',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: cs.onSurfaceVariant),
+                Row(
+                  children: [
+                    AnilloProgreso(progreso: progreso, tamano: 64, grosor: 6),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Text(proyecto.titulo,
+                          style: theme.textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w800)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                info,
+                if (proyecto.descripcion != null) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  _Motivacion(texto: proyecto.descripcion!),
+                ],
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                AnilloProgreso(progreso: progreso, tamano: 104, grosor: 9),
+                const SizedBox(width: AppSpacing.xl),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      info,
+                      if (proyecto.descripcion != null) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        _Motivacion(texto: proyecto.descripcion!),
+                      ],
+                    ],
+                  ),
                 ),
               ],
             ),
-          ],
+    );
+  }
+}
+
+class _Motivacion extends StatelessWidget {
+  const _Motivacion({required this.texto});
+  final String texto;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.olive.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.olive.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.favorite_outline,
+              size: 16, color: AppColors.oliveSoft),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(texto,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(height: 1.35, color: cs.onSurfaceVariant)),
+          ),
         ],
       ),
     );
@@ -305,51 +385,81 @@ class _PillPrincipal extends StatelessWidget {
   }
 }
 
-class _BotonAvanzar extends StatelessWidget {
-  const _BotonAvanzar({required this.proximo, required this.onAvanzar});
+/// Barra COMPACTA y horizontal del próximo paso. Nunca vertical:
+/// el texto vive en un Expanded de una sola línea.
+class _BarraProximoPaso extends StatelessWidget {
+  const _BarraProximoPaso({
+    required this.proximo,
+    required this.mostrarAvanzar,
+    required this.onAvanzar,
+  });
   final ProjectTask? proximo;
+  final bool mostrarAvanzar;
   final Future<void> Function() onAvanzar;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    return _Panel(
-      padding: const EdgeInsets.all(AppSpacing.md),
+    final hay = proximo != null;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: 12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+      ),
       child: Row(
         children: [
+          Container(
+            width: 30,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.olive.withValues(alpha: 0.16),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.arrow_forward,
+                size: 16, color: AppColors.oliveSoft),
+          ),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text('PRÓXIMO PASO',
-                    style: TextStyle(
-                        fontSize: 11,
-                        letterSpacing: 0.8,
-                        fontWeight: FontWeight.w700,
-                        color: cs.onSurfaceVariant)),
-                const SizedBox(height: 3),
+                Text('Próximo paso',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        letterSpacing: 0.5,
+                        fontWeight: FontWeight.w700)),
                 Text(
-                  proximo?.texto ?? 'Sin pasos pendientes',
-                  maxLines: 2,
+                  hay ? proximo!.texto : 'Agrega tu próximo paso',
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyLarge
-                      ?.copyWith(fontWeight: FontWeight.w600, height: 1.25),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: hay ? cs.onSurface : cs.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: AppSpacing.md),
-          FilledButton.icon(
-            onPressed: onAvanzar,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.olive,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 18, vertical: 13),
+          if (mostrarAvanzar) ...[
+            const SizedBox(width: AppSpacing.sm),
+            FilledButton(
+              onPressed: onAvanzar,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.olive,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 11),
+              ),
+              child: const Text('Avanzar'),
             ),
-            icon: const Icon(Icons.arrow_forward, size: 18),
-            label: const Text('Avanzar'),
-          ),
+          ],
         ],
       ),
     );
@@ -360,14 +470,12 @@ class _BotonAvanzar extends StatelessWidget {
 
 class _SeccionTareas extends StatelessWidget {
   const _SeccionTareas({
-    required this.proyecto,
     required this.tareasAsync,
     required this.acc,
     required this.onNuevo,
     required this.onEditar,
   });
 
-  final Project proyecto;
   final AsyncValue<List<ProjectTask>> tareasAsync;
   final ProyectosAcciones acc;
   final ValueChanged<String> onNuevo;
@@ -389,38 +497,22 @@ class _SeccionTareas extends StatelessWidget {
                   style: theme.textTheme.titleMedium
                       ?.copyWith(fontWeight: FontWeight.w700)),
               const Spacer(),
-              IconButton(
-                tooltip: 'Agregar paso',
-                onPressed: () => onNuevo('paso'),
-                icon: const Icon(Icons.add, color: AppColors.olive),
-              ),
+              if (tareas.isNotEmpty)
+                IconButton(
+                  tooltip: 'Agregar paso',
+                  onPressed: () => onNuevo('paso'),
+                  icon: const Icon(Icons.add, color: AppColors.olive),
+                ),
             ],
           ),
           if (tareasAsync.isLoading && tareas.isEmpty)
             const Padding(
-              padding: EdgeInsets.all(AppSpacing.md),
+              padding: EdgeInsets.all(AppSpacing.lg),
               child: Center(child: CircularProgressIndicator()),
             )
           else if (tareas.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-              child: Column(
-                children: [
-                  Icon(Icons.checklist_rtl_outlined,
-                      size: 30,
-                      color: cs.onSurfaceVariant.withValues(alpha: 0.7)),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text('Aún no hay pasos.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.w600)),
-                  Text('Divide tu objetivo en pasos pequeños.',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: cs.onSurfaceVariant)),
-                ],
-              ),
-            )
-          else
+            _VacioPasos(onNuevo: onNuevo)
+          else ...[
             for (var i = 0; i < tareas.length; i++)
               _TareaRow(
                 tarea: tareas[i],
@@ -433,31 +525,90 @@ class _SeccionTareas extends StatelessWidget {
                 onSubir: () => acc.subirTarea(tareas[i]),
                 onBajar: () => acc.bajarTarea(tareas[i]),
                 onEliminar: () async {
-                  final ok = await _confirmar(
-                      context,
-                      'Eliminar',
-                      '¿Eliminar "${tareas[i].texto}"?',
-                      'Eliminar');
+                  final ok = await _confirmar(context, 'Eliminar',
+                      '¿Eliminar "${tareas[i].texto}"?', 'Eliminar');
                   if (ok == true) acc.eliminarTarea(tareas[i]);
                 },
               ),
-          const SizedBox(height: AppSpacing.xs),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => onNuevo('paso'),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Paso'),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => onNuevo('paso'),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Paso'),
+                  ),
                 ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => onNuevo('hito'),
+                    icon: const Icon(Icons.flag_outlined, size: 18),
+                    label: const Text('Hito'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _VacioPasos extends StatelessWidget {
+  const _VacioPasos({required this.onNuevo});
+  final ValueChanged<String> onNuevo;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.olive.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.checklist_rtl_outlined,
+                color: AppColors.oliveSoft),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text('Divide tu objetivo en pasos',
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text('Empieza por el próximo paso concreto. Suma hitos para los\nmomentos importantes.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: cs.onSurfaceVariant, height: 1.4)),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FilledButton.icon(
+                onPressed: () => onNuevo('paso'),
+                style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.olive,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 11)),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Paso'),
               ),
               const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => onNuevo('hito'),
-                  icon: const Icon(Icons.flag_outlined, size: 18),
-                  label: const Text('Hito'),
-                ),
+              OutlinedButton.icon(
+                onPressed: () => onNuevo('hito'),
+                style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 11)),
+                icon: const Icon(Icons.flag_outlined, size: 18),
+                label: const Text('Hito'),
               ),
             ],
           ),
@@ -605,13 +756,11 @@ class _BadgeHito extends StatelessWidget {
 
 class _SeccionBitacora extends StatelessWidget {
   const _SeccionBitacora({
-    required this.proyecto,
     required this.bitacoraAsync,
     required this.onAvance,
     required this.onNota,
   });
 
-  final Project proyecto;
   final AsyncValue<List<ProjectLogEntry>> bitacoraAsync;
   final VoidCallback onAvance;
   final VoidCallback onNota;
@@ -730,8 +879,7 @@ class _BitacoraFila extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(
-                  top: 2, bottom: AppSpacing.md),
+              padding: const EdgeInsets.only(top: 2, bottom: AppSpacing.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -765,7 +913,6 @@ class _BitacoraFila extends StatelessWidget {
 
 // ───────────────── compartidos ─────────────────
 
-/// Panel con profundidad (mismo lenguaje que Calendario).
 class _Panel extends StatelessWidget {
   const _Panel({required this.child, this.padding});
   final Widget child;
