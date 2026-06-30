@@ -1,7 +1,8 @@
-  import 'dart:math' as math;
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 
 /// Color sutil por área (mismo vocabulario que Calendario). Apagado, sobrio.
 Color areaColor(String? a) {
