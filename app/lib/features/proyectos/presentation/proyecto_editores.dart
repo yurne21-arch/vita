@@ -7,7 +7,10 @@ import '../data/projects_repository.dart';
 import 'projects_controller.dart';
 import 'proyectos_widgets.dart';
 
-/// Hoja para crear o editar un proyecto. Devuelve el id si se creó.
+// ───────────────── Editor de proyecto ─────────────────
+
+/// Hoja para crear o editar un proyecto.
+/// Devuelve el id (String) al crear, o el Project actualizado al editar.
 Future<Object?> mostrarEditorProyecto(
   BuildContext context,
   WidgetRef ref, {
@@ -19,8 +22,8 @@ Future<Object?> mostrarEditorProyecto(
     showDragHandle: true,
     backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
     builder: (_) => Padding(
-      padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: _EditorProyecto(existente: existente),
     ),
   );
@@ -39,6 +42,8 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
   late final TextEditingController _porque;
   String? _area;
   DateTime? _fecha;
+  bool _principal = false;
+  bool _masOpciones = false;
   bool _guardando = false;
 
   @override
@@ -50,6 +55,8 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
     _porque = TextEditingController(text: e?.descripcion ?? '');
     _area = e?.area;
     _fecha = e?.fechaObjetivo;
+    // Si ya hay datos secundarios, abre la sección para no esconderlos.
+    _masOpciones = (e?.descripcion != null) || (e?.fechaObjetivo != null);
   }
 
   @override
@@ -73,6 +80,7 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
           descripcion: _porque.text,
           area: _area,
           fechaObjetivo: _fecha,
+          esPrincipal: _principal,
         );
         if (mounted) Navigator.of(context).pop(id);
       } else {
@@ -116,81 +124,130 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final esNuevo = widget.existente == null;
     return SafeArea(
       top: false,
-      child: ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
-        children: [
-          Text(esNuevo ? 'Nuevo proyecto' : 'Editar proyecto',
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: AppSpacing.lg),
-          TextField(
-            controller: _titulo,
-            autofocus: esNuevo,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-                labelText: 'Título', hintText: '¿Qué vas a construir?'),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          TextField(
-            controller: _objetivo,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-                labelText: 'Objetivo', hintText: '¿Qué resultado buscas?'),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          TextField(
-            controller: _porque,
-            textCapitalization: TextCapitalization.sentences,
-            maxLines: 2,
-            decoration: const InputDecoration(
-                labelText: 'Por qué (motivación)',
-                hintText: 'Lo que te recuerda no abandonarlo'),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          DropdownButtonFormField<String>(
-            initialValue: _area,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Área'),
-            items: [
-              const DropdownMenuItem<String>(
-                  value: null, child: Text('Sin área')),
-              for (final a in kAreas)
-                DropdownMenuItem<String>(value: a, child: Text(a)),
-            ],
-            onChanged: (v) => setState(() => _area = v),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _SelectorFecha(
-            fecha: _fecha,
-            onCambiar: (d) => setState(() => _fecha = d),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          FilledButton(
-            onPressed: _guardando ? null : _guardar,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.olive,
-              padding: const EdgeInsets.symmetric(vertical: 15),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+          children: [
+            Text(esNuevo ? 'Nuevo proyecto' : 'Editar proyecto',
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: AppSpacing.lg),
+
+            // ── Principales ──
+            TextField(
+              controller: _titulo,
+              autofocus: esNuevo,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                  labelText: 'Título', hintText: '¿Qué vas a construir?'),
             ),
-            child: _guardando
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                : Text(esNuevo ? 'Crear proyecto' : 'Guardar cambios'),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: _objetivo,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                  labelText: 'Objetivo', hintText: '¿Qué resultado buscas?'),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            DropdownButtonFormField<String>(
+              initialValue: _area,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Área'),
+              items: [
+                const DropdownMenuItem<String>(
+                    value: null, child: Text('Sin área')),
+                for (final a in kAreas)
+                  DropdownMenuItem<String>(value: a, child: Text(a)),
+              ],
+              onChanged: (v) => setState(() => _area = v),
+            ),
+
+            // Marcar principal (solo al crear; en edición se usa el menú ⋮)
+            if (esNuevo) ...[
+              const SizedBox(height: AppSpacing.xs),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Marcar como proyecto principal'),
+                subtitle: Text('VITA lo destacará en Mi Vida',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant)),
+                value: _principal,
+                onChanged: (v) => setState(() => _principal = v),
+              ),
+            ],
+
+            // ── Secundarias (colapsables) ──
+            const SizedBox(height: AppSpacing.xs),
+            InkWell(
+              onTap: () => setState(() => _masOpciones = !_masOpciones),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    Icon(
+                        _masOpciones
+                            ? Icons.expand_less
+                            : Icons.expand_more,
+                        size: 20,
+                        color: AppColors.oliveSoft),
+                    const SizedBox(width: 6),
+                    Text('Más opciones (opcional)',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                            color: AppColors.oliveSoft,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ),
+            if (_masOpciones) ...[
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: _porque,
+                textCapitalization: TextCapitalization.sentences,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                    labelText: 'Motivación',
+                    hintText: 'Lo que te recuerda no abandonarlo'),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _SelectorFecha(
+                fecha: _fecha,
+                onCambiar: (d) => setState(() => _fecha = d),
+              ),
+            ],
+
+            const SizedBox(height: AppSpacing.lg),
+            FilledButton(
+              onPressed: _guardando ? null : _guardar,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.olive,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+              ),
+              child: _guardando
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : Text(esNuevo ? 'Crear proyecto' : 'Guardar cambios'),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Hoja para crear o editar un paso/hito.
+// ───────────────── Editor de paso / hito ─────────────────
+
 Future<void> mostrarEditorTarea(
   BuildContext context,
   WidgetRef ref, {
@@ -204,8 +261,8 @@ Future<void> mostrarEditorTarea(
     showDragHandle: true,
     backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
     builder: (_) => Padding(
-      padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: _EditorTarea(
         projectId: projectId,
         existente: existente,
@@ -281,65 +338,69 @@ class _EditorTareaState extends ConsumerState<_EditorTarea> {
     final esNuevo = widget.existente == null;
     return SafeArea(
       top: false,
-      child: ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
-        children: [
-          Text(esNuevo ? 'Nuevo paso o hito' : 'Editar',
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: AppSpacing.lg),
-          TextField(
-            controller: _texto,
-            autofocus: esNuevo,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-                labelText: 'Descripción', hintText: '¿Cuál es el paso?'),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              ChoiceChip(
-                label: const Text('Paso'),
-                selected: _tipo == 'paso',
-                onSelected: (_) => setState(() => _tipo = 'paso'),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              ChoiceChip(
-                label: const Text('Hito'),
-                selected: _tipo == 'hito',
-                onSelected: (_) => setState(() => _tipo = 'hito'),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _SelectorFecha(
-            fecha: _fecha,
-            onCambiar: (d) => setState(() => _fecha = d),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          FilledButton(
-            onPressed: _guardando ? null : _guardar,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.olive,
-              padding: const EdgeInsets.symmetric(vertical: 15),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+          children: [
+            Text(esNuevo ? 'Nuevo paso o hito' : 'Editar',
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: AppSpacing.lg),
+            TextField(
+              controller: _texto,
+              autofocus: esNuevo,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                  labelText: 'Descripción', hintText: '¿Cuál es el paso?'),
             ),
-            child: _guardando
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                : Text(esNuevo ? 'Agregar' : 'Guardar'),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                ChoiceChip(
+                  label: const Text('Paso'),
+                  selected: _tipo == 'paso',
+                  onSelected: (_) => setState(() => _tipo = 'paso'),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                ChoiceChip(
+                  label: const Text('Hito'),
+                  selected: _tipo == 'hito',
+                  onSelected: (_) => setState(() => _tipo = 'hito'),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _SelectorFecha(
+              fecha: _fecha,
+              onCambiar: (d) => setState(() => _fecha = d),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            FilledButton(
+              onPressed: _guardando ? null : _guardar,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.olive,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+              ),
+              child: _guardando
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : Text(esNuevo ? 'Agregar' : 'Guardar'),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Hoja para registrar un avance o nota rápida en la bitácora.
+// ───────────────── Registro de bitácora ─────────────────
+
 Future<void> mostrarRegistroBitacora(
   BuildContext context,
   WidgetRef ref, {
@@ -352,8 +413,8 @@ Future<void> mostrarRegistroBitacora(
     showDragHandle: true,
     backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
     builder: (_) => Padding(
-      padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: _RegistroBitacora(projectId: projectId, esNota: esNota),
     ),
   );
@@ -403,48 +464,135 @@ class _RegistroBitacoraState extends ConsumerState<_RegistroBitacora> {
     final theme = Theme.of(context);
     return SafeArea(
       top: false,
-      child: ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
-        children: [
-          Text(widget.esNota ? 'Nueva nota' : 'Registrar avance',
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: AppSpacing.lg),
-          TextField(
-            controller: _texto,
-            autofocus: true,
-            maxLines: 3,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: InputDecoration(
-                labelText: widget.esNota ? 'Nota' : 'Avance',
-                hintText: widget.esNota
-                    ? 'Algo que quieras recordar'
-                    : '¿Qué avanzaste?'),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          FilledButton(
-            onPressed: _guardando ? null : _guardar,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.olive,
-              padding: const EdgeInsets.symmetric(vertical: 15),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+          children: [
+            Text(widget.esNota ? 'Nueva nota' : 'Registrar avance',
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: AppSpacing.lg),
+            TextField(
+              controller: _texto,
+              autofocus: true,
+              maxLines: 3,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                  labelText: widget.esNota ? 'Nota' : 'Avance',
+                  hintText: widget.esNota
+                      ? 'Algo que quieras recordar'
+                      : '¿Qué avanzaste?'),
             ),
-            child: _guardando
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                : const Text('Registrar'),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.lg),
+            FilledButton(
+              onPressed: _guardando ? null : _guardar,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.olive,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+              ),
+              child: _guardando
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : const Text('Registrar'),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Selector de fecha objetivo opcional (reutilizado por los editores).
+// ───────────────── Botón Avanzar (lógica compartida) ─────────────────
+
+/// Acción del botón "Avanzar":
+/// - Si hay próximo paso pendiente, lo completa (registra avance).
+/// - Si NO hay pasos, NO completa nada: ofrece agregar un paso o registrar
+///   un avance manual.
+Future<void> avanzarProyecto(
+  BuildContext context,
+  WidgetRef ref, {
+  required String projectId,
+  required ProjectTask? proximo,
+}) async {
+  if (proximo != null) {
+    await ref.read(proyectosAccionesProvider).completarTarea(proximo);
+    return;
+  }
+  if (!context.mounted) return;
+  await _mostrarAvanzarSinPasos(context, ref, projectId);
+}
+
+Future<void> _mostrarAvanzarSinPasos(
+  BuildContext context,
+  WidgetRef ref,
+  String projectId,
+) {
+  final theme = Theme.of(context);
+  final cs = theme.colorScheme;
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    backgroundColor: cs.surfaceContainerLow,
+    builder: (sheetCtx) => SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('¿Cómo quieres avanzar?',
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text(
+              'Este proyecto aún no tiene pasos. Agrega el primero o deja '
+              'registrado un avance.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.of(sheetCtx).pop();
+                mostrarEditorTarea(context, ref,
+                    projectId: projectId, tipoInicial: 'paso');
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.olive,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Agregar próximo paso'),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.of(sheetCtx).pop();
+                mostrarRegistroBitacora(context, ref,
+                    projectId: projectId, esNota: false);
+              },
+              style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14)),
+              icon: const Icon(Icons.trending_up, size: 18),
+              label: const Text('Registrar un avance'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+// ───────────────── Selector de fecha (compartido) ─────────────────
+
 class _SelectorFecha extends StatelessWidget {
   const _SelectorFecha({required this.fecha, required this.onCambiar});
   final DateTime? fecha;
