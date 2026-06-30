@@ -24,12 +24,28 @@
 </head>
 <body>
   <script>
-    // Limpia versiones viejas guardadas y recarga sola una vez si hace falta.
-    if ('serviceWorker' in navigator) {
+    // Auto-limpieza: borra versiones viejas (service worker + caches) y
+    // recarga UNA vez. Así la app siempre muestra la última versión sin que
+    // el usuario tenga que limpiar nada a mano.
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
       navigator.serviceWorker.getRegistrations().then(function (regs) {
-        for (var r of regs) { r.update(); }
+        var teniaSW = regs.length > 0;
+        var tareas = regs.map(function (r) { return r.unregister(); });
+        if (window.caches && caches.keys) {
+          tareas.push(caches.keys().then(function (keys) {
+            return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+          }));
+        }
+        Promise.all(tareas).then(function () {
+          var huboCache = teniaSW;
+          if (huboCache && !sessionStorage.getItem('vita_cache_limpiado')) {
+            sessionStorage.setItem('vita_cache_limpiado', '1');
+            location.reload();
+          }
+        });
       });
-    }
+    })();
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
