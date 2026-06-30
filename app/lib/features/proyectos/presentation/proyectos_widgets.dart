@@ -314,7 +314,7 @@ class BarraProximoPaso extends StatelessWidget {
     if (hay) {
       texto = proximoTexto!;
     } else if (tienePasos) {
-      texto = 'No quedan pasos pendientes';
+      texto = 'Todos los pasos completos';
     } else {
       texto = 'Agrega tu primer paso';
     }
