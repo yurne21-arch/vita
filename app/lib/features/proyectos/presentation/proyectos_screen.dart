@@ -90,6 +90,21 @@ class ProyectosScreen extends ConsumerWidget {
                                   onAbrir: () => _abrirDetalle(context, p),
                                 ),
                         ),
+                        const SizedBox(height: AppSpacing.lg),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: FilledButton.icon(
+                            onPressed: () =>
+                                mostrarEditorProyecto(context, ref),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.olive,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 18, vertical: 13),
+                            ),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Nuevo proyecto'),
+                          ),
+                        ),
                         const SizedBox(height: AppSpacing.xl),
                         _SeccionCartera(
                           titulo: 'Activos',
