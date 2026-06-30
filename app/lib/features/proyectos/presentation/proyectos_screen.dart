@@ -95,11 +95,9 @@ class ProyectosScreen extends ConsumerWidget {
                           titulo: 'Activos',
                           async: activos,
                           cols: cols,
-                          // El principal se muestra en el hero; aquí van los demás.
-                          filtro: (p) => !p.esPrincipal,
-                          // Si el principal activo ya está arriba, no muestres
-                          // "Sin proyectos activos": oculta la sección vacía.
-                          ocultarSiVacio: principal.valueOrNull != null,
+                          // TODOS los activos, incluido el principal (con chip).
+                          filtro: (p) => true,
+                          ocultarSiVacio: false,
                           vacio: _VacioActivos(
                               onCrear: () => mostrarEditorProyecto(context, ref)),
                           onAbrir: (p) => _abrirDetalle(context, p),
@@ -482,11 +480,6 @@ class _TarjetaProyecto extends ConsumerWidget {
                       children: [
                         Row(
                           children: [
-                            if (proyecto.esPrincipal) ...[
-                              const Icon(Icons.star,
-                                  size: 14, color: AppColors.olive),
-                              const SizedBox(width: 4),
-                            ],
                             Expanded(
                               child: Text(proyecto.titulo,
                                   maxLines: 1,
@@ -502,6 +495,28 @@ class _TarjetaProyecto extends ConsumerWidget {
                           runSpacing: 4,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
+                            if (proyecto.esPrincipal)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppColors.olive.withValues(alpha: 0.16),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.star,
+                                        size: 12, color: AppColors.olive),
+                                    const SizedBox(width: 3),
+                                    Text('Principal',
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                                color: AppColors.olive,
+                                                fontWeight: FontWeight.w700)),
+                                  ],
+                                ),
+                              ),
                             ChipEstado(estado: proyecto.estado),
                             if (proyecto.area != null)
                               EtiquetaArea(area: proyecto.area),
