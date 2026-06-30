@@ -95,8 +95,13 @@ class ProyectosScreen extends ConsumerWidget {
                           titulo: 'Activos',
                           async: activos,
                           cols: cols,
+                          // El principal se muestra en el hero; aquí van los demás.
                           filtro: (p) => !p.esPrincipal,
-                          vacio: const _VacioActivos(),
+                          // Si el principal activo ya está arriba, no muestres
+                          // "Sin proyectos activos": oculta la sección vacía.
+                          ocultarSiVacio: principal.valueOrNull != null,
+                          vacio: _VacioActivos(
+                              onCrear: () => mostrarEditorProyecto(context, ref)),
                           onAbrir: (p) => _abrirDetalle(context, p),
                         ),
                         const SizedBox(height: AppSpacing.xl),
@@ -192,10 +197,14 @@ class _HeroPrincipal extends ConsumerWidget {
       ],
     );
 
-    final barra = _BarraProximoHero(
-      proximo: proximo,
+    final barra = BarraProximoPaso(
+      proximoTexto: proximo?.texto,
+      tienePasos: proyecto.tienePasos(tareas),
+      activo: proyecto.activo,
       onAvanzar: () => avanzarProyecto(context, ref,
           projectId: proyecto.id, proximo: proximo),
+      onAgregarPaso: () => mostrarEditorTarea(context, ref,
+          projectId: proyecto.id, tipoInicial: 'paso'),
     );
 
     return _PanelHero(
@@ -215,53 +224,6 @@ class _HeroPrincipal extends ConsumerWidget {
 }
 
 /// Barra compacta del hero: próximo paso + Avanzar (horizontal, nunca vertical).
-class _BarraProximoHero extends StatelessWidget {
-  const _BarraProximoHero({required this.proximo, required this.onAvanzar});
-  final ProjectTask? proximo;
-  final Future<void> Function() onAvanzar;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final hay = proximo != null;
-    return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHigh.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.arrow_forward, size: 16, color: AppColors.oliveSoft),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              hay ? proximo!.texto : 'Agrega tu próximo paso',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: hay ? cs.onSurface : cs.onSurfaceVariant,
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          FilledButton(
-            onPressed: onAvanzar,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.olive,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-            ),
-            child: const Text('Avanzar'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _HeroVacio extends StatelessWidget {
   const _HeroVacio({required this.onCrear});
   final VoidCallback onCrear;
@@ -413,7 +375,8 @@ class _SeccionCartera extends StatelessWidget {
 }
 
 class _VacioActivos extends StatelessWidget {
-  const _VacioActivos();
+  const _VacioActivos({required this.onCrear});
+  final VoidCallback onCrear;
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -448,10 +411,21 @@ class _VacioActivos extends StatelessWidget {
                   ?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           Text(
-            'Crea uno con el botón “Nuevo proyecto” y empieza por tu próximo paso.',
+            'Crea tu primer proyecto y empieza por tu próximo paso.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall
                 ?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          FilledButton.icon(
+            onPressed: onCrear,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.olive,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+            ),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Nuevo proyecto'),
           ),
         ],
       ),
