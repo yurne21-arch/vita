@@ -19,6 +19,7 @@ import 'package:go_router/go_router.dart';
 import '../../proyectos/data/projects_repository.dart';
 import '../../proyectos/presentation/projects_controller.dart';
 import '../../proyectos/presentation/proyecto_detalle_screen.dart';
+import '../../proyectos/presentation/proyecto_editores.dart';
 import '../../proyectos/presentation/proyectos_widgets.dart';
 
 const EdgeInsets _kCardPad = EdgeInsets.fromLTRB(20, 18, 20, 18);
@@ -1020,7 +1021,7 @@ class _ProyectoPrincipal extends ConsumerWidget {
                     size: 15, color: AppColors.oliveSoft),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text(proximo?.texto ?? 'Sin pasos pendientes',
+                  child: Text(proximo?.texto ?? 'Agrega tu próximo paso',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyMedium
@@ -1049,8 +1050,8 @@ class _ProyectoPrincipal extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: () =>
-                    ref.read(proyectosAccionesProvider).avanzar(p.id),
+                onPressed: () => avanzarProyecto(context, ref,
+                    projectId: p.id, proximo: proximo),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.olive,
                   padding: const EdgeInsets.symmetric(vertical: 12),
