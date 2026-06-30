@@ -959,7 +959,7 @@ class _ProyectoPrincipal extends ConsumerWidget {
     final tienePasos = p.tienePasos(tareas);
     final textoProximo = proximo != null
         ? proximo.texto
-        : (tienePasos ? 'No quedan pasos pendientes' : 'Agrega tu primer paso');
+        : (tienePasos ? 'Todos los pasos completos' : 'Agrega tu primer paso');
     final bitacora = ref.watch(bitacoraDeProyectoProvider(p.id)).valueOrNull ??
         const <ProjectLogEntry>[];
     ProjectLogEntry? ultimo;
@@ -1053,27 +1053,44 @@ class _ProyectoPrincipal extends ConsumerWidget {
             const SizedBox(height: AppSpacing.md),
             SizedBox(
               width: double.infinity,
-              child: (proximo == null && !tienePasos)
-                  ? FilledButton.icon(
-                      onPressed: () => mostrarEditorTarea(context, ref,
-                          projectId: p.id, tipoInicial: 'paso'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.olive,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      icon: const Icon(Icons.add, size: 16),
-                      label: const Text('Agregar paso'),
-                    )
-                  : FilledButton.icon(
-                      onPressed: () => avanzarProyecto(context, ref,
-                          projectId: p.id, proximo: proximo),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.olive,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      icon: const Icon(Icons.arrow_forward, size: 16),
-                      label: const Text('Avanzar'),
+              child: Builder(builder: (context) {
+                // 3 estados: sin pasos / con próximo paso / todos completos.
+                if (!tienePasos) {
+                  return FilledButton.icon(
+                    onPressed: () => mostrarEditorTarea(context, ref,
+                        projectId: p.id, tipoInicial: 'paso'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.olive,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Agregar paso'),
+                  );
+                }
+                if (proximo != null) {
+                  return FilledButton.icon(
+                    onPressed: () => avanzarProyecto(context, ref,
+                        projectId: p.id, proximo: proximo),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.olive,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    icon: const Icon(Icons.arrow_forward, size: 16),
+                    label: const Text('Avanzar'),
+                  );
+                }
+                // Hay pasos y todos están completos => Completar proyecto.
+                return FilledButton.icon(
+                  onPressed: () =>
+                      ref.read(proyectosAccionesProvider).completarProyecto(p.id),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  icon: const Icon(Icons.check_circle_outline, size: 16),
+                  label: const Text('Completar proyecto'),
+                );
+              }),
             ),
           ],
         ),
