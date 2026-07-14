@@ -1,8 +1,12 @@
-  import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/prioridades_repository.dart';
 
 /// Prioridades de hoy con actualización inmediata en pantalla (optimista).
+///
+/// Si la escritura falla, se revierte el estado **y se relanza el error**: la
+/// pantalla debe poder decirle a la usuaria qué pasó. Un cambio que se deshace
+/// solo, sin explicación, es peor que un error visible.
 class PrioridadesController extends AsyncNotifier<List<Prioridad>> {
   @override
   Future<List<Prioridad>> build() {
@@ -11,8 +15,13 @@ class PrioridadesController extends AsyncNotifier<List<Prioridad>> {
 
   PrioridadesRepository get _repo => ref.read(prioridadesRepositoryProvider);
 
+  /// Revierte el estado optimista y relanza para que la UI lo muestre.
+  Future<Never> _revertir(Object error) async {
+    ref.invalidateSelf();
+    throw error;
+  }
+
   Future<void> agregar(String texto) async {
-    if (texto.trim().isEmpty) return; // no guardar vacío
     await _repo.agregar(texto);
     ref.invalidateSelf();
     await future;
@@ -31,7 +40,7 @@ class PrioridadesController extends AsyncNotifier<List<Prioridad>> {
 
   Future<void> editarTexto(String id, String texto) async {
     final limpio = texto.trim();
-    if (limpio.isEmpty) return; // no guardar vacío
+    if (limpio.isEmpty) return;
     final actuales = state.value ?? const <Prioridad>[];
     state = AsyncData([
       for (final p in actuales)
@@ -39,8 +48,8 @@ class PrioridadesController extends AsyncNotifier<List<Prioridad>> {
     ]);
     try {
       await _repo.editarTexto(id, limpio);
-    } catch (_) {
-      ref.invalidateSelf();
+    } catch (e) {
+      await _revertir(e);
     }
   }
 
@@ -52,8 +61,8 @@ class PrioridadesController extends AsyncNotifier<List<Prioridad>> {
     ]);
     try {
       await _repo.alternarCompletada(p.id, p.completada);
-    } catch (_) {
-      ref.invalidateSelf();
+    } catch (e) {
+      await _revertir(e);
     }
   }
 
@@ -62,8 +71,8 @@ class PrioridadesController extends AsyncNotifier<List<Prioridad>> {
     state = AsyncData(actuales.where((p) => p.id != id).toList());
     try {
       await _repo.eliminar(id);
-    } catch (_) {
-      ref.invalidateSelf();
+    } catch (e) {
+      await _revertir(e);
     }
   }
 
@@ -74,8 +83,8 @@ class PrioridadesController extends AsyncNotifier<List<Prioridad>> {
     state = AsyncData(reordenadas);
     try {
       await _repo.reordenar(reordenadas);
-    } catch (_) {
-      ref.invalidateSelf();
+    } catch (e) {
+      await _revertir(e);
     }
   }
 }

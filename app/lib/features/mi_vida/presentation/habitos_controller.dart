@@ -24,7 +24,10 @@ class HabitosController extends AsyncNotifier<List<Habito>> {
     try {
       await repo.alternar(h.id, h.hecho);
     } catch (_) {
+      // Revertir en pantalla y avisar: un check que se desmarca solo, sin
+      // explicación, hace que la usuaria deje de confiar en la app.
       ref.invalidateSelf();
+      rethrow;
     }
   }
 }

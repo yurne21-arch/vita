@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/content/versiculos.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/errores.dart';
 import '../../../core/widgets/vita_card.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../profile/presentation/profile_controller.dart';
@@ -32,8 +34,12 @@ const double _kBpTablet = 640;
 
 /// MI VIDA — escritorio editorial responsive. Tres composiciones reales:
 /// 12 columnas (desktop), 2 columnas (tablet), 1 columna (móvil).
-/// Orden: Saludo → Versículo+Reflexión → Hoy importa → Estado → Agenda →
-/// Proyecto → Entrenamiento → Menú → Hábitos → Cierre. Dios arriba.
+/// Orden: Saludo → Versículo → Hoy importa → Estado → Agenda → Proyecto →
+/// Hábitos. Dios arriba.
+///
+/// Solo se muestra lo que existe: no hay tarjetas de módulos futuros
+/// (entrenamiento, menú, cierre del día). Una tarjeta que no hace nada le
+/// cuesta a la usuaria un scroll cada día y no le devuelve nada.
 class MiVidaScreen extends ConsumerWidget {
   const MiVidaScreen({super.key});
 
@@ -85,17 +91,7 @@ class _DesktopLayout extends StatelessWidget {
           children: [
             const _BuenosDias(),
             const SizedBox(height: AppSpacing.xl),
-            // Dios arriba: Versículo amplio (8) + Reflexión (4), igualados.
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: const [
-                  Expanded(flex: 8, child: _Versiculo()),
-                  SizedBox(width: _kGap),
-                  Expanded(flex: 4, child: _Reflexion()),
-                ],
-              ),
-            ),
+            const _Versiculo(), // Dios arriba
             const SizedBox(height: _kGap),
             const _Prioridades(), // protagonista, ancho completo
             const SizedBox(height: _kGap),
@@ -112,18 +108,7 @@ class _DesktopLayout extends StatelessWidget {
               ),
             ),
             const SizedBox(height: _kGap),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Expanded(flex: 3, child: _Entrenamiento()),
-                SizedBox(width: _kGap),
-                Expanded(flex: 3, child: _Menu()),
-                SizedBox(width: _kGap),
-                Expanded(flex: 4, child: _Habitos()),
-              ],
-            ),
-            const SizedBox(height: _kGap),
-            const _CierreDelDia(), // franja final discreta
+            const _Habitos(),
           ],
         ),
       ),
@@ -143,16 +128,7 @@ class _TabletLayout extends StatelessWidget {
       children: [
         const _BuenosDias(),
         const SizedBox(height: AppSpacing.lg),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: const [
-              Expanded(child: _Versiculo()),
-              SizedBox(width: _kGap),
-              Expanded(child: _Reflexion()),
-            ],
-          ),
-        ),
+        const _Versiculo(),
         const SizedBox(height: _kGap),
         const _Prioridades(),
         const SizedBox(height: _kGap),
@@ -169,18 +145,7 @@ class _TabletLayout extends StatelessWidget {
           ),
         ),
         const SizedBox(height: _kGap),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Expanded(child: _Entrenamiento()),
-            SizedBox(width: _kGap),
-            Expanded(child: _Menu()),
-          ],
-        ),
-        const SizedBox(height: _kGap),
         const _Habitos(),
-        const SizedBox(height: _kGap),
-        const _CierreDelDia(),
       ],
     );
   }
@@ -200,8 +165,6 @@ class _MobileLayout extends StatelessWidget {
         SizedBox(height: AppSpacing.md),
         _Versiculo(),
         SizedBox(height: _kGap),
-        _Reflexion(),
-        SizedBox(height: _kGap),
         _Prioridades(),
         SizedBox(height: _kGap),
         _EstadoGeneral(),
@@ -210,13 +173,7 @@ class _MobileLayout extends StatelessWidget {
         SizedBox(height: _kGap),
         _ProyectoPrincipal(),
         SizedBox(height: _kGap),
-        _Entrenamiento(),
-        SizedBox(height: _kGap),
-        _Menu(),
-        SizedBox(height: _kGap),
         _Habitos(),
-        SizedBox(height: _kGap),
-        _CierreDelDia(),
       ],
     );
   }
@@ -267,6 +224,7 @@ class _Versiculo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final v = versiculoDelDia(DateTime.now());
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(28),
@@ -281,7 +239,7 @@ class _Versiculo extends StatelessWidget {
           const _Eyebrow('VERSÍCULO DEL DÍA'),
           const SizedBox(height: AppSpacing.md),
           Text(
-            '"Todo lo puedo en Cristo que me fortalece."',
+            '"${v.texto}"',
             style: TextStyle(
               fontFamily: 'serif',
               fontSize: 20,
@@ -292,42 +250,10 @@ class _Versiculo extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Filipenses 4:13',
+            v.cita,
             style: TextStyle(
               fontFamily: 'serif',
               fontSize: 13,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Reflexion extends StatelessWidget {
-  const _Reflexion();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return VitaCard(
-      padding: _kCardPad,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const _Eyebrow('REFLEXIÓN'),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Un paso con calma. Hoy basta con lo que sí puedes.',
-            style: theme.textTheme.bodyMedium?.copyWith(height: 1.45),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            '¿Cuál es el único paso que importa hoy?',
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontStyle: FontStyle.italic,
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
@@ -370,6 +296,11 @@ class _Prioridades extends ConsumerWidget {
               padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
               child: Center(child: CircularProgressIndicator()),
             )
+          else if (async.hasError && prioridades.isEmpty)
+            ErrorEnTarjeta(
+              mensaje: mensajeDeError(async.error!),
+              onReintentar: () => ref.invalidate(prioridadesControllerProvider),
+            )
           else if (prioridades.isEmpty)
             _PrioridadesVacio(
               onAgregar: () => _dialogoPrioridad(context, ref),
@@ -381,22 +312,34 @@ class _Prioridades extends ConsumerWidget {
                 prioridad: prioridades[i],
                 puedeSubir: i > 0,
                 puedeBajar: i < prioridades.length - 1,
-                onToggle: () => ref
-                    .read(prioridadesControllerProvider.notifier)
-                    .alternar(prioridades[i]),
+                onToggle: () => accionSegura(
+                  context,
+                  () => ref
+                      .read(prioridadesControllerProvider.notifier)
+                      .alternar(prioridades[i]),
+                ),
                 onEditar: () => _dialogoPrioridad(context, ref,
                     existente: prioridades[i]),
-                onEliminar: () => ref
-                    .read(prioridadesControllerProvider.notifier)
-                    .eliminar(prioridades[i].id),
-                onSubir: () => ref
-                    .read(prioridadesControllerProvider.notifier)
-                    .mover(i, -1),
-                onBajar: () => ref
-                    .read(prioridadesControllerProvider.notifier)
-                    .mover(i, 1),
+                onEliminar: () => accionSegura(
+                  context,
+                  () => ref
+                      .read(prioridadesControllerProvider.notifier)
+                      .eliminar(prioridades[i].id),
+                ),
+                onSubir: () => accionSegura(
+                  context,
+                  () => ref
+                      .read(prioridadesControllerProvider.notifier)
+                      .mover(i, -1),
+                ),
+                onBajar: () => accionSegura(
+                  context,
+                  () => ref
+                      .read(prioridadesControllerProvider.notifier)
+                      .mover(i, 1),
+                ),
               ),
-            if (prioridades.length < 3)
+            if (prioridades.length < PrioridadesRepository.maximoPorDia)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.xs),
                 child: _AgregarPrioridad(
@@ -481,22 +424,23 @@ class _PrioridadRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final done = prioridad.completada;
-    final vacio = prioridad.texto.trim().isEmpty;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: onToggle,
-            behavior: HitTestBehavior.opaque,
-            child: Icon(
+          // IconButton (no GestureDetector): garantiza un área táctil de 48dp.
+          IconButton(
+            onPressed: onToggle,
+            tooltip: done ? 'Marcar pendiente' : 'Marcar hecha',
+            visualDensity: VisualDensity.compact,
+            icon: Icon(
               done ? Icons.check_circle : Icons.circle_outlined,
               size: 22,
               color:
                   done ? AppColors.olive : theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(width: AppSpacing.sm),
+          const SizedBox(width: AppSpacing.xs),
           SizedBox(
             width: 18,
             child: Text(
@@ -513,14 +457,11 @@ class _PrioridadRow extends StatelessWidget {
               onTap: onEditar,
               behavior: HitTestBehavior.opaque,
               child: Text(
-                vacio ? 'Prioridad sin texto' : prioridad.texto,
+                prioridad.texto,
                 style: theme.textTheme.bodyLarge?.copyWith(
                   fontWeight: FontWeight.w500,
-                  fontStyle: vacio ? FontStyle.italic : null,
                   decoration: done ? TextDecoration.lineThrough : null,
-                  color: (vacio || done)
-                      ? theme.colorScheme.onSurfaceVariant
-                      : null,
+                  color: done ? theme.colorScheme.onSurfaceVariant : null,
                 ),
               ),
             ),
@@ -610,9 +551,10 @@ Future<void> _dialogoPrioridad(
         actions: [
           if (esEdicion)
             TextButton(
-              onPressed: () {
-                notifier.eliminar(existente.id);
+              onPressed: () async {
                 Navigator.of(ctx).pop();
+                await accionSegura(
+                    context, () => notifier.eliminar(existente.id));
               },
               style: TextButton.styleFrom(foregroundColor: AppColors.danger),
               child: const Text('Eliminar'),
@@ -628,13 +570,17 @@ Future<void> _dialogoPrioridad(
               return FilledButton(
                 onPressed: txt.isEmpty
                     ? null
-                    : () {
-                        if (esEdicion) {
-                          notifier.editarTexto(existente.id, txt);
-                        } else {
-                          notifier.agregar(txt);
-                        }
+                    : () async {
+                        // Cerrar primero y avisar después: si el guardado falla
+                        // (p. ej. el tope de 3), la usuaria ve el motivo en vez
+                        // de un diálogo que se cierra sin más.
                         Navigator.of(ctx).pop();
+                        await accionSegura(
+                          context,
+                          () => esEdicion
+                              ? notifier.editarTexto(existente.id, txt)
+                              : notifier.agregar(txt),
+                        );
                       },
                 child: Text(esEdicion ? 'Guardar' : 'Agregar'),
               );
@@ -652,7 +598,9 @@ class _EstadoGeneral extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final estado = ref.watch(estadoControllerProvider).valueOrNull;
+    final async = ref.watch(estadoControllerProvider);
+    final estado = async.valueOrNull;
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _abrirRegistroEstado(context, ref, estado),
@@ -669,20 +617,26 @@ class _EstadoGeneral extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.lg),
-            Row(
-              children: [
-                _Metric(
-                    label: 'Peso',
-                    value: _fmtPesoCard(
-                        estado?.pesoUltimo, estado?.pesoTendencia)),
-                _Metric(label: 'Energía', value: _fmt15(estado?.energia)),
-                _Metric(
-                    label: 'Sueño',
-                    value: _fmtSuenoCard(
-                        estado?.suenoCalidad, estado?.suenoHoras)),
-                _Metric(label: 'Ánimo', value: _fmt15(estado?.animo)),
-              ],
-            ),
+            if (async.hasError && estado == null)
+              ErrorEnTarjeta(
+                mensaje: mensajeDeError(async.error!),
+                onReintentar: () => ref.invalidate(estadoControllerProvider),
+              )
+            else
+              Row(
+                children: [
+                  _Metric(
+                      label: 'Peso',
+                      value: _fmtPesoCard(
+                          estado?.pesoUltimo, estado?.pesoTendencia)),
+                  _Metric(label: 'Energía', value: _fmt15(estado?.energia)),
+                  _Metric(
+                      label: 'Sueño',
+                      value: _fmtSuenoCard(
+                          estado?.suenoCalidad, estado?.suenoHoras)),
+                  _Metric(label: 'Ánimo', value: _fmt15(estado?.animo)),
+                ],
+              ),
           ],
         ),
       ),
@@ -747,12 +701,13 @@ class _Agenda extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const _Eyebrow('TU DÍA'),
-              GestureDetector(
-                onTap: () => mostrarEditorEvento(context, ref,
-                    fechaSugerida: DateTime(
-                        ahora.year, ahora.month, ahora.day)),
-                behavior: HitTestBehavior.opaque,
-                child: const Icon(Icons.add, size: 18, color: AppColors.olive),
+              IconButton(
+                onPressed: () => mostrarEditorEvento(context, ref,
+                    fechaSugerida:
+                        DateTime(ahora.year, ahora.month, ahora.day)),
+                tooltip: 'Agendar evento',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.add, size: 18, color: AppColors.olive),
               ),
             ],
           ),
@@ -761,6 +716,12 @@ class _Agenda extends ConsumerWidget {
             const Padding(
               padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
               child: Center(child: CircularProgressIndicator()),
+            )
+          else if (async.hasError && eventosHoy.isEmpty)
+            ErrorEnTarjeta(
+              mensaje: mensajeDeError(async.error!),
+              onReintentar: () =>
+                  ref.invalidate(eventosEnRangoProvider(rangoHoy())),
             )
           else if (eventosHoy.isEmpty)
             const _EmptyHint(
@@ -776,15 +737,13 @@ class _Agenda extends ConsumerWidget {
                     mostrarEditorEvento(context, ref, existente: e),
                 onMenu: (op) {
                   final acc = ref.read(agendaAccionesProvider);
-                  if (op == 'realizado') {
-                    acc.cambiarEstado(e.id, 'realizado');
-                  } else if (op == 'pendiente') {
-                    acc.cambiarEstado(e.id, 'pendiente');
-                  } else if (op == 'cancelado') {
-                    acc.cambiarEstado(e.id, 'cancelado');
-                  } else if (op == 'eliminar') {
-                    acc.eliminar(e.id);
-                  }
+                  accionSegura(context, () async {
+                    if (op == 'eliminar') {
+                      await acc.eliminar(e.id);
+                    } else {
+                      await acc.cambiarEstado(e.id, op);
+                    }
+                  });
                 },
               ),
         ],
@@ -901,6 +860,23 @@ class _ProyectoPrincipal extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(proyectoPrincipalProvider);
     final p = async.valueOrNull;
+
+    if (async.hasError && p == null) {
+      return VitaCard(
+        padding: _kCardPad,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _Eyebrow('PROYECTO PRINCIPAL'),
+            const SizedBox(height: AppSpacing.md),
+            ErrorEnTarjeta(
+              mensaje: mensajeDeError(async.error!),
+              onReintentar: () => ref.invalidate(proyectoPrincipalProvider),
+            ),
+          ],
+        ),
+      );
+    }
 
     if (async.isLoading && p == null) {
       return const VitaCard(
@@ -1081,8 +1057,12 @@ class _ProyectoPrincipal extends ConsumerWidget {
                 }
                 // Hay pasos y todos están completos => Completar proyecto.
                 return FilledButton.icon(
-                  onPressed: () =>
-                      ref.read(proyectosAccionesProvider).completarProyecto(p.id),
+                  onPressed: () => accionSegura(
+                    context,
+                    () => ref
+                        .read(proyectosAccionesProvider)
+                        .completarProyecto(p.id),
+                  ),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.success,
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1098,53 +1078,6 @@ class _ProyectoPrincipal extends ConsumerWidget {
     );
   }
 }
-class _Entrenamiento extends StatelessWidget {
-  const _Entrenamiento();
-
-  @override
-  Widget build(BuildContext context) {
-    return const VitaCard(
-      padding: _kCardPad,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _Eyebrow('MOVIMIENTO DE HOY'),
-          SizedBox(height: AppSpacing.sm),
-          _EmptyHint(
-            icon: Icons.fitness_center_outlined,
-            title: 'Aún no tienes un programa.',
-            subtitle: 'Tu entrenamiento aparecerá aquí cuando empieces.',
-            action: 'Crear programa',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Menu extends StatelessWidget {
-  const _Menu();
-
-  @override
-  Widget build(BuildContext context) {
-    return const VitaCard(
-      padding: _kCardPad,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _Eyebrow('TU MENÚ'),
-          SizedBox(height: AppSpacing.sm),
-          _EmptyHint(
-            icon: Icons.restaurant_outlined,
-            title: 'Aún no tienes menú.',
-            subtitle: 'Cuando lo generes, verás aquí qué comer hoy.',
-            action: 'Generar menú',
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 /// Tarjeta secundaria — Hábitos (real, reutiliza el controlador existente).
 class _Habitos extends ConsumerWidget {
@@ -1152,7 +1085,6 @@ class _Habitos extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final habitosAsync = ref.watch(habitosControllerProvider);
 
     return VitaCard(
@@ -1167,8 +1099,10 @@ class _Habitos extends ConsumerWidget {
               padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (e, _) => Text('No se pudieron cargar tus hábitos.',
-                style: theme.textTheme.bodyMedium),
+            error: (e, _) => ErrorEnTarjeta(
+              mensaje: mensajeDeError(e),
+              onReintentar: () => ref.invalidate(habitosControllerProvider),
+            ),
             data: (habitos) {
               if (habitos.isEmpty) {
                 return const _EmptyHint(
@@ -1177,63 +1111,25 @@ class _Habitos extends ConsumerWidget {
                   subtitle: 'Empieza con pocos; menos es más.',
                 );
               }
-              final hechos = habitos.where((h) => h.hecho).length;
+              // Sin contador "x de y": es un marcador, y los marcadores generan
+              // culpa. La usuaria ve sus hábitos, no su nota del día.
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('$hechos de ${habitos.length} hoy',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant)),
-                  const SizedBox(height: AppSpacing.xs),
                   for (final h in habitos)
                     _HabitoRow(
                       habito: h,
-                      onTap: () => ref
-                          .read(habitosControllerProvider.notifier)
-                          .alternar(h),
+                      onTap: () => accionSegura(
+                        context,
+                        () => ref
+                            .read(habitosControllerProvider.notifier)
+                            .alternar(h),
+                      ),
                     ),
                 ],
               );
             },
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CierreDelDia extends StatelessWidget {
-  const _CierreDelDia();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return VitaCard(
-      padding: _kCardPad,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _Eyebrow('CIERRE DEL DÍA'),
-          const SizedBox(height: AppSpacing.sm),
-          Text('¿Cómo estuvo tu día?',
-              style: theme.textTheme.bodyLarge
-                  ?.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: AppSpacing.sm),
-          Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md, vertical: 12),
-            decoration: BoxDecoration(
-              border: Border.all(color: theme.colorScheme.outlineVariant),
-              borderRadius: BorderRadius.circular(AppSpacing.radius),
-            ),
-            child: Text('Lo mejor de hoy fue…',
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text('Disponible esta noche. Sin prisa, sin culpa.',
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
         ],
       ),
     );
@@ -1301,18 +1197,18 @@ class _Metric extends StatelessWidget {
 
 
 
+/// Estado vacío. Sin `action`: un texto que parece enlace pero no lo es enseña
+/// a la usuaria que tocar la pantalla no sirve de nada.
 class _EmptyHint extends StatelessWidget {
   const _EmptyHint({
     required this.icon,
     required this.title,
     required this.subtitle,
-    this.action,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
-  final String? action;
 
   @override
   Widget build(BuildContext context) {
@@ -1336,12 +1232,6 @@ class _EmptyHint extends StatelessWidget {
         Text(subtitle,
             style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant, height: 1.45)),
-        if (action != null) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Text(action!,
-              style: theme.textTheme.labelLarge?.copyWith(
-                  color: AppColors.olive, fontWeight: FontWeight.w600)),
-        ],
       ],
     );
   }

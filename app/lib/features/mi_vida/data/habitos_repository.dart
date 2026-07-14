@@ -4,6 +4,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/data/remote/supabase_service.dart';
 import '../../../core/providers.dart';
 
+/// Error de dominio con un mensaje que se puede mostrar tal cual.
+class HabitosException implements Exception {
+  const HabitosException(this.message);
+  final String message;
+  @override
+  String toString() => message;
+}
+
 /// Un hábito con su estado de HOY (hecho / no hecho).
 class Habito {
   const Habito({
@@ -44,6 +52,14 @@ class HabitosRepository {
     {'nombre': 'Teléfono apagado', 'emoji': '📵', 'hora': '9:00 PM', 'orden': 4},
   ];
 
+  String _userId() {
+    final user = _c.auth.currentUser;
+    if (user == null) {
+      throw const HabitosException('Tu sesión expiró. Vuelve a entrar.');
+    }
+    return user.id;
+  }
+
   String get _hoy {
     final n = DateTime.now();
     final mm = n.month.toString().padLeft(2, '0');
@@ -51,83 +67,100 @@ class HabitosRepository {
     return '${n.year}-$mm-$dd';
   }
 
-  /// Crea los 4 hábitos SOLO si el usuario aún no tiene ninguno activo.
-  Future<void> sembrarSiVacio() async {
-    final user = _c.auth.currentUser;
-    if (user == null) return;
-
-    final existentes = await _c
-        .from('habitos')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('activo', true)
-        .limit(1);
-
-    if ((existentes as List).isNotEmpty) return;
-
-    final filas = _iniciales
-        .map((h) => {
-              'user_id': user.id,
-              'nombre': h['nombre'],
-              'emoji': h['emoji'],
-              'hora': h['hora'],
-              'orden': h['orden'],
-            })
-        .toList();
-
-    await _c.from('habitos').insert(filas);
+  /// Traduce cualquier fallo de Supabase a un mensaje humano.
+  Future<T> _guard<T>(Future<T> Function() accion) async {
+    try {
+      return await accion();
+    } on HabitosException {
+      rethrow;
+    } on PostgrestException catch (e) {
+      throw HabitosException(e.message);
+    } catch (_) {
+      throw const HabitosException(
+        'No pudimos conectar. Revisa tu internet e inténtalo de nuevo.',
+      );
+    }
   }
+
+  /// Crea los 4 hábitos SOLO si el usuario aún no tiene ninguno activo.
+  ///
+  /// Usa `upsert`: si un hábito con el mismo nombre existe pero desactivado, el
+  /// insert violaría `UNIQUE(user_id, nombre)` y dejaría la tarjeta en error.
+  Future<void> sembrarSiVacio() => _guard(() async {
+        final userId = _userId();
+
+        final existentes = await _c
+            .from('habitos')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('activo', true)
+            .limit(1);
+
+        if ((existentes as List).isNotEmpty) return;
+
+        final filas = _iniciales
+            .map((h) => {
+                  'user_id': userId,
+                  'nombre': h['nombre'],
+                  'emoji': h['emoji'],
+                  'hora': h['hora'],
+                  'orden': h['orden'],
+                  'activo': true,
+                })
+            .toList();
+
+        await _c.from('habitos').upsert(filas, onConflict: 'user_id,nombre');
+      });
 
   /// Lee los hábitos del usuario con su estado de HOY.
-  Future<List<Habito>> habitosDeHoy() async {
-    final user = _c.auth.currentUser;
-    if (user == null) return [];
+  Future<List<Habito>> habitosDeHoy() => _guard(() async {
+        final userId = _userId();
 
-    final habitos = await _c
-        .from('habitos')
-        .select('id, nombre, emoji, hora, orden')
-        .eq('user_id', user.id)
-        .eq('activo', true)
-        .order('orden');
+        final resultados = await Future.wait([
+          _c
+              .from('habitos')
+              .select('id, nombre, emoji, hora, orden')
+              .eq('user_id', userId)
+              .eq('activo', true)
+              .order('orden'),
+          _c
+              .from('habitos_log')
+              .select('habito_id, hecho')
+              .eq('user_id', userId)
+              .eq('fecha', _hoy),
+        ]);
 
-    final logs = await _c
-        .from('habitos_log')
-        .select('habito_id, hecho')
-        .eq('user_id', user.id)
-        .eq('fecha', _hoy);
+        final hechos = <String, bool>{};
+        for (final l in (resultados[1] as List)) {
+          hechos[l['habito_id'] as String] = l['hecho'] as bool;
+        }
 
-    final hechos = <String, bool>{};
-    for (final l in (logs as List)) {
-      hechos[l['habito_id'] as String] = l['hecho'] as bool;
-    }
-
-    return (habitos as List)
-        .map((h) => Habito(
-              id: h['id'] as String,
-              nombre: h['nombre'] as String,
-              orden: (h['orden'] as num).toInt(),
-              emoji: h['emoji'] as String?,
-              hora: h['hora'] as String?,
-              hecho: hechos[h['id']] ?? false,
-            ))
-        .toList();
-  }
+        return (resultados[0] as List)
+            .map((h) => Habito(
+                  id: h['id'] as String,
+                  nombre: h['nombre'] as String,
+                  orden: (h['orden'] as num).toInt(),
+                  emoji: h['emoji'] as String?,
+                  hora: h['hora'] as String?,
+                  hecho: hechos[h['id']] ?? false,
+                ))
+            .toList();
+      });
 
   /// Alterna hecho/no-hecho para HOY sin duplicar (1 fila por hábito/fecha).
-  Future<void> alternar(String habitoId, bool estadoActual) async {
-    final user = _c.auth.currentUser;
-    if (user == null) return;
-
-    await _c.from('habitos_log').upsert(
-      {
-        'user_id': user.id,
-        'habito_id': habitoId,
-        'fecha': _hoy,
-        'hecho': !estadoActual,
-      },
-      onConflict: 'habito_id,fecha',
-    );
-  }
+  Future<void> alternar(String habitoId, bool estadoActual) =>
+      _guard(() async {
+        final userId = _userId();
+        await _c.from('habitos_log').upsert(
+          {
+            'user_id': userId,
+            'habito_id': habitoId,
+            'fecha': _hoy,
+            'hecho': !estadoActual,
+          },
+          onConflict: 'habito_id,fecha',
+        );
+      });
 }
 
 final habitosRepositoryProvider = Provider<HabitosRepository>(
