@@ -66,6 +66,10 @@ class _EventoEditorState extends ConsumerState<_EventoEditor> {
   int? _recordatorio; // minutos antes (null = sin)
   bool _guardando = false;
 
+  /// Los recordatorios se cargan en segundo plano al editar. Hasta que lleguen,
+  /// no se tocan al guardar: si no, guardar rápido los borraría todos.
+  bool _recordatoriosCargados = false;
+
   bool get _esEdicion => widget.existente != null;
 
   @override
@@ -81,7 +85,11 @@ class _EventoEditorState extends ConsumerState<_EventoEditor> {
       _horaInicio = TimeOfDay.fromDateTime(e.inicio);
       if (e.fin != null) _horaFin = TimeOfDay.fromDateTime(e.fin!);
     } else if (e == null) {
-      _horaInicio = TimeOfDay.now();
+      final ahora = TimeOfDay.now();
+      _horaInicio = ahora;
+      // Sugerir una hora de duración: sin fin, el evento no cuenta para el
+      // resumen del día y la usuaria tendría que rellenarlo siempre a mano.
+      _horaFin = TimeOfDay(hour: (ahora.hour + 1) % 24, minute: ahora.minute);
     }
     _categoria =
         (e?.categoria != null && kCategorias.contains(e!.categoria))
@@ -92,10 +100,17 @@ class _EventoEditorState extends ConsumerState<_EventoEditor> {
   }
 
   Future<void> _cargarRecordatorio() async {
-    final offsets =
-        await ref.read(agendaAccionesProvider).recordatoriosDe(widget.existente!.id);
-    if (mounted && offsets.isNotEmpty) {
-      setState(() => _recordatorio = offsets.first);
+    try {
+      final offsets = await ref
+          .read(agendaAccionesProvider)
+          .recordatoriosDe(widget.existente!.id);
+      if (!mounted) return;
+      setState(() {
+        _recordatorio = offsets.isNotEmpty ? offsets.first : null;
+        _recordatoriosCargados = true;
+      });
+    } catch (_) {
+      // Si no se pudieron leer, se dejan intactos al guardar.
     }
   }
 
@@ -155,7 +170,11 @@ class _EventoEditorState extends ConsumerState<_EventoEditor> {
       }
     }
 
-    final recordatorios = _recordatorio == null ? <int>[] : [_recordatorio!];
+    // Al editar, si los recordatorios aún no llegaron, se pasan como null para
+    // que no se toquen. Enviar una lista vacía los borraría.
+    final recordatorios = (_esEdicion && !_recordatoriosCargados)
+        ? null
+        : (_recordatorio == null ? <int>[] : [_recordatorio!]);
 
     setState(() => _guardando = true);
     try {
@@ -181,7 +200,7 @@ class _EventoEditorState extends ConsumerState<_EventoEditor> {
           todoElDia: _todoElDia,
           categoria: _categoria,
           importancia: _importancia,
-          recordatorios: recordatorios,
+          recordatorios: recordatorios ?? const [],
         );
       }
       if (mounted) Navigator.of(context).pop();

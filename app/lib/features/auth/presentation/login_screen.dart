@@ -11,6 +11,39 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
+/// Traduce los errores de Supabase Auth a algo que se pueda leer.
+/// Nadie debería ver un `AuthApiException(statusCode: 400)` en su pantalla.
+String _mensajeAuth(Object error) {
+  final t = error.toString().toLowerCase();
+  if (t.contains('invalid login credentials')) {
+    return 'Correo o contraseña incorrectos.';
+  }
+  if (t.contains('user already registered') ||
+      t.contains('already been registered')) {
+    return 'Ya existe una cuenta con ese correo. Inicia sesión.';
+  }
+  if (t.contains('password should be at least')) {
+    return 'La contraseña necesita al menos 6 caracteres.';
+  }
+  if (t.contains('unable to validate email') ||
+      t.contains('invalid email')) {
+    return 'Ese correo no parece válido.';
+  }
+  if (t.contains('email not confirmed')) {
+    return 'Confirma tu correo antes de entrar.';
+  }
+  if (t.contains('signups not allowed') || t.contains('signup is disabled')) {
+    return 'El registro está cerrado.';
+  }
+  if (t.contains('socket') ||
+      t.contains('failed host lookup') ||
+      t.contains('clientexception') ||
+      t.contains('network')) {
+    return 'Sin conexión. Revisa tu internet.';
+  }
+  return 'No pudimos entrar. Inténtalo de nuevo.';
+}
+
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
@@ -20,6 +53,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _email.dispose();
     _password.dispose();
     super.dispose();
+  }
+
+  /// Valida antes de llamar al servidor, para poder decir qué falta.
+  String? _validar() {
+    if (_email.text.trim().isEmpty) return 'Escribe tu correo.';
+    if (!_email.text.contains('@')) return 'Ese correo no parece válido.';
+    if (_password.text.isEmpty) return 'Escribe tu contraseña.';
+    return null;
+  }
+
+  void _entrar({required bool registrando}) {
+    final error = _validar();
+    if (error != null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
+    final auth = ref.read(authControllerProvider.notifier);
+    final correo = _email.text.trim();
+    if (registrando) {
+      auth.signUp(correo, _password.text);
+    } else {
+      auth.signIn(correo, _password.text);
+    }
   }
 
   @override
@@ -32,7 +90,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (next.hasError && !next.isLoading) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text('${next.error}')));
+          ..showSnackBar(
+              SnackBar(content: Text(_mensajeAuth(next.error!))));
       }
     });
 
@@ -71,12 +130,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     decoration: const InputDecoration(labelText: 'Contraseña'),
                   ),
                   const SizedBox(height: AppSpacing.xl),
+                  // Sin botón de "Crear cuenta": el registro está cerrado en
+                  // Supabase (disable_signup), porque VITA es de una sola
+                  // usuaria y la URL es pública. Para volver a abrirlo:
+                  // panel de Supabase → Authentication → Sign In / Providers.
                   FilledButton(
-                    onPressed: isLoading
-                        ? null
-                        : () => ref
-                            .read(authControllerProvider.notifier)
-                            .signIn(_email.text, _password.text),
+                    onPressed:
+                        isLoading ? null : () => _entrar(registrando: false),
                     child: isLoading
                         ? const SizedBox(
                             height: 20,
@@ -84,15 +144,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Text('Iniciar sesión'),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextButton(
-                    onPressed: isLoading
-                        ? null
-                        : () => ref
-                            .read(authControllerProvider.notifier)
-                            .signUp(_email.text, _password.text),
-                    child: const Text('Crear cuenta'),
                   ),
                 ],
               ),

@@ -1,29 +1,38 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers.dart';
 import '../data/projects_repository.dart';
 
 // ╭──────────────────────────────────────────────────────────────╮
 // │ Lecturas — cada provider entrega AsyncValue (loading/error/    │
 // │ data). Las acciones invalidan lo que corresponda.              │
+// │                                                                │
+// │ Todos observan `usuarioActualProvider`: al cambiar de sesión,  │
+// │ se recargan en vez de mostrarle a la nueva usuaria los datos   │
+// │ cacheados de la anterior.                                      │
 // ╰──────────────────────────────────────────────────────────────╯
 
 /// El único proyecto principal de la usuaria (o null).
-final proyectoPrincipalProvider = FutureProvider<Project?>(
-  (ref) => ref.watch(projectsRepositoryProvider).obtenerProyectoPrincipal(),
-);
+final proyectoPrincipalProvider = FutureProvider<Project?>((ref) {
+  ref.watch(usuarioActualProvider);
+  return ref.watch(projectsRepositoryProvider).obtenerProyectoPrincipal();
+});
 
 /// Cartera: proyectos por estado.
-final proyectosActivosProvider = FutureProvider<List<Project>>(
-  (ref) => ref.watch(projectsRepositoryProvider).listarActivos(),
-);
+final proyectosActivosProvider = FutureProvider<List<Project>>((ref) {
+  ref.watch(usuarioActualProvider);
+  return ref.watch(projectsRepositoryProvider).listarActivos();
+});
 
-final proyectosPausadosProvider = FutureProvider<List<Project>>(
-  (ref) => ref.watch(projectsRepositoryProvider).listarPausados(),
-);
+final proyectosPausadosProvider = FutureProvider<List<Project>>((ref) {
+  ref.watch(usuarioActualProvider);
+  return ref.watch(projectsRepositoryProvider).listarPausados();
+});
 
-final proyectosCompletadosProvider = FutureProvider<List<Project>>(
-  (ref) => ref.watch(projectsRepositoryProvider).listarCompletadosArchivados(),
-);
+final proyectosCompletadosProvider = FutureProvider<List<Project>>((ref) {
+  ref.watch(usuarioActualProvider);
+  return ref.watch(projectsRepositoryProvider).listarCompletadosArchivados();
+});
 
 /// Tareas (pasos + hitos) de un proyecto, por id.
 final tareasDeProyectoProvider =
@@ -147,7 +156,6 @@ class ProyectosAcciones {
     String? objetivo,
     String? area,
     DateTime? fechaObjetivo,
-    int? progresoManual,
   }) async {
     await _repo.editarProyecto(
       id,
@@ -156,7 +164,6 @@ class ProyectosAcciones {
       objetivo: objetivo,
       area: area,
       fechaObjetivo: fechaObjetivo,
-      progresoManual: progresoManual,
     );
     _refrescarCartera();
     _refrescarProyecto(id);

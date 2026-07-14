@@ -16,16 +16,13 @@ class AppShell extends StatelessWidget {
           index,
           initialLocation: index == navigationShell.currentIndex,
         ),
+        // Solo pestañas que llevan a algo real. Una pestaña que dice
+        // "próximamente" ocupa un quinto de la navegación para no hacer nada.
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.wb_sunny_outlined),
             selectedIcon: Icon(Icons.wb_sunny),
             label: 'Mi Vida',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.favorite_outline),
-            selectedIcon: Icon(Icons.favorite),
-            label: 'Salud',
           ),
           NavigationDestination(
             icon: Icon(Icons.flag_outlined),
@@ -38,8 +35,9 @@ class AppShell extends StatelessWidget {
             label: 'Calendario',
           ),
           NavigationDestination(
-            icon: Icon(Icons.more_horiz),
-            label: 'Más',
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: 'Ajustes',
           ),
         ],
       ),

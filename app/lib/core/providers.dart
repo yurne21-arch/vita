@@ -12,6 +12,28 @@ import '../features/profile/domain/profile_repository.dart';
 final supabaseServiceProvider =
     Provider<SupabaseService>((ref) => const SupabaseService());
 
+/// Id de la usuaria con sesión abierta (null si no hay ninguna).
+///
+/// Todo controlador que lea datos de una usuaria debe observarlo:
+///
+///     ref.watch(usuarioActualProvider);
+///
+/// Así, al cerrar sesión y entrar otra persona, el estado cacheado se
+/// reconstruye. Sin esto, los hábitos, prioridades y proyectos de la usuaria
+/// anterior seguirían en memoria y se los mostraríamos a la siguiente.
+///
+/// Se expone el id (no la sesión) a propósito: al refrescarse el token, la
+/// sesión cambia pero el id no, y no hay que recargar nada.
+final usuarioActualProvider = Provider<String?>((ref) {
+  final auth = ref.watch(supabaseServiceProvider).client.auth;
+  final sub = auth.onAuthStateChange.listen((evento) {
+    final nuevo = evento.session?.user.id;
+    if (nuevo != ref.state) ref.state = nuevo;
+  });
+  ref.onDispose(sub.cancel);
+  return auth.currentUser?.id;
+});
+
 final localCacheProvider =
     Provider<LocalCacheService>((ref) => const LocalCacheService());
 

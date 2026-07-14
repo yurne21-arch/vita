@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers.dart';
 import '../data/agenda_repository.dart';
 
 /// Rango de fechas desde-hasta que una vista quiere cargar.
@@ -22,6 +23,7 @@ class RangoFechas {
 /// Una sola fuente de lógica; las acciones invalidan toda la familia.
 final eventosEnRangoProvider =
     FutureProvider.family<List<Evento>, RangoFechas>((ref, r) {
+  ref.watch(usuarioActualProvider); // recarga si cambia la sesión
   return ref.watch(agendaRepositoryProvider).eventosEntre(r.desde, r.hasta);
 });
 
@@ -67,12 +69,14 @@ class AgendaAcciones {
       categoria: categoria,
       importancia: importancia,
     );
-    if (id != null && recordatorios.isNotEmpty) {
+    if (recordatorios.isNotEmpty) {
       await _repo.reemplazarRecordatorios(id, recordatorios);
     }
     _refrescar();
   }
 
+  /// [recordatorios] en null significa "no los toques": se usa cuando aún no se
+  /// habían terminado de leer. Una lista vacía sí los borra.
   Future<void> editar(
     String id, {
     required String titulo,
@@ -82,7 +86,7 @@ class AgendaAcciones {
     bool todoElDia = false,
     String? categoria,
     String importancia = 'normal',
-    List<int> recordatorios = const [],
+    List<int>? recordatorios,
   }) async {
     await _repo.editar(
       id,
@@ -94,7 +98,9 @@ class AgendaAcciones {
       categoria: categoria,
       importancia: importancia,
     );
-    await _repo.reemplazarRecordatorios(id, recordatorios);
+    if (recordatorios != null) {
+      await _repo.reemplazarRecordatorios(id, recordatorios);
+    }
     _refrescar();
   }
 

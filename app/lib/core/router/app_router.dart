@@ -4,10 +4,10 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../features/ajustes/presentation/ajustes_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/mi_vida/presentation/mi_vida_screen.dart';
 import '../../features/agenda/presentation/calendario_screen.dart';
-import '../../features/shell/placeholder_screen.dart';
 import '../../features/proyectos/presentation/proyectos_screen.dart';
 import '../widgets/app_shell.dart';
 
@@ -38,14 +38,6 @@ GoRouter createRouter() {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/salud',
-                builder: (_, __) => const PlaceholderScreen(title: 'Salud'),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
                 path: '/proyectos',
                 builder: (_, __) => const ProyectosScreen(),
               ),
@@ -62,8 +54,8 @@ GoRouter createRouter() {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/mas',
-                builder: (_, __) => const PlaceholderScreen(title: 'Más'),
+                path: '/ajustes',
+                builder: (_, __) => const AjustesScreen(),
               ),
             ],
           ),

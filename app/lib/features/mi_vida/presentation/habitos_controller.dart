@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers.dart';
 import '../data/habitos_repository.dart';
 
 /// Carga los hábitos de hoy (sembrando los iniciales la primera vez)
@@ -7,6 +8,7 @@ import '../data/habitos_repository.dart';
 class HabitosController extends AsyncNotifier<List<Habito>> {
   @override
   Future<List<Habito>> build() async {
+    ref.watch(usuarioActualProvider); // recarga si cambia la sesión
     final repo = ref.read(habitosRepositoryProvider);
     await repo.sembrarSiVacio();
     return repo.habitosDeHoy();

@@ -1,11 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers.dart';
 import '../data/estado_repository.dart';
 
 /// Expone el estado de hoy y permite registrar (rápido diario + peso).
 class EstadoController extends AsyncNotifier<EstadoHoy> {
   @override
   Future<EstadoHoy> build() {
+    ref.watch(usuarioActualProvider); // recarga si cambia la sesión
     return ref.read(estadoRepositoryProvider).estadoDeHoy();
   }
 

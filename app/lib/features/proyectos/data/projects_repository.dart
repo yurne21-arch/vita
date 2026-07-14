@@ -55,11 +55,10 @@ class Project {
   bool get archivado => estado == 'archivado';
 
   /// Progreso 0..100 derivado de los PASOS completados.
-  /// Si el proyecto no tiene pasos, usa `progresoManual` (o 0).
+  /// Si el proyecto no tiene pasos, cae en `progresoManual` (o 0 si no hay).
   int progresoCon(List<ProjectTask> tareas) {
     final pasos = tareas.where((t) => t.esPaso).toList();
-    // Sin pasos creados => 0% SIEMPRE (nunca 100).
-    if (pasos.isEmpty) return 0;
+    if (pasos.isEmpty) return progresoManual ?? 0;
     final hechos = pasos.where((t) => t.completada).length;
     return ((hechos / pasos.length) * 100).round();
   }
@@ -301,6 +300,9 @@ class ProjectsRepository {
   }
 
   /// Edita los campos editables del proyecto (no toca estado ni principal).
+  ///
+  /// No escribe `progreso_manual`: el editor nunca lo envía, así que incluirlo
+  /// en el update lo ponía en NULL en cada edición. Se conserva tal como esté.
   Future<void> editarProyecto(
     String id, {
     required String titulo,
@@ -308,7 +310,6 @@ class ProjectsRepository {
     String? objetivo,
     String? area,
     DateTime? fechaObjetivo,
-    int? progresoManual,
   }) =>
       _guard('guardar el proyecto', () async {
         await _c.from('projects').update({
@@ -317,7 +318,6 @@ class ProjectsRepository {
           'objetivo': _limpio(objetivo),
           'area': _limpio(area),
           'fecha_objetivo': _fechaSolo(fechaObjetivo),
-          'progreso_manual': progresoManual,
         }).eq('id', id);
       });
 

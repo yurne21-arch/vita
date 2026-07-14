@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/errores.dart';
 import '../data/agenda_repository.dart';
 import 'agenda_controller.dart';
 import 'evento_editor.dart';
@@ -45,7 +46,9 @@ class CalendarioScreen extends ConsumerStatefulWidget {
 }
 
 class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
-  _Vista _vista = _Vista.mes;
+  // "Hoy" por defecto: en un sistema de vida, la pregunta casi siempre es qué
+  // pasa hoy. El mes obliga a leer una cuadrícula de 42 celdas para saberlo.
+  _Vista _vista = _Vista.hoy;
   late DateTime _mesAncla;
   late DateTime _semanaAncla; // primer día de la ventana de 7 días visible
   late DateTime _diaSeleccionado;
@@ -103,21 +106,24 @@ class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
     final acc = ref.read(agendaAccionesProvider);
     if (op == 'editar') {
       mostrarEditorEvento(context, ref, existente: e);
-    } else if (op == 'realizado') {
-      acc.cambiarEstado(e.id, 'realizado');
-    } else if (op == 'pendiente') {
-      acc.cambiarEstado(e.id, 'pendiente');
-    } else if (op == 'cancelado') {
-      acc.cambiarEstado(e.id, 'cancelado');
-    } else if (op == 'eliminar') {
-      acc.eliminar(e.id);
+      return;
     }
+    accionSegura(context, () async {
+      if (op == 'eliminar') {
+        await acc.eliminar(e.id);
+      } else {
+        await acc.cambiarEstado(e.id, op);
+      }
+    });
   }
 
   void _toggleRealizado(Evento e) {
-    ref
-        .read(agendaAccionesProvider)
-        .cambiarEstado(e.id, e.realizado ? 'pendiente' : 'realizado');
+    accionSegura(
+      context,
+      () => ref
+          .read(agendaAccionesProvider)
+          .cambiarEstado(e.id, e.realizado ? 'pendiente' : 'realizado'),
+    );
   }
 
   void _abrirHojaDia(DateTime fecha, List<Evento> delDia) {
@@ -1587,7 +1593,6 @@ class _ResumenDia extends StatelessWidget {
     final ahora = DateTime.now();
 
     final activos = eventos.where((e) => !e.cancelado).toList();
-    final realizados = eventos.where((e) => e.realizado).length;
 
     // Próximo evento (no cancelado, con hora, que aún no empieza).
     Evento? proximo;
@@ -1662,45 +1667,6 @@ class _ResumenDia extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           Divider(color: cs.outlineVariant.withValues(alpha: 0.4)),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Text('RESUMEN',
-                  style: TextStyle(
-                      fontSize: 11,
-                      letterSpacing: 0.8,
-                      fontWeight: FontWeight.w700,
-                      color: cs.onSurfaceVariant)),
-              const Spacer(),
-              Text('$realizados/${eventos.length} hechos',
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: cs.onSurfaceVariant)),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          // Estructura reservada para sugerencias de IA (aún no activa)
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: AppColors.olive.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: AppColors.olive.withValues(alpha: 0.18)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.auto_awesome_outlined,
-                    size: 18, color: AppColors.oliveSoft),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text('Sugerencias de VITA · próximamente',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.w500)),
-                ),
-              ],
-            ),
-          ),
           const SizedBox(height: AppSpacing.md),
           SizedBox(
             width: double.infinity,

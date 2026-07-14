@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers.dart';
 import '../data/prioridades_repository.dart';
 
 /// Prioridades de hoy con actualización inmediata en pantalla (optimista).
@@ -10,6 +11,7 @@ import '../data/prioridades_repository.dart';
 class PrioridadesController extends AsyncNotifier<List<Prioridad>> {
   @override
   Future<List<Prioridad>> build() {
+    ref.watch(usuarioActualProvider); // recarga si cambia la sesión
     return ref.read(prioridadesRepositoryProvider).prioridadesDeHoy();
   }
 

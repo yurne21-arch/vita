@@ -73,12 +73,16 @@ class AnilloProgreso extends StatelessWidget {
           ),
           if (mostrarTexto)
             Text(
-              '$progreso%',
+              // Un proyecto recién creado no merece un "0%" enorme en la cara:
+              // eso es un juicio, no información. Hasta que haya algo que medir,
+              // el anillo no dice nada.
+              progreso == 0 ? '—' : '$progreso%',
               style: TextStyle(
-                fontSize: tamano * 0.26,
+                fontSize: tamano * (progreso == 0 ? 0.3 : 0.26),
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.5,
-                color: cs.onSurface,
+                color:
+                    progreso == 0 ? cs.onSurfaceVariant : cs.onSurface,
               ),
             ),
         ],

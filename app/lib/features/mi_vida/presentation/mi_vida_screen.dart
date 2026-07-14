@@ -6,7 +6,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/errores.dart';
 import '../../../core/widgets/vita_card.dart';
-import '../../auth/presentation/auth_controller.dart';
 import '../../profile/presentation/profile_controller.dart';
 import '../../salud/data/estado_repository.dart';
 import '../../salud/presentation/estado_controller.dart';
@@ -46,18 +45,11 @@ class MiVidaScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
+      // Cerrar sesión vive en Ajustes: no es una acción de uso diario y no
+      // debería estar a un toque de distancia en la pantalla principal.
       appBar: AppBar(
         titleSpacing: AppSpacing.lg,
         title: const Text('VITA'),
-        actions: [
-          IconButton(
-            tooltip: 'Cerrar sesión',
-            icon: const Icon(Icons.logout),
-            onPressed: () =>
-                ref.read(authControllerProvider.notifier).signOut(),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-        ],
       ),
       body: SafeArea(
         child: LayoutBuilder(
