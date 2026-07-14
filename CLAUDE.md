@@ -65,13 +65,28 @@ supabase/migrations/   docs/{diseno,adr}/
 
 ## Base de datos
 
-Supabase (free tier), PostgreSQL + RLS + Auth + Storage.
+Supabase (free tier), PostgreSQL + RLS + Auth + Storage. Proyecto: `vita-dev` (ref `stxnyopihcfhgpizllxg`, región sa-east-1).
 
 - **Toda tabla nace con RLS.** `user_id` en todas las tablas → política directa `user_id = auth.uid()`, sin joins.
 - IDs `uuid`, tiempos `timestamptz` (UTC), nombres `snake_case`.
-- Las tablas `_events` son **append-only** (solo INSERT/SELECT; se hace `REVOKE UPDATE, DELETE`). El estado actual sale de **vistas**, no de las tablas crudas.
-- Migraciones **forward-only**: una migración aplicada **nunca se edita**; si algo cambia, se crea otra (`<timestamp>_<descripcion>.sql`).
+- Las tablas `_events` son **append-only**: se declaran solo políticas de SELECT e INSERT. Con RLS activa, lo que no tiene política queda denegado, así que el historial no se puede reescribir.
+- Migraciones **forward-only**: una migración aplicada **nunca se edita**; si algo cambia, se crea otra.
 - Diseño futuro (Context Snapshot, `proposals`, 7 guardarraíles de IA, niveles de privacidad) → `docs/diseno/`.
+
+Migraciones actuales:
+
+- `0001_init.sql` — `profiles` + RLS + alta automática de perfil + bucket privado de Storage.
+- `0002_dominios_mvp.sql` — las 12 tablas del MVP: hábitos (`habitos`, `habitos_log`), salud (`weight_events`, `energy_events`, `mood_events`, `sleep_events`), `daily_priorities`, agenda (`events`, `event_reminders`) y proyectos (`projects`, `project_tasks`, `project_log`). Incluye funciones, triggers, índices y las 35 políticas de RLS.
+
+Reglas de negocio que viven en la BD (triggers): máximo 3 prioridades por día (`dp_max_tres`); un solo proyecto principal y solo si está activo (`projects_principal_guard`, más un índice único parcial de respaldo); estampado de `completada_at` al completar un paso.
+
+`db pull` y `db dump` de la CLI **requieren Docker**, que no está instalado. Para inspeccionar el esquema remoto, usar la Management API:
+
+```bash
+curl -s -X POST "https://api.supabase.com/v1/projects/stxnyopihcfhgpizllxg/database/query" \
+  -H "Authorization: Bearer $(security find-generic-password -s 'Supabase CLI' -w)" \
+  -H "Content-Type: application/json" -d '{"query":"select 1"}'
+```
 
 ## Git
 
@@ -79,10 +94,7 @@ Trunk-based, sin rama `develop`. Ramas `feat/*` y `fix/*`. Conventional Commits 
 
 ## ⚠️ Deuda técnica conocida (leer antes de tocar datos)
 
-1. **Faltan migraciones.** El código usa 13 tablas, pero `supabase/migrations/` solo define `profiles`. Estas se crearon a mano en el panel de Supabase y **no están versionadas**:
-   `projects` · `project_tasks` · `project_log` · `events` · `event_reminders` · `daily_priorities` · `habitos` · `habitos_log` · `weight_events` · `sleep_events` · `energy_events` · `mood_events`
-   → No se puede reconstruir la BD desde cero. Pendiente: volcar el esquema real a una migración `0002_*.sql`.
-2. **Drift está desactivado.** `core/data/local/app_database.dart` quedó vacío a propósito: SQLite rompía el arranque en Flutter Web (`reading init`). Hoy **no hay caché offline**; la fuente de verdad es Supabase y la app requiere conexión.
+1. **Drift está desactivado.** `core/data/local/app_database.dart` quedó vacío a propósito: SQLite rompía el arranque en Flutter Web (`reading init`). Hoy **no hay caché offline**; la fuente de verdad es Supabase y la app requiere conexión.
 3. **Los docs van por delante del código.** `docs/diseno/` describe Drift, i18n, outbox y motor de IA que aún no existen. El código manda; los docs son el destino, no el estado.
 4. **Nombres mezclados es/en** en la BD (`habitos` vs `weight_events`). Unificar al crear la migración 0002.
 
