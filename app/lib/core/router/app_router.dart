@@ -8,6 +8,7 @@ import '../../features/ajustes/presentation/ajustes_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/mi_vida/presentation/mi_vida_screen.dart';
 import '../../features/agenda/presentation/calendario_screen.dart';
+import '../../features/finanzas/presentation/finanzas_screen.dart';
 import '../../features/proyectos/presentation/proyectos_screen.dart';
 import '../widgets/app_shell.dart';
 
@@ -48,6 +49,14 @@ GoRouter createRouter() {
               GoRoute(
                 path: '/calendario',
                 builder: (_, __) => const CalendarioScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/finanzas',
+                builder: (_, __) => const FinanzasScreen(),
               ),
             ],
           ),
