@@ -73,6 +73,8 @@ class FinanzasRepository {
     required String ambito,
     required DateTime fecha,
     String? nota,
+    String? quien,
+    bool compartido = false,
   }) =>
       _guard(() async {
         final userId = _userId();
@@ -89,6 +91,8 @@ class FinanzasRepository {
           'categoria': categoria.trim(),
           'ambito': ambito,
           'nota': (nota == null || nota.trim().isEmpty) ? null : nota.trim(),
+          'quien': quien,
+          'compartido': compartido,
           'fecha': _fechaSolo(fecha),
         });
       });
@@ -100,6 +104,8 @@ class FinanzasRepository {
     required String ambito,
     required DateTime fecha,
     String? nota,
+    String? quien,
+    bool compartido = false,
   }) =>
       _guard(() async {
         if (monto <= 0) {
@@ -110,12 +116,30 @@ class FinanzasRepository {
           'categoria': categoria.trim(),
           'ambito': ambito,
           'nota': (nota == null || nota.trim().isEmpty) ? null : nota.trim(),
+          'quien': quien,
+          'compartido': compartido,
           'fecha': _fechaSolo(fecha),
         }).eq('id', id);
       });
 
   Future<void> eliminarMovimiento(String id) => _guard(() async {
         await _c.from('finance_transactions').delete().eq('id', id);
+      });
+
+  /// Primer día del mes más reciente con movimientos (o null si no hay).
+  /// Sirve para abrir Finanzas donde están los datos, no en un mes vacío.
+  Future<DateTime?> ultimoMesConDatos() => _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('finance_transactions')
+            .select('fecha')
+            .eq('user_id', userId)
+            .order('fecha', ascending: false)
+            .limit(1);
+        final l = rows as List;
+        if (l.isEmpty) return null;
+        final f = DateTime.parse(l.first['fecha'] as String);
+        return DateTime(f.year, f.month, 1);
       });
 
   /// Resumen agregado del mes (gastos, ingresos, gasto por categoría).
@@ -220,6 +244,80 @@ class FinanzasRepository {
 
   Future<void> eliminarDeuda(String id) => _guard(() async {
         await _c.from('finance_debts').delete().eq('id', id);
+      });
+
+  // ── Tarjetas ─────────────────────────────────────────────────
+
+  Future<List<Tarjeta>> tarjetas() => _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('finance_cards')
+            .select(
+                'id, nombre, titular, cupo, saldo_deuda, cuota_mes, dia_cierre, dia_pago')
+            .eq('user_id', userId)
+            .order('orden');
+        return (rows as List)
+            .map((m) => Tarjeta.fromMap(m as Map<String, dynamic>))
+            .toList();
+      });
+
+  // ── Créditos / deudas estructuradas ──────────────────────────
+
+  Future<List<Credito>> creditos() => _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('finance_loans')
+            .select(
+                'id, nombre, cuota_mensual, monto_total, saldada, fin, progreso')
+            .eq('user_id', userId)
+            .order('orden');
+        return (rows as List)
+            .map((m) => Credito.fromMap(m as Map<String, dynamic>))
+            .toList();
+      });
+
+  // ── Metas de ahorro ──────────────────────────────────────────
+
+  Future<List<Meta>> metas() => _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('finance_goals')
+            .select('id, label, emoji, meta_monto, ahorrado, cumplida')
+            .eq('user_id', userId)
+            .order('orden');
+        return (rows as List)
+            .map((m) => Meta.fromMap(m as Map<String, dynamic>))
+            .toList();
+      });
+
+  // ── Tricount: balance del reparto compartido ─────────────────
+
+  /// Suma los gastos compartidos por [quien]. Base del "quién le debe a quién".
+  /// Se calcula sobre todo el historial (no por mes): es un saldo acumulado.
+  Future<BalanceCompartido> balanceCompartido() => _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('finance_transactions')
+            .select('monto, quien')
+            .eq('user_id', userId)
+            .eq('tipo', 'gasto')
+            .eq('compartido', true);
+        var yurby = 0.0;
+        var juan = 0.0;
+        for (final r in (rows as List)) {
+          final monto = (r['monto'] as num).toDouble();
+          final quien = r['quien'] as String?;
+          if (quien == 'Juan') {
+            juan += monto;
+          } else if (quien == 'Yurby') {
+            yurby += monto;
+          } else {
+            // 'Ambos' o sin dato: se reparte por igual, no desequilibra.
+            yurby += monto / 2;
+            juan += monto / 2;
+          }
+        }
+        return BalanceCompartido(puestoPorYurby: yurby, puestoPorJuan: juan);
       });
 }
 

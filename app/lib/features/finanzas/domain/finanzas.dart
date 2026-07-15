@@ -10,6 +10,10 @@ class Movimiento {
     required this.ambito,
     required this.fecha,
     this.nota,
+    this.quien,
+    this.compartido = false,
+    this.metodo,
+    this.tarjeta,
   });
 
   final String id;
@@ -19,6 +23,10 @@ class Movimiento {
   final String ambito; // 'personal' | 'casa'
   final DateTime fecha; // date (sin hora)
   final String? nota;
+  final String? quien; // 'Yurby' | 'Juan' | 'Ambos'
+  final bool compartido; // se reparte entre ambos
+  final String? metodo; // 'efectivo' | 'tarjeta' | 'cuenta'
+  final String? tarjeta; // medio de pago (texto libre)
 
   bool get esGasto => tipo == 'gasto';
   bool get esIngreso => tipo == 'ingreso';
@@ -34,7 +42,132 @@ class Movimiento {
         ambito: (m['ambito'] as String?) ?? 'personal',
         fecha: DateTime.parse(m['fecha'] as String),
         nota: m['nota'] as String?,
+        quien: m['quien'] as String?,
+        compartido: (m['compartido'] as bool?) ?? false,
+        metodo: m['metodo'] as String?,
+        tarjeta: m['tarjeta'] as String?,
       );
+}
+
+/// Tarjeta de crédito.
+class Tarjeta {
+  const Tarjeta({
+    required this.id,
+    required this.nombre,
+    required this.cupo,
+    required this.saldoDeuda,
+    required this.cuotaMes,
+    this.titular,
+    this.diaCierre,
+    this.diaPago,
+  });
+
+  final String id;
+  final String nombre;
+  final String? titular;
+  final double cupo;
+  final double saldoDeuda;
+  final double cuotaMes;
+  final int? diaCierre;
+  final int? diaPago;
+
+  double get disponible => (cupo - saldoDeuda).clamp(0, cupo);
+  double get usoFraccion => cupo <= 0 ? 0 : (saldoDeuda / cupo).clamp(0.0, 1.0);
+
+  factory Tarjeta.fromMap(Map<String, dynamic> m) => Tarjeta(
+        id: m['id'] as String,
+        nombre: m['nombre'] as String,
+        titular: m['titular'] as String?,
+        cupo: (m['cupo'] as num?)?.toDouble() ?? 0,
+        saldoDeuda: (m['saldo_deuda'] as num?)?.toDouble() ?? 0,
+        cuotaMes: (m['cuota_mes'] as num?)?.toDouble() ?? 0,
+        diaCierre: (m['dia_cierre'] as num?)?.toInt(),
+        diaPago: (m['dia_pago'] as num?)?.toInt(),
+      );
+}
+
+/// Crédito o deuda estructurada (hipoteca, crédito de consumo, etc.).
+class Credito {
+  const Credito({
+    required this.id,
+    required this.nombre,
+    required this.cuotaMensual,
+    required this.montoTotal,
+    required this.saldada,
+    this.fin,
+    this.progreso,
+  });
+
+  final String id;
+  final String nombre;
+  final double cuotaMensual;
+  final double montoTotal;
+  final bool saldada;
+  final String? fin; // etiqueta libre, ej. "Abr 2051"
+  final int? progreso; // 0..100
+
+  factory Credito.fromMap(Map<String, dynamic> m) => Credito(
+        id: m['id'] as String,
+        nombre: m['nombre'] as String,
+        cuotaMensual: (m['cuota_mensual'] as num?)?.toDouble() ?? 0,
+        montoTotal: (m['monto_total'] as num?)?.toDouble() ?? 0,
+        saldada: m['saldada'] as bool? ?? false,
+        fin: m['fin'] as String?,
+        progreso: (m['progreso'] as num?)?.toInt(),
+      );
+}
+
+/// Meta de ahorro (sueño con monto).
+class Meta {
+  const Meta({
+    required this.id,
+    required this.label,
+    required this.metaMonto,
+    required this.ahorrado,
+    required this.cumplida,
+    this.emoji,
+  });
+
+  final String id;
+  final String label;
+  final String? emoji;
+  final double metaMonto;
+  final double ahorrado;
+  final bool cumplida;
+
+  double get fraccion =>
+      metaMonto <= 0 ? 0 : (ahorrado / metaMonto).clamp(0.0, 1.0);
+
+  factory Meta.fromMap(Map<String, dynamic> m) => Meta(
+        id: m['id'] as String,
+        label: m['label'] as String,
+        emoji: m['emoji'] as String?,
+        metaMonto: (m['meta_monto'] as num?)?.toDouble() ?? 0,
+        ahorrado: (m['ahorrado'] as num?)?.toDouble() ?? 0,
+        cumplida: m['cumplida'] as bool? ?? false,
+      );
+}
+
+/// Balance del reparto compartido (Tricount): cuánto puso cada quien de los
+/// gastos marcados como compartidos, y quién le debe a quién para equilibrar.
+class BalanceCompartido {
+  const BalanceCompartido({
+    required this.puestoPorYurby,
+    required this.puestoPorJuan,
+  });
+
+  final double puestoPorYurby;
+  final double puestoPorJuan;
+
+  double get total => puestoPorYurby + puestoPorJuan;
+  double get mitad => total / 2;
+
+  /// Diferencia respecto a partes iguales. Positivo: a Yurby le deben.
+  double get aFavorDeYurby => puestoPorYurby - mitad;
+
+  bool get equilibrado => aFavorDeYurby.abs() < 1;
+  bool get juanLeDebeAYurby => aFavorDeYurby > 0;
+  double get montoAjuste => aFavorDeYurby.abs();
 }
 
 /// Presupuesto mensual para una categoría.

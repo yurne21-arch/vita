@@ -6,11 +6,21 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/moneda.dart';
 import '../../../core/widgets/errores.dart';
 import '../../../core/widgets/vita_card.dart';
+import '../data/finanzas_repository.dart';
 import '../domain/finanzas.dart';
 import 'finanzas_controller.dart';
 import 'finanzas_editores.dart';
 
-enum _Seccion { movimientos, presupuestos, deudas }
+enum _Seccion { movimientos, presupuesto, tarjetas, creditos, metas, deudas }
+
+const _labels = {
+  _Seccion.movimientos: 'Movimientos',
+  _Seccion.presupuesto: 'Presupuesto',
+  _Seccion.tarjetas: 'Tarjetas',
+  _Seccion.creditos: 'Créditos',
+  _Seccion.metas: 'Metas',
+  _Seccion.deudas: 'Cuentas entre personas',
+};
 
 class FinanzasScreen extends ConsumerStatefulWidget {
   const FinanzasScreen({super.key});
@@ -22,20 +32,43 @@ class FinanzasScreen extends ConsumerStatefulWidget {
 class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
   _Seccion _seccion = _Seccion.movimientos;
 
+  @override
+  void initState() {
+    super.initState();
+    // Abrir en el último mes con datos (los movimientos importados son de meses
+    // pasados; abrir en el mes actual mostraría una pantalla vacía).
+    Future.microtask(() async {
+      try {
+        final ult =
+            await ref.read(finanzasRepositoryProvider).ultimoMesConDatos();
+        if (ult != null && mounted) {
+          ref.read(mesFinanzasProvider.notifier).state = ult;
+        }
+      } catch (_) {/* si falla, se queda en el mes actual */}
+    });
+  }
+
   void _cambiarMes(int delta) {
     final actual = ref.read(mesFinanzasProvider);
     ref.read(mesFinanzasProvider.notifier).state =
         DateTime(actual.year, actual.month + delta, 1);
   }
 
+  bool get _puedeAgregar => switch (_seccion) {
+        _Seccion.movimientos || _Seccion.presupuesto || _Seccion.deudas => true,
+        _ => false,
+      };
+
   void _agregar() {
     switch (_seccion) {
       case _Seccion.movimientos:
         _menuMovimiento();
-      case _Seccion.presupuestos:
+      case _Seccion.presupuesto:
         mostrarEditorPresupuesto(context, ref);
       case _Seccion.deudas:
         mostrarEditorDeuda(context, ref);
+      default:
+        break;
     }
   }
 
@@ -72,17 +105,22 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
   @override
   Widget build(BuildContext context) {
     final mes = ref.watch(mesFinanzasProvider);
+    final mostrarMes =
+        _seccion == _Seccion.movimientos || _seccion == _Seccion.presupuesto;
+
     return Scaffold(
       appBar: AppBar(
         titleSpacing: AppSpacing.lg,
         title: const Text('Finanzas'),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _agregar,
-        backgroundColor: AppColors.accent,
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: _puedeAgregar
+          ? FloatingActionButton(
+              onPressed: _agregar,
+              backgroundColor: AppColors.accent,
+              foregroundColor: Colors.white,
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -91,10 +129,12 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
               padding: const EdgeInsets.fromLTRB(
                   AppSpacing.md, AppSpacing.md, AppSpacing.md, 96),
               children: [
-                _SelectorMes(mes: mes, onCambiar: _cambiarMes),
-                const SizedBox(height: AppSpacing.md),
-                const _ResumenCard(),
-                const SizedBox(height: AppSpacing.md),
+                if (mostrarMes) ...[
+                  _SelectorMes(mes: mes, onCambiar: _cambiarMes),
+                  const SizedBox(height: AppSpacing.md),
+                  const _ResumenCard(),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 _SelectorSeccion(
                   seccion: _seccion,
                   onChanged: (s) => setState(() => _seccion = s),
@@ -102,7 +142,10 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
                 const SizedBox(height: AppSpacing.md),
                 switch (_seccion) {
                   _Seccion.movimientos => const _Movimientos(),
-                  _Seccion.presupuestos => const _Presupuestos(),
+                  _Seccion.presupuesto => const _Presupuestos(),
+                  _Seccion.tarjetas => const _Tarjetas(),
+                  _Seccion.creditos => const _Creditos(),
+                  _Seccion.metas => const _Metas(),
                   _Seccion.deudas => const _Deudas(),
                 },
               ],
@@ -132,11 +175,9 @@ class _SelectorMes extends StatelessWidget {
           icon: const Icon(Icons.chevron_left),
           tooltip: 'Mes anterior',
         ),
-        Text(
-          '${_mesNombre(mes.month)} ${mes.year}',
-          style: theme.textTheme.titleMedium
-              ?.copyWith(fontWeight: FontWeight.w700),
-        ),
+        Text('${_mesNombre(mes.month)} ${mes.year}',
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700)),
         IconButton(
           onPressed: () => onCambiar(1),
           icon: const Icon(Icons.chevron_right),
@@ -187,29 +228,26 @@ class _ResumenCard extends ConsumerWidget {
                 color: AppColors.accent,
               )),
           const SizedBox(height: AppSpacing.xs),
-          Text(
-            formatoMoneda(r.balance),
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: balancePos ? theme.colorScheme.onSurface : AppColors.danger,
-            ),
-          ),
+          Text(formatoMoneda(r.balance),
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color:
+                    balancePos ? theme.colorScheme.onSurface : AppColors.danger,
+              )),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
               Expanded(
                 child: _MiniStat(
-                  label: 'Ingresos',
-                  valor: formatoMoneda(r.ingresos),
-                  color: AppColors.success,
-                ),
+                    label: 'Ingresos',
+                    valor: formatoMoneda(r.ingresos),
+                    color: AppColors.success),
               ),
               Expanded(
                 child: _MiniStat(
-                  label: 'Gastos',
-                  valor: formatoMoneda(r.gastos),
-                  color: AppColors.danger,
-                ),
+                    label: 'Gastos',
+                    valor: formatoMoneda(r.gastos),
+                    color: AppColors.danger),
               ),
             ],
           ),
@@ -243,7 +281,7 @@ class _MiniStat extends StatelessWidget {
   }
 }
 
-// ── Selector de sección ──────────────────────────────────────────
+// ── Selector de sección (chips horizontales) ─────────────────────
 
 class _SelectorSeccion extends StatelessWidget {
   const _SelectorSeccion({required this.seccion, required this.onChanged});
@@ -252,46 +290,103 @@ class _SelectorSeccion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    const items = [
-      (_Seccion.movimientos, 'Movimientos'),
-      (_Seccion.presupuestos, 'Presupuestos'),
-      (_Seccion.deudas, 'Deudas'),
-    ];
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(AppSpacing.radius),
-      ),
-      child: Row(
+    return SizedBox(
+      height: 38,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
         children: [
-          for (final (s, label) in items)
-            Expanded(
-              child: GestureDetector(
-                onTap: () => onChanged(s),
-                child: Container(
-                  height: 38,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color:
-                        seccion == s ? AppColors.accent : Colors.transparent,
-                    borderRadius: BorderRadius.circular(AppSpacing.radius - 3),
-                  ),
-                  child: Text(
-                    label,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: seccion == s
-                          ? Colors.white
-                          : theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
+          for (final s in _Seccion.values)
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.sm),
+              child: ChoiceChip(
+                label: Text(_labels[s]!),
+                selected: seccion == s,
+                onSelected: (_) => onChanged(s),
               ),
             ),
         ],
       ),
+    );
+  }
+}
+
+// ── Tricount: reparto compartido ─────────────────────────────────
+
+class _TricountCard extends ConsumerWidget {
+  const _TricountCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final b = ref.watch(balanceCompartidoProvider).valueOrNull;
+    if (b == null || b.total == 0) {
+      return const _Vacio(
+        icon: Icons.groups_outlined,
+        titulo: 'Sin gastos compartidos.',
+        subtitulo:
+            'Marca un gasto como compartido y verás aquí quién le debe a quién.',
+      );
+    }
+    final texto = b.equilibrado
+        ? 'Están a mano.'
+        : b.juanLeDebeAYurby
+            ? 'Juan le debe a Yurby'
+            : 'Yurby le debe a Juan';
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: AppColors.accent.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            border: Border.all(color: AppColors.accent.withValues(alpha: 0.20)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('REPARTO COMPARTIDO',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    letterSpacing: 1.2,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.accent,
+                  )),
+              const SizedBox(height: AppSpacing.xs),
+              Text(texto,
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600)),
+              if (!b.equilibrado)
+                Text(formatoMoneda(b.montoAjuste),
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w700, color: AppColors.accent)),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: _MiniStat(
+                        label: 'Puso Yurby',
+                        valor: formatoMoneda(b.puestoPorYurby),
+                        color: theme.colorScheme.onSurface),
+                  ),
+                  Expanded(
+                    child: _MiniStat(
+                        label: 'Puso Juan',
+                        valor: formatoMoneda(b.puestoPorJuan),
+                        color: theme.colorScheme.onSurface),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          'El total compartido se reparte por igual. La diferencia es lo que '
+          'falta para quedar a mano.',
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+      ],
     );
   }
 }
@@ -321,7 +416,7 @@ class _Movimientos extends ConsumerWidget {
           return const _Vacio(
             icon: Icons.receipt_long_outlined,
             titulo: 'Sin movimientos este mes.',
-            subtitulo: 'Toca + para registrar tu primer gasto o ingreso.',
+            subtitulo: 'Toca + para registrar un gasto o ingreso.',
           );
         }
         return VitaCard(
@@ -350,6 +445,12 @@ class _MovimientoRow extends ConsumerWidget {
     final theme = Theme.of(context);
     final m = movimiento;
     final color = m.esGasto ? AppColors.danger : AppColors.success;
+    final detalle = [
+      if (m.quien != null) m.quien,
+      if (m.compartido) 'compartido',
+      if (m.nota != null) m.nota,
+      _fechaCorta(m.fecha),
+    ].join(' · ');
     return InkWell(
       onTap: () => mostrarEditorMovimiento(context, ref, existente: m),
       borderRadius: BorderRadius.circular(AppSpacing.radius),
@@ -371,23 +472,18 @@ class _MovimientoRow extends ConsumerWidget {
                   Text(m.categoria,
                       style: theme.textTheme.bodyLarge
                           ?.copyWith(fontWeight: FontWeight.w600)),
-                  Text(
-                    '${m.ambito == 'casa' ? 'Casa' : 'Personal'}'
-                    '${m.nota != null ? ' · ${m.nota}' : ''} · ${_fechaCorta(m.fecha)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
+                  Text(detalle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant)),
                 ],
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            Text(
-              '${m.esGasto ? '-' : '+'}${formatoMoneda(m.monto)}',
-              style: theme.textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w700, color: color),
-            ),
+            Text('${m.esGasto ? '-' : '+'}${formatoMoneda(m.monto)}',
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700, color: color)),
             PopupMenuButton<String>(
               icon: Icon(Icons.more_vert,
                   size: 18, color: theme.colorScheme.onSurfaceVariant),
@@ -424,7 +520,8 @@ class _Presupuestos extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final presAsync = ref.watch(presupuestosProvider);
-    final resumen = ref.watch(resumenMesProvider).valueOrNull ?? ResumenMes.vacio;
+    final resumen =
+        ref.watch(resumenMesProvider).valueOrNull ?? ResumenMes.vacio;
 
     return presAsync.when(
       loading: () => const Padding(
@@ -538,14 +635,15 @@ class _PresupuestoRow extends ConsumerWidget {
   }
 }
 
-// ── Deudas ───────────────────────────────────────────────────────
+// ── Tarjetas ─────────────────────────────────────────────────────
 
-class _Deudas extends ConsumerWidget {
-  const _Deudas();
+class _Tarjetas extends ConsumerWidget {
+  const _Tarjetas();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(deudasProvider);
+    final theme = Theme.of(context);
+    final async = ref.watch(tarjetasProvider);
     return async.when(
       loading: () => const Padding(
         padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
@@ -555,38 +653,280 @@ class _Deudas extends ConsumerWidget {
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: ErrorEnTarjeta(
           mensaje: mensajeDeError(e),
-          onReintentar: () => ref.invalidate(deudasProvider),
+          onReintentar: () => ref.invalidate(tarjetasProvider),
         ),
       ),
-      data: (deudas) {
-        if (deudas.isEmpty) {
+      data: (tarjetas) {
+        if (tarjetas.isEmpty) {
           return const _Vacio(
-            icon: Icons.handshake_outlined,
-            titulo: 'Sin deudas registradas.',
-            subtitulo: 'Anota lo que debes o lo que te deben. Nada se olvida.',
+            icon: Icons.credit_card_outlined,
+            titulo: 'Sin tarjetas.',
+            subtitulo: 'Aquí verás el cupo y la deuda de tus tarjetas.',
           );
         }
-        final pendientes = deudas.where((d) => !d.saldada).toList();
-        final saldadas = deudas.where((d) => d.saldada).toList();
         return Column(
           children: [
-            for (final d in pendientes)
-              _DeudaRow(deuda: d),
-            if (saldadas.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.sm),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Saldadas',
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color:
-                            Theme.of(context).colorScheme.onSurfaceVariant)),
+            for (final t in tarjetas)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: VitaCard(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(t.nombre,
+                                style: theme.textTheme.bodyLarge
+                                    ?.copyWith(fontWeight: FontWeight.w600)),
+                          ),
+                          Text('Cuota ${formatoMoneda(t.cuotaMes)}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant)),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: t.usoFraccion,
+                          minHeight: 8,
+                          backgroundColor:
+                              theme.colorScheme.surfaceContainerHighest,
+                          color: t.usoFraccion > 0.8
+                              ? AppColors.danger
+                              : AppColors.accent,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'Deuda ${formatoMoneda(t.saldoDeuda)} · '
+                        'Disponible ${formatoMoneda(t.disponible)} de ${formatoMoneda(t.cupo)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(height: AppSpacing.xs),
-              for (final d in saldadas) _DeudaRow(deuda: d),
-            ],
           ],
         );
       },
+    );
+  }
+}
+
+// ── Créditos ─────────────────────────────────────────────────────
+
+class _Creditos extends ConsumerWidget {
+  const _Creditos();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final async = ref.watch(creditosProvider);
+    return async.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => VitaCard(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: ErrorEnTarjeta(
+          mensaje: mensajeDeError(e),
+          onReintentar: () => ref.invalidate(creditosProvider),
+        ),
+      ),
+      data: (creditos) {
+        if (creditos.isEmpty) {
+          return const _Vacio(
+            icon: Icons.account_balance_outlined,
+            titulo: 'Sin créditos.',
+            subtitulo: 'Tus créditos y su avance aparecerán aquí.',
+          );
+        }
+        final cuotaTotal =
+            creditos.where((c) => !c.saldada).fold<double>(0, (a, c) => a + c.cuotaMensual);
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Text('Cuotas del mes: ${formatoMoneda(cuotaTotal)}',
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.w600)),
+            ),
+            for (final c in creditos)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: VitaCard(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(c.nombre,
+                                style: theme.textTheme.bodyLarge
+                                    ?.copyWith(fontWeight: FontWeight.w600)),
+                          ),
+                          Text('Cuota ${formatoMoneda(c.cuotaMensual)}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant)),
+                        ],
+                      ),
+                      if (c.progreso != null) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: LinearProgressIndicator(
+                            value: (c.progreso! / 100).clamp(0.0, 1.0),
+                            minHeight: 8,
+                            backgroundColor:
+                                theme.colorScheme.surfaceContainerHighest,
+                            color: AppColors.success,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'Total ${formatoMoneda(c.montoTotal)}'
+                        '${c.fin != null ? ' · hasta ${c.fin}' : ''}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// ── Metas ────────────────────────────────────────────────────────
+
+class _Metas extends ConsumerWidget {
+  const _Metas();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final async = ref.watch(metasProvider);
+    return async.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => VitaCard(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: ErrorEnTarjeta(
+          mensaje: mensajeDeError(e),
+          onReintentar: () => ref.invalidate(metasProvider),
+        ),
+      ),
+      data: (metas) {
+        if (metas.isEmpty) {
+          return const _Vacio(
+            icon: Icons.flag_outlined,
+            titulo: 'Sin metas.',
+            subtitulo: 'Tus sueños con monto aparecerán aquí.',
+          );
+        }
+        return Column(
+          children: [
+            for (final m in metas)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: VitaCard(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text('${m.emoji ?? '🎯'}  ',
+                              style: const TextStyle(fontSize: 18)),
+                          Expanded(
+                            child: Text(m.label,
+                                style: theme.textTheme.bodyLarge
+                                    ?.copyWith(fontWeight: FontWeight.w600)),
+                          ),
+                          Text(formatoMoneda(m.metaMonto),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant)),
+                        ],
+                      ),
+                      if (m.ahorrado > 0) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: LinearProgressIndicator(
+                            value: m.fraccion,
+                            minHeight: 8,
+                            backgroundColor:
+                                theme.colorScheme.surfaceContainerHighest,
+                            color: AppColors.accent,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// ── Cuentas entre personas (Tricount) ────────────────────────────
+
+class _Deudas extends ConsumerWidget {
+  const _Deudas();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(deudasProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _TricountCard(),
+        const SizedBox(height: AppSpacing.lg),
+        Text('Otras cuentas',
+            style: Theme.of(context)
+                .textTheme
+                .labelLarge
+                ?.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: AppSpacing.sm),
+        async.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (e, _) => VitaCard(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: ErrorEnTarjeta(
+              mensaje: mensajeDeError(e),
+              onReintentar: () => ref.invalidate(deudasProvider),
+            ),
+          ),
+          data: (deudas) {
+            if (deudas.isEmpty) {
+              return const _Vacio(
+                icon: Icons.handshake_outlined,
+                titulo: 'Sin cuentas puntuales.',
+                subtitulo: 'Anota una deuda suelta con + (yo debo / me deben).',
+              );
+            }
+            return Column(children: [for (final d in deudas) _DeudaRow(deuda: d)]);
+          },
+        ),
+      ],
     );
   }
 }
@@ -630,9 +970,7 @@ class _DeudaRow extends ConsumerWidget {
                     style: theme.textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                       decoration: d.saldada ? TextDecoration.lineThrough : null,
-                      color: d.saldada
-                          ? theme.colorScheme.onSurfaceVariant
-                          : null,
+                      color: d.saldada ? theme.colorScheme.onSurfaceVariant : null,
                     ),
                   ),
                   if (d.descripcion != null)
@@ -644,13 +982,11 @@ class _DeudaRow extends ConsumerWidget {
                 ],
               ),
             ),
-            Text(
-              formatoMoneda(d.monto),
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: d.saldada ? theme.colorScheme.onSurfaceVariant : color,
-              ),
-            ),
+            Text(formatoMoneda(d.monto),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: d.saldada ? theme.colorScheme.onSurfaceVariant : color,
+                )),
             PopupMenuButton<String>(
               icon: Icon(Icons.more_vert,
                   size: 18, color: theme.colorScheme.onSurfaceVariant),

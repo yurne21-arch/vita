@@ -34,6 +34,28 @@ final deudasProvider = FutureProvider<List<Deuda>>((ref) {
   return ref.watch(finanzasRepositoryProvider).deudas();
 });
 
+final tarjetasProvider = FutureProvider<List<Tarjeta>>((ref) {
+  ref.watch(usuarioActualProvider);
+  return ref.watch(finanzasRepositoryProvider).tarjetas();
+});
+
+final creditosProvider = FutureProvider<List<Credito>>((ref) {
+  ref.watch(usuarioActualProvider);
+  return ref.watch(finanzasRepositoryProvider).creditos();
+});
+
+final metasProvider = FutureProvider<List<Meta>>((ref) {
+  ref.watch(usuarioActualProvider);
+  return ref.watch(finanzasRepositoryProvider).metas();
+});
+
+/// Balance del reparto compartido (Tricount), acumulado sobre todo el historial.
+final balanceCompartidoProvider = FutureProvider<BalanceCompartido>((ref) {
+  ref.watch(usuarioActualProvider);
+  ref.watch(movimientosProvider); // se recalcula al cambiar movimientos
+  return ref.watch(finanzasRepositoryProvider).balanceCompartido();
+});
+
 /// Acciones de Finanzas. Tras cada cambio, invalida lo que corresponda.
 class FinanzasAcciones {
   FinanzasAcciones(this._ref);
@@ -52,6 +74,8 @@ class FinanzasAcciones {
     required String ambito,
     required DateTime fecha,
     String? nota,
+    String? quien,
+    bool compartido = false,
   }) async {
     await _repo.crearMovimiento(
       tipo: tipo,
@@ -60,6 +84,8 @@ class FinanzasAcciones {
       ambito: ambito,
       fecha: fecha,
       nota: nota,
+      quien: quien,
+      compartido: compartido,
     );
     _refrescarMovimientos();
   }
@@ -71,6 +97,8 @@ class FinanzasAcciones {
     required String ambito,
     required DateTime fecha,
     String? nota,
+    String? quien,
+    bool compartido = false,
   }) async {
     await _repo.editarMovimiento(
       id,
@@ -79,6 +107,8 @@ class FinanzasAcciones {
       ambito: ambito,
       fecha: fecha,
       nota: nota,
+      quien: quien,
+      compartido: compartido,
     );
     _refrescarMovimientos();
   }

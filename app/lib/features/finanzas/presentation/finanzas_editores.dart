@@ -38,6 +38,8 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
   late String _tipo;
   late String _ambito;
   String? _categoria;
+  String _quien = 'Yurby';
+  bool _compartido = false;
   late DateTime _fecha;
   late final TextEditingController _monto;
   late final TextEditingController _nota;
@@ -52,6 +54,8 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
     _tipo = e?.tipo ?? widget.tipoInicial;
     _ambito = e?.ambito ?? 'personal';
     _categoria = e?.categoria;
+    _quien = e?.quien ?? 'Yurby';
+    _compartido = e?.compartido ?? false;
     _fecha = e?.fecha ?? DateTime.now();
     _monto = TextEditingController(
         text: e != null ? e.monto.round().toString() : '');
@@ -89,6 +93,8 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
           ambito: _ambito,
           fecha: _fecha,
           nota: _nota.text,
+          quien: _quien,
+          compartido: _compartido,
         );
       } else {
         await acc.crearMovimiento(
@@ -98,6 +104,8 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
           ambito: _ambito,
           fecha: _fecha,
           nota: _nota.text,
+          quien: _quien,
+          compartido: _compartido,
         );
       }
       if (mounted) Navigator.of(context).pop();
@@ -184,6 +192,26 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
               onChanged: (v) => setState(() => _ambito = v),
             ),
             const SizedBox(height: AppSpacing.md),
+            Text('Quién pagó', style: theme.textTheme.labelLarge),
+            const SizedBox(height: AppSpacing.xs),
+            _Segmento(
+              opciones: const [
+                ('Yurby', 'Yurby'),
+                ('Juan', 'Juan'),
+                ('Ambos', 'Ambos'),
+              ],
+              valor: _quien,
+              onChanged: (v) => setState(() => _quien = v),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Gasto compartido'),
+              subtitle: const Text('Se reparte entre ambos (cuenta Tricount)'),
+              value: _compartido,
+              onChanged: (v) => setState(() => _compartido = v),
+            ),
+            const SizedBox(height: AppSpacing.xs),
             Row(
               children: [
                 Expanded(
