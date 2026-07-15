@@ -68,7 +68,7 @@ class AnilloProgreso extends StatelessWidget {
               fraccion: p,
               grosor: grosor,
               pista: cs.outlineVariant.withValues(alpha: 0.30),
-              acento: AppColors.olive,
+              acento: AppColors.accent,
             ),
           ),
           if (mostrarTexto)
@@ -146,7 +146,7 @@ class ChipEstado extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color) = switch (estado) {
-      'activo' => ('Activo', AppColors.olive),
+      'activo' => ('Activo', AppColors.accent),
       'pausado' => ('Pausado', AppColors.warning),
       'completado' => ('Completado', AppColors.success),
       'archivado' => ('Archivado', const Color(0xFF8A857A)),
@@ -208,7 +208,7 @@ class Eyebrow extends StatelessWidget {
             fontSize: 11,
             letterSpacing: 1,
             fontWeight: FontWeight.w700,
-            color: AppColors.oliveSoft));
+            color: AppColors.accentSoft));
   }
 }
 
@@ -330,7 +330,7 @@ class BarraProximoPaso extends StatelessWidget {
         boton = FilledButton(
           onPressed: onAvanzar,
           style: FilledButton.styleFrom(
-            backgroundColor: AppColors.olive,
+            backgroundColor: AppColors.accent,
             padding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           ),
@@ -340,7 +340,7 @@ class BarraProximoPaso extends StatelessWidget {
         boton = FilledButton.icon(
           onPressed: onAgregarPaso,
           style: FilledButton.styleFrom(
-            backgroundColor: AppColors.olive,
+            backgroundColor: AppColors.accent,
             padding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           ),
@@ -354,12 +354,12 @@ class BarraProximoPaso extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: hay
-            ? AppColors.olive.withValues(alpha: 0.08)
+            ? AppColors.accent.withValues(alpha: 0.08)
             : cs.surfaceContainerHigh.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
             color: hay
-                ? AppColors.olive.withValues(alpha: 0.35)
+                ? AppColors.accent.withValues(alpha: 0.35)
                 : cs.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Row(
@@ -369,11 +369,11 @@ class BarraProximoPaso extends StatelessWidget {
             height: 40,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.olive.withValues(alpha: 0.16),
+              color: AppColors.accent.withValues(alpha: 0.16),
               shape: BoxShape.circle,
             ),
             child: Icon(hay ? Icons.flag_outlined : Icons.add_task,
-                size: 20, color: AppColors.olive),
+                size: 20, color: AppColors.accent),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(

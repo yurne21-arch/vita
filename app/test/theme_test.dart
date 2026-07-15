@@ -9,7 +9,7 @@ void main() {
       final theme = AppTheme.light();
       expect(theme.useMaterial3, isTrue);
       expect(theme.brightness, Brightness.light);
-      expect(theme.colorScheme.primary, AppColors.olive);
+      expect(theme.colorScheme.primary, AppColors.accent);
     });
 
     test('el tema oscuro usa brillo oscuro', () {

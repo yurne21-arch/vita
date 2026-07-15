@@ -84,8 +84,7 @@ class _ProyectoDetalleScreenState
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? const Color(0xFF1A1815) : cs.surface;
+    final bg = cs.surface;
 
     final tareasAsync = ref.watch(tareasDeProyectoProvider(_p.id));
     final bitacoraAsync = ref.watch(bitacoraDeProyectoProvider(_p.id));
@@ -342,15 +341,15 @@ class _Motivacion extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.olive.withValues(alpha: 0.07),
+        color: AppColors.accent.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.olive.withValues(alpha: 0.18)),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.18)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(Icons.favorite_outline,
-              size: 16, color: AppColors.oliveSoft),
+              size: 16, color: AppColors.accentSoft),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(texto,
@@ -370,7 +369,7 @@ class _PillPrincipal extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.olive,
+        color: AppColors.accent,
         borderRadius: BorderRadius.circular(6),
       ),
       child: const Row(
@@ -423,7 +422,7 @@ class _SeccionTareas extends StatelessWidget {
                 IconButton(
                   tooltip: 'Agregar paso',
                   onPressed: () => onNuevo('paso'),
-                  icon: const Icon(Icons.add, color: AppColors.olive),
+                  icon: const Icon(Icons.add, color: AppColors.accent),
                 ),
             ],
           ),
@@ -495,11 +494,11 @@ class _VacioPasos extends StatelessWidget {
             height: 56,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.olive.withValues(alpha: 0.12),
+              color: AppColors.accent.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.checklist_rtl_outlined,
-                color: AppColors.oliveSoft),
+                color: AppColors.accentSoft),
           ),
           const SizedBox(height: AppSpacing.md),
           Text('Divide tu objetivo en pasos',
@@ -517,7 +516,7 @@ class _VacioPasos extends StatelessWidget {
               FilledButton.icon(
                 onPressed: () => onNuevo('paso'),
                 style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.olive,
+                    backgroundColor: AppColors.accent,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 11)),
                 icon: const Icon(Icons.add, size: 18),
@@ -579,7 +578,7 @@ class _TareaRow extends StatelessWidget {
               child: Icon(
                 hecho ? Icons.check_circle : Icons.radio_button_unchecked,
                 size: 22,
-                color: hecho ? AppColors.olive : cs.onSurfaceVariant,
+                color: hecho ? AppColors.accent : cs.onSurfaceVariant,
               ),
             ),
           ),
@@ -751,7 +750,7 @@ class _BitacoraFila extends StatelessWidget {
   (IconData, Color, String) _meta() {
     switch (entrada.tipo) {
       case 'creado':
-        return (Icons.flag_circle_outlined, AppColors.oliveSoft, 'Creado');
+        return (Icons.flag_circle_outlined, AppColors.accentSoft, 'Creado');
       case 'hito_completado':
         return (Icons.emoji_events_outlined, AppColors.warning, 'Hito');
       case 'cambio_estado':
@@ -759,7 +758,7 @@ class _BitacoraFila extends StatelessWidget {
       case 'nota':
         return (Icons.sticky_note_2_outlined, AppColors.info, 'Nota');
       default:
-        return (Icons.trending_up, AppColors.olive, 'Avance');
+        return (Icons.trending_up, AppColors.accent, 'Avance');
     }
   }
 
@@ -851,7 +850,7 @@ class _Panel extends StatelessWidget {
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.16),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),

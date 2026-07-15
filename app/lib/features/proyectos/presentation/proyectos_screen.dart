@@ -21,8 +21,7 @@ class ProyectosScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? const Color(0xFF1A1815) : cs.surface;
+    final bg = cs.surface;
     final anchoPantalla = MediaQuery.sizeOf(context).width;
     final mostrarBotonArriba = anchoPantalla >= 700;
 
@@ -44,7 +43,7 @@ class ProyectosScreen extends ConsumerWidget {
               child: FilledButton.icon(
                 onPressed: () => mostrarEditorProyecto(context, ref),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.olive,
+                  backgroundColor: AppColors.accent,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
@@ -97,7 +96,7 @@ class ProyectosScreen extends ConsumerWidget {
                             onPressed: () =>
                                 mostrarEditorProyecto(context, ref),
                             style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.olive,
+                              backgroundColor: AppColors.accent,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 18, vertical: 13),
                             ),
@@ -258,11 +257,11 @@ class _HeroVacio extends StatelessWidget {
                 height: 56,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppColors.olive.withValues(alpha: 0.12),
+                  color: AppColors.accent.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child:
-                    const Icon(Icons.flag_outlined, color: AppColors.oliveSoft),
+                    const Icon(Icons.flag_outlined, color: AppColors.accentSoft),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -289,7 +288,7 @@ class _HeroVacio extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: onCrear,
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.olive,
+                backgroundColor: AppColors.accent,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
               ),
@@ -412,11 +411,11 @@ class _VacioActivos extends StatelessWidget {
             height: 52,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.olive.withValues(alpha: 0.10),
+              color: AppColors.accent.withValues(alpha: 0.10),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.workspaces_outline,
-                color: AppColors.oliveSoft),
+                color: AppColors.accentSoft),
           ),
           const SizedBox(height: AppSpacing.md),
           Text('Sin proyectos activos',
@@ -433,7 +432,7 @@ class _VacioActivos extends StatelessWidget {
           FilledButton.icon(
             onPressed: onCrear,
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.olive,
+              backgroundColor: AppColors.accent,
               padding:
                   const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
             ),
@@ -515,19 +514,19 @@ class _TarjetaProyecto extends ConsumerWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: AppColors.olive.withValues(alpha: 0.16),
+                                  color: AppColors.accent.withValues(alpha: 0.16),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     const Icon(Icons.star,
-                                        size: 12, color: AppColors.olive),
+                                        size: 12, color: AppColors.accent),
                                     const SizedBox(width: 3),
                                     Text('Principal',
                                         style: theme.textTheme.labelSmall
                                             ?.copyWith(
-                                                color: AppColors.olive,
+                                                color: AppColors.accent,
                                                 fontWeight: FontWeight.w700)),
                                   ],
                                 ),
@@ -587,7 +586,7 @@ class _TarjetaProyecto extends ConsumerWidget {
                   child: Row(
                     children: [
                       const Icon(Icons.arrow_forward,
-                          size: 14, color: AppColors.oliveSoft),
+                          size: 14, color: AppColors.accentSoft),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(proximo.texto,
@@ -685,10 +684,10 @@ class _PanelHero extends StatelessWidget {
     final deco = BoxDecoration(
       color: cs.surfaceContainerLow,
       borderRadius: BorderRadius.circular(22),
-      border: Border.all(color: AppColors.olive.withValues(alpha: 0.35)),
+      border: Border.all(color: AppColors.accent.withValues(alpha: 0.35)),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.18),
+          color: Colors.black.withValues(alpha: 0.05),
           blurRadius: 20,
           offset: const Offset(0, 8),
         ),

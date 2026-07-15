@@ -11,11 +11,13 @@ abstract class AppTheme {
   static ThemeData light() => _base(
         brightness: Brightness.light,
         scheme: const ColorScheme.light(
-          primary: AppColors.olive,
+          primary: AppColors.accent,
           onPrimary: Colors.white,
-          secondary: AppColors.oliveSoft,
+          secondary: AppColors.accentSoft,
           surface: AppColors.lightBg,
           onSurface: AppColors.lightInk,
+          onSurfaceVariant: AppColors.lightMuted,
+          surfaceContainerHigh: AppColors.lightSurface,
           surfaceContainerHighest: AppColors.lightSurface,
           outlineVariant: AppColors.lightHairline,
           error: AppColors.danger,
@@ -28,11 +30,13 @@ abstract class AppTheme {
   static ThemeData dark() => _base(
         brightness: Brightness.dark,
         scheme: const ColorScheme.dark(
-          primary: AppColors.oliveSoft,
+          primary: AppColors.accentSoft,
           onPrimary: AppColors.darkBg,
-          secondary: AppColors.olive,
+          secondary: AppColors.accent,
           surface: AppColors.darkBg,
           onSurface: AppColors.darkInk,
+          onSurfaceVariant: AppColors.darkMuted,
+          surfaceContainerHigh: AppColors.darkSurface,
           surfaceContainerHighest: AppColors.darkSurface,
           outlineVariant: AppColors.darkHairline,
           error: AppColors.danger,

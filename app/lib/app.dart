@@ -21,7 +21,8 @@ class _VitaAppState extends State<VitaApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
+      // Claro por defecto: la paleta lavanda es lo que invita a abrir la app.
+      themeMode: ThemeMode.light,
       routerConfig: _router,
     );
   }

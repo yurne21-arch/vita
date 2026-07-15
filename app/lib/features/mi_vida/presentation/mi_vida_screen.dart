@@ -378,7 +378,7 @@ class _AgregarPrioridad extends StatelessWidget {
       child: TextButton.icon(
         onPressed: onTap,
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.olive,
+          foregroundColor: AppColors.accent,
           padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
         ),
@@ -429,7 +429,7 @@ class _PrioridadRow extends StatelessWidget {
               done ? Icons.check_circle : Icons.circle_outlined,
               size: 22,
               color:
-                  done ? AppColors.olive : theme.colorScheme.onSurfaceVariant,
+                  done ? AppColors.accent : theme.colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(width: AppSpacing.xs),
@@ -605,7 +605,7 @@ class _EstadoGeneral extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: const [
                 _Eyebrow('CÓMO ESTÁS HOY'),
-                Icon(Icons.add, size: 18, color: AppColors.olive),
+                Icon(Icons.add, size: 18, color: AppColors.accent),
               ],
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -699,7 +699,7 @@ class _Agenda extends ConsumerWidget {
                         DateTime(ahora.year, ahora.month, ahora.day)),
                 tooltip: 'Agendar evento',
                 visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.add, size: 18, color: AppColors.olive),
+                icon: const Icon(Icons.add, size: 18, color: AppColors.accent),
               ),
             ],
           ),
@@ -909,7 +909,7 @@ class _ProyectoPrincipal extends ConsumerWidget {
               child: FilledButton(
                 onPressed: () => context.go('/proyectos'),
                 style:
-                    FilledButton.styleFrom(backgroundColor: AppColors.olive),
+                    FilledButton.styleFrom(backgroundColor: AppColors.accent),
                 child: const Text('Elegir proyecto'),
               ),
             ),
@@ -990,7 +990,7 @@ class _ProyectoPrincipal extends ConsumerWidget {
             Row(
               children: [
                 const Icon(Icons.arrow_forward,
-                    size: 15, color: AppColors.oliveSoft),
+                    size: 15, color: AppColors.accentSoft),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(textoProximo,
@@ -1028,7 +1028,7 @@ class _ProyectoPrincipal extends ConsumerWidget {
                     onPressed: () => mostrarEditorTarea(context, ref,
                         projectId: p.id, tipoInicial: 'paso'),
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.olive,
+                      backgroundColor: AppColors.accent,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     icon: const Icon(Icons.add, size: 16),
@@ -1040,7 +1040,7 @@ class _ProyectoPrincipal extends ConsumerWidget {
                     onPressed: () => avanzarProyecto(context, ref,
                         projectId: p.id, proximo: proximo),
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.olive,
+                      backgroundColor: AppColors.accent,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     icon: const Icon(Icons.arrow_forward, size: 16),
@@ -1140,7 +1140,7 @@ class _Eyebrow extends StatelessWidget {
     return Text(
       text,
       style: theme.textTheme.labelSmall?.copyWith(
-        color: AppColors.olive,
+        color: AppColors.accent,
         letterSpacing: 1.2,
         fontWeight: FontWeight.w600,
         fontSize: 11,
@@ -1260,7 +1260,7 @@ class _HabitoRow extends StatelessWidget {
             Icon(
               done ? Icons.check_circle : Icons.circle_outlined,
               color:
-                  done ? AppColors.olive : theme.colorScheme.onSurfaceVariant,
+                  done ? AppColors.accent : theme.colorScheme.onSurfaceVariant,
               size: 22,
             ),
           ],
@@ -1495,7 +1495,7 @@ class _Escala extends StatelessWidget {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: value == i
-                      ? AppColors.olive
+                      ? AppColors.accent
                       : theme.colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(AppSpacing.radius),
                 ),
@@ -1545,7 +1545,7 @@ class _SuenoSelector extends StatelessWidget {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: value == _opciones[i].$1
-                      ? AppColors.olive
+                      ? AppColors.accent
                       : theme.colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(AppSpacing.radius),
                 ),

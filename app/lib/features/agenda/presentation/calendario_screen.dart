@@ -156,8 +156,7 @@ class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
   Widget build(BuildContext context) {
     final async = ref.watch(eventosEnRangoProvider(_rangoActivo()));
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? const Color(0xFF1A1815) : cs.surface;
+    final bg = cs.surface;
     final wide = MediaQuery.sizeOf(context).width >= _kBpPanel;
 
     return Scaffold(
@@ -288,7 +287,7 @@ class _BarraSuperior extends StatelessWidget {
             FilledButton.icon(
               onPressed: onNuevo,
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.olive,
+                backgroundColor: AppColors.accent,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               ),
@@ -352,7 +351,7 @@ class _SegItem extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
         decoration: BoxDecoration(
-          color: activo ? AppColors.olive : Colors.transparent,
+          color: activo ? AppColors.accent : Colors.transparent,
           borderRadius: BorderRadius.circular(9),
         ),
         child: Text(
@@ -388,7 +387,7 @@ class _PillHoy extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
       decoration: BoxDecoration(
-        color: AppColors.olive,
+        color: AppColors.accent,
         borderRadius: BorderRadius.circular(5),
       ),
       child: const Text('HOY',
@@ -474,7 +473,7 @@ class _VistaMes extends StatelessWidget {
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -710,13 +709,13 @@ class _CeldaMes extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: seleccionado
-              ? AppColors.olive.withValues(alpha: 0.18)
+              ? AppColors.accent.withValues(alpha: 0.18)
               : (esDeMes
                   ? Colors.transparent
                   : cs.surfaceContainerHighest.withValues(alpha: 0.16)),
           // Día seleccionado: borde oliva además del fondo.
           border: seleccionado
-              ? Border.all(color: AppColors.olive, width: 1.5)
+              ? Border.all(color: AppColors.accent, width: 1.5)
               : Border(
                   right: ultimaCol
                       ? BorderSide.none
@@ -742,7 +741,7 @@ class _CeldaMes extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: esHoy
                       ? const BoxDecoration(
-                          color: AppColors.olive, shape: BoxShape.circle)
+                          color: AppColors.accent, shape: BoxShape.circle)
                       : null,
                   child: Text(
                     '${dia.day}',
@@ -917,7 +916,7 @@ class _ContenidoDia extends StatelessWidget {
                     fontSize: 11,
                     letterSpacing: 1,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.oliveSoft,
+                    color: AppColors.accentSoft,
                   )),
               const SizedBox(height: 2),
               Text(
@@ -961,8 +960,8 @@ class _ContenidoDia extends StatelessWidget {
             child: FilledButton.tonalIcon(
               onPressed: onNuevo,
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.olive.withValues(alpha: 0.16),
-                foregroundColor: AppColors.oliveSoft,
+                backgroundColor: AppColors.accent.withValues(alpha: 0.16),
+                foregroundColor: AppColors.accentSoft,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
@@ -984,7 +983,7 @@ class _ContenidoDia extends StatelessWidget {
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -1085,7 +1084,7 @@ class _EventoCard extends StatelessWidget {
                           ? Icons.check_circle
                           : Icons.radio_button_unchecked,
                       size: 20,
-                      color: done ? AppColors.olive : cs.onSurfaceVariant,
+                      color: done ? AppColors.accent : cs.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -1218,12 +1217,12 @@ class _PillImportante extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
       decoration: BoxDecoration(
-        color: AppColors.olive.withValues(alpha: 0.18),
+        color: AppColors.accent.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(5),
       ),
       child: const Text('Importante',
           style: TextStyle(
-              color: AppColors.oliveSoft,
+              color: AppColors.accentSoft,
               fontSize: 10,
               fontWeight: FontWeight.w700)),
     );
@@ -1348,7 +1347,7 @@ class _VistaHoy extends StatelessWidget {
                           fontSize: 11,
                           letterSpacing: 1,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.oliveSoft)),
+                          color: AppColors.accentSoft)),
                   Text(
                     '${fecha.day} de ${_mesNombre(fecha.month).toLowerCase()}',
                     style: theme.textTheme.headlineSmall
@@ -1416,7 +1415,7 @@ class _AgendaDia extends StatelessWidget {
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -1625,7 +1624,7 @@ class _ResumenDia extends StatelessWidget {
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -1639,7 +1638,7 @@ class _ResumenDia extends StatelessWidget {
                   fontSize: 11,
                   letterSpacing: 1,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.oliveSoft)),
+                  color: AppColors.accentSoft)),
           const SizedBox(height: 2),
           Text(
             '${fecha.day} de ${_mesNombre(fecha.month).toLowerCase()}',
@@ -1673,8 +1672,8 @@ class _ResumenDia extends StatelessWidget {
             child: FilledButton.tonalIcon(
               onPressed: onNuevo,
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.olive.withValues(alpha: 0.16),
-                foregroundColor: AppColors.oliveSoft,
+                backgroundColor: AppColors.accent.withValues(alpha: 0.16),
+                foregroundColor: AppColors.accentSoft,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
@@ -1850,7 +1849,7 @@ class _SemanaLista extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: esHoy
-                  ? AppColors.olive.withValues(alpha: 0.6)
+                  ? AppColors.accent.withValues(alpha: 0.6)
                   : cs.outlineVariant.withValues(alpha: 0.4),
               width: esHoy ? 1.4 : 1,
             ),
@@ -1866,7 +1865,7 @@ class _SemanaLista extends StatelessWidget {
                     Text(_etiquetaDiaSemana(dia, hoy),
                         style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: esHoy ? AppColors.olive : null)),
+                            color: esHoy ? AppColors.accent : null)),
                     const SizedBox(width: AppSpacing.sm),
                     if (esHoy) const _PillHoy(),
                     const Spacer(),
@@ -1935,7 +1934,7 @@ class _SemanaColumnas extends StatelessWidget {
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -2005,7 +2004,7 @@ class _ColumnaDia extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 9),
           decoration: BoxDecoration(
             color: esHoy
-                ? AppColors.olive.withValues(alpha: 0.14)
+                ? AppColors.accent.withValues(alpha: 0.14)
                 : cs.surfaceContainer.withValues(alpha: 0.5),
             border: Border(
                 bottom: BorderSide(
@@ -2023,7 +2022,7 @@ class _ColumnaDia extends StatelessWidget {
               Text('${dia.day}',
                   style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: esHoy ? AppColors.olive : null)),
+                      color: esHoy ? AppColors.accent : null)),
               if (esHoy)
                 const Padding(
                   padding: EdgeInsets.only(top: 4),
@@ -2081,7 +2080,7 @@ class _MasIndicador extends StatelessWidget {
         style: TextStyle(
             fontSize: 11.5,
             fontWeight: FontWeight.w700,
-            color: AppColors.oliveSoft));
+            color: AppColors.accentSoft));
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),

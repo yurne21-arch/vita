@@ -197,11 +197,11 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
                             ? Icons.expand_less
                             : Icons.expand_more,
                         size: 20,
-                        color: AppColors.oliveSoft),
+                        color: AppColors.accentSoft),
                     const SizedBox(width: 6),
                     Text('Más opciones (opcional)',
                         style: theme.textTheme.labelLarge?.copyWith(
-                            color: AppColors.oliveSoft,
+                            color: AppColors.accentSoft,
                             fontWeight: FontWeight.w600)),
                   ],
                 ),
@@ -228,7 +228,7 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
             FilledButton(
               onPressed: _guardando ? null : _guardar,
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.olive,
+                backgroundColor: AppColors.accent,
                 padding: const EdgeInsets.symmetric(vertical: 15),
               ),
               child: _guardando
@@ -381,7 +381,7 @@ class _EditorTareaState extends ConsumerState<_EditorTarea> {
             FilledButton(
               onPressed: _guardando ? null : _guardar,
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.olive,
+                backgroundColor: AppColors.accent,
                 padding: const EdgeInsets.symmetric(vertical: 15),
               ),
               child: _guardando
@@ -490,7 +490,7 @@ class _RegistroBitacoraState extends ConsumerState<_RegistroBitacora> {
             FilledButton(
               onPressed: _guardando ? null : _guardar,
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.olive,
+                backgroundColor: AppColors.accent,
                 padding: const EdgeInsets.symmetric(vertical: 15),
               ),
               child: _guardando
@@ -566,7 +566,7 @@ Future<void> _mostrarAvanzarSinPasos(
                     projectId: projectId, tipoInicial: 'paso');
               },
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.olive,
+                backgroundColor: AppColors.accent,
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               icon: const Icon(Icons.add, size: 18),

@@ -396,7 +396,7 @@ class _ChipImportancia extends StatelessWidget {
       label: Text(label),
       selected: seleccionado,
       onSelected: (_) => onTap(),
-      selectedColor: AppColors.olive,
+      selectedColor: AppColors.accent,
       labelStyle: TextStyle(
         color: seleccionado ? Colors.white : theme.colorScheme.onSurface,
         fontWeight: FontWeight.w600,
