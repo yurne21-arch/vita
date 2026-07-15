@@ -10,3 +10,7 @@ enable_signup = true
 
 [storage]
 enabled = true
+
+# Feed de calendario: público (Google lo consulta sin sesión de usuario).
+[functions.calendar]
+verify_jwt = false

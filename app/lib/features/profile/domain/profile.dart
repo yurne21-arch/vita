@@ -6,6 +6,7 @@ class Profile {
     required this.locale,
     required this.currency,
     required this.measurementSystem,
+    this.calendarToken,
   });
 
   final String id;
@@ -13,6 +14,7 @@ class Profile {
   final String locale;
   final String currency;
   final String measurementSystem;
+  final String? calendarToken; // secreto del feed de calendario (.ics)
 
   factory Profile.fromMap(Map<String, dynamic> map) => Profile(
         id: map['id'] as String,
@@ -20,5 +22,6 @@ class Profile {
         locale: (map['locale'] as String?) ?? 'es-CL',
         currency: (map['currency'] as String?) ?? 'CLP',
         measurementSystem: (map['measurement_system'] as String?) ?? 'metric',
+        calendarToken: map['calendar_token'] as String?,
       );
 }

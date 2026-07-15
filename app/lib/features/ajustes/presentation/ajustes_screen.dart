@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/env.dart';
 import '../../../core/providers.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/errores.dart';
 import '../../../core/widgets/vita_card.dart';
@@ -86,6 +89,10 @@ class AjustesScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
+                _CalendarioCard(
+                  token: perfil.valueOrNull?.calendarToken,
+                ),
+                const SizedBox(height: AppSpacing.lg),
                 OutlinedButton.icon(
                   onPressed: () => _confirmarSalir(context, ref),
                   icon: const Icon(Icons.logout),
@@ -98,6 +105,97 @@ class AjustesScreen extends ConsumerWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Enlace de calendario suscribible: se pega en Google Calendar (o Apple) una
+/// vez y los eventos de VITA aparecen ahí, con aviso y sonido en el teléfono.
+class _CalendarioCard extends StatelessWidget {
+  const _CalendarioCard({required this.token});
+  final String? token;
+
+  String? get _url => token == null
+      ? null
+      : '${Env.supabaseUrl}/functions/v1/calendar?token=$token';
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final url = _url;
+    return VitaCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.notifications_active_outlined,
+                  size: 20, color: AppColors.accent),
+              const SizedBox(width: AppSpacing.sm),
+              Text('RECORDATORIOS EN TU CALENDARIO',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    letterSpacing: 1.1,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.accent,
+                  )),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Agrega este enlace a Google Calendar una vez. Tus eventos de VITA '
+            'aparecerán ahí y tu teléfono te avisará con sonido a la hora.',
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (url == null)
+            const Text('Preparando tu enlace…')
+          else ...[
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(AppSpacing.radius),
+              ),
+              child: SelectableText(
+                url,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(fontFamily: 'monospace'),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.icon(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: url));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Enlace copiado.')),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.copy, size: 18),
+                label: const Text('Copiar enlace'),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text('Cómo agregarlo en Google Calendar:',
+                style: theme.textTheme.labelLarge),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              '1. Abre calendar.google.com en el computador.\n'
+              '2. A la izquierda, junto a "Otros calendarios", toca + → '
+              '"Desde una URL".\n'
+              '3. Pega el enlace y toca "Añadir calendario".\n'
+              'En tu teléfono aparecerá solo, y te avisará con sonido.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant, height: 1.5),
+            ),
+          ],
+        ],
       ),
     );
   }
