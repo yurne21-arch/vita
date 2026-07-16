@@ -859,6 +859,161 @@ class _MetaEditorState extends ConsumerState<_MetaEditor> {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
+// CUENTA (saldo)
+// ═══════════════════════════════════════════════════════════════
+
+Future<void> mostrarEditorCuenta(
+  BuildContext context,
+  WidgetRef ref, {
+  Cuenta? existente,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => _CuentaEditor(existente: existente),
+  );
+}
+
+class _CuentaEditor extends ConsumerStatefulWidget {
+  const _CuentaEditor({this.existente});
+  final Cuenta? existente;
+  @override
+  ConsumerState<_CuentaEditor> createState() => _CuentaEditorState();
+}
+
+class _CuentaEditorState extends ConsumerState<_CuentaEditor> {
+  late final TextEditingController _nombre;
+  late final TextEditingController _saldo;
+  String _titular = 'Yurby';
+  bool _guardando = false;
+
+  bool get _esEdicion => widget.existente != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final c = widget.existente;
+    _nombre = TextEditingController(text: c?.nombre ?? '');
+    _saldo = TextEditingController(text: _num(c?.saldo));
+    _titular = c?.titular ?? 'Yurby';
+  }
+
+  @override
+  void dispose() {
+    _nombre.dispose();
+    _saldo.dispose();
+    super.dispose();
+  }
+
+  Future<void> _guardar() async {
+    if (_nombre.text.trim().isEmpty) {
+      _snack(context, 'Ponle un nombre a la cuenta.');
+      return;
+    }
+    setState(() => _guardando = true);
+    try {
+      await ref.read(finanzasAccionesProvider).guardarCuenta(
+            id: widget.existente?.id,
+            nombre: _nombre.text,
+            titular: _titular,
+            saldo: _monto(_saldo),
+          );
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _guardando = false);
+        _snack(context, mensajeDeError(e));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _HojaEditor(
+      titulo: _esEdicion ? 'Editar cuenta' : 'Nueva cuenta',
+      guardando: _guardando,
+      onGuardar: _guardar,
+      campos: [
+        _campoTexto(_nombre, 'Nombre (ej. Débito Yurby)'),
+        const SizedBox(height: AppSpacing.md),
+        _Segmento(
+          opciones: const [
+            ('Yurby', 'Yurby'),
+            ('Juan', 'Juan'),
+            ('Ambos', 'Ambos'),
+          ],
+          valor: _titular,
+          onChanged: (v) => setState(() => _titular = v),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _campoMonto(_saldo, 'Saldo actual'),
+      ],
+    );
+  }
+}
+
+/// Diálogo simple de monto + fecha (para pagos de crédito y abonos a metas).
+Future<({double monto, DateTime fecha})?> pedirMontoYFecha(
+  BuildContext context, {
+  required String titulo,
+  String etiquetaMonto = 'Monto',
+}) async {
+  final monto = TextEditingController();
+  var fecha = DateTime.now();
+  final r = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setState) => AlertDialog(
+        title: Text(titulo),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: monto,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration:
+                  InputDecoration(labelText: etiquetaMonto, prefixText: '\$ '),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                label: Text('${fecha.day}/${fecha.month}/${fecha.year}'),
+                onPressed: () async {
+                  final sel = await showDatePicker(
+                    context: ctx,
+                    initialDate: fecha,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2035),
+                  );
+                  if (sel != null) setState(() => fecha = sel);
+                },
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Guardar')),
+        ],
+      ),
+    ),
+  );
+  final valor = double.tryParse(monto.text.trim().replaceAll('.', ''));
+  monto.dispose();
+  if (r != true || valor == null || valor <= 0) return null;
+  return (monto: valor, fecha: fecha);
+}
+
 // ── Piezas compartidas de los editores ──────────────────────────
 
 String _num(double? v) => (v == null || v == 0) ? '' : v.round().toString();

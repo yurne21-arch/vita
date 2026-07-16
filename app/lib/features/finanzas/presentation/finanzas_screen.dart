@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/moneda.dart';
+import '../../../core/widgets/donut_chart.dart';
 import '../../../core/widgets/errores.dart';
 import '../../../core/widgets/vita_card.dart';
 import '../data/finanzas_repository.dart';
@@ -11,9 +12,10 @@ import '../domain/finanzas.dart';
 import 'finanzas_controller.dart';
 import 'finanzas_editores.dart';
 
-enum _Seccion { movimientos, presupuesto, tarjetas, creditos, metas, deudas }
+enum _Seccion { resumen, movimientos, presupuesto, tarjetas, creditos, metas, deudas }
 
 const _labels = {
+  _Seccion.resumen: 'Resumen',
   _Seccion.movimientos: 'Movimientos',
   _Seccion.presupuesto: 'Presupuesto',
   _Seccion.tarjetas: 'Tarjetas',
@@ -21,6 +23,21 @@ const _labels = {
   _Seccion.metas: 'Metas',
   _Seccion.deudas: 'Cuentas entre personas',
 };
+
+/// Paleta serena para el gráfico de gastos (no arcoíris chillón).
+const _paletaCategorias = [
+  Color(0xFF6E5E96), // malva (acento)
+  Color(0xFF4E7A63), // salvia
+  Color(0xFFC56A4E), // terracota
+  Color(0xFF4A6B8A), // azul
+  Color(0xFFB7860B), // ámbar
+  Color(0xFF8A6E9E),
+  Color(0xFF6B8A9E),
+  Color(0xFFA0885E),
+  Color(0xFF7A9E6B),
+  Color(0xFF9E6B7A),
+  Color(0xFF6B6E7A),
+];
 
 class FinanzasScreen extends ConsumerStatefulWidget {
   const FinanzasScreen({super.key});
@@ -30,7 +47,7 @@ class FinanzasScreen extends ConsumerStatefulWidget {
 }
 
 class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
-  _Seccion _seccion = _Seccion.movimientos;
+  _Seccion _seccion = _Seccion.resumen;
 
   @override
   void initState() {
@@ -54,10 +71,12 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
         DateTime(actual.year, actual.month + delta, 1);
   }
 
-  bool get _puedeAgregar => true; // todas las secciones permiten agregar
+  bool get _puedeAgregar => _seccion != _Seccion.resumen;
 
   void _agregar() {
     switch (_seccion) {
+      case _Seccion.resumen:
+        break;
       case _Seccion.movimientos:
         _menuMovimiento();
       case _Seccion.presupuesto:
@@ -106,8 +125,9 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
   @override
   Widget build(BuildContext context) {
     final mes = ref.watch(mesFinanzasProvider);
-    final mostrarMes =
-        _seccion == _Seccion.movimientos || _seccion == _Seccion.presupuesto;
+    final mostrarMes = _seccion == _Seccion.resumen ||
+        _seccion == _Seccion.movimientos ||
+        _seccion == _Seccion.presupuesto;
 
     return Scaffold(
       appBar: AppBar(
@@ -133,6 +153,9 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
                 if (mostrarMes) ...[
                   _SelectorMes(mes: mes, onCambiar: _cambiarMes),
                   const SizedBox(height: AppSpacing.md),
+                ],
+                if (_seccion == _Seccion.movimientos ||
+                    _seccion == _Seccion.presupuesto) ...[
                   const _ResumenCard(),
                   const SizedBox(height: AppSpacing.md),
                 ],
@@ -142,6 +165,7 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 switch (_seccion) {
+                  _Seccion.resumen => _Resumen(mes: mes),
                   _Seccion.movimientos => const _Movimientos(),
                   _Seccion.presupuesto => const _Presupuestos(),
                   _Seccion.tarjetas => const _Tarjetas(),
@@ -346,9 +370,9 @@ class _TricountCard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('REPARTO COMPARTIDO',
+              Text('REPARTO COMPARTIDO · TODO EL HISTORIAL',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    letterSpacing: 1.2,
+                    letterSpacing: 1.1,
                     fontWeight: FontWeight.w600,
                     color: AppColors.accent,
                   )),
@@ -382,12 +406,388 @@ class _TricountCard extends ConsumerWidget {
         ),
         const SizedBox(height: AppSpacing.md),
         Text(
-          'El total compartido se reparte por igual. La diferencia es lo que '
-          'falta para quedar a mano.',
+          'Suma TODOS los gastos que marcaste como "compartidos" (no solo el '
+          'mes). Se reparten por igual; la diferencia es lo que falta para '
+          'quedar a mano.',
           style: theme.textTheme.bodySmall
               ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
       ],
+    );
+  }
+}
+
+// ── Resumen del mes (dashboard + cierre) ─────────────────────────
+
+class _Resumen extends ConsumerWidget {
+  const _Resumen({required this.mes});
+  final DateTime mes;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final resumen = ref.watch(resumenMesProvider).valueOrNull ?? ResumenMes.vacio;
+    final pendiente = ref.watch(pendienteMesAnteriorProvider).valueOrNull;
+
+    // Top categorías de gasto para el gráfico (las 6 mayores + "Otros").
+    final entradas = resumen.porCategoria.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final segmentos = <DonutSegmento>[];
+    for (var i = 0; i < entradas.length && i < 6; i++) {
+      segmentos.add(DonutSegmento(entradas[i].key, entradas[i].value,
+          _paletaCategorias[i % _paletaCategorias.length]));
+    }
+    if (entradas.length > 6) {
+      final resto = entradas.skip(6).fold<double>(0, (a, e) => a + e.value);
+      segmentos.add(DonutSegmento('Otros', resto, _paletaCategorias[6]));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Balance
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: AppColors.accent.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            border: Border.all(color: AppColors.accent.withValues(alpha: 0.20)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _MiniStat(
+                    label: 'Ingresos',
+                    valor: formatoMoneda(resumen.ingresos),
+                    color: AppColors.success),
+              ),
+              Expanded(
+                child: _MiniStat(
+                    label: 'Gastos',
+                    valor: formatoMoneda(resumen.gastos),
+                    color: AppColors.danger),
+              ),
+              Expanded(
+                child: _MiniStat(
+                    label: 'Balance',
+                    valor: formatoMoneda(resumen.balance),
+                    color: resumen.balance >= 0
+                        ? theme.colorScheme.onSurface
+                        : AppColors.danger),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+
+        // En qué se gastó (dona)
+        VitaCard(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('EN QUÉ SE GASTÓ',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                      letterSpacing: 1.1,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.accent)),
+              const SizedBox(height: AppSpacing.md),
+              if (segmentos.isEmpty)
+                Text('Sin gastos este mes.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant))
+              else
+                DonutChart(
+                  segmentos: segmentos,
+                  centroValor: formatoMoneda(resumen.gastos),
+                  centroTitulo: 'gastado',
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+
+        // Saldos: cuentas + tarjetas
+        const _SaldosCard(),
+        const SizedBox(height: AppSpacing.md),
+
+        // Avance de metas
+        const _MetasResumen(),
+        const SizedBox(height: AppSpacing.md),
+
+        // Nota pendiente heredada
+        if (pendiente != null && pendiente.isNotEmpty) ...[
+          VitaCard(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.push_pin_outlined,
+                    size: 18, color: AppColors.accent),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Quedó pendiente del mes pasado',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant)),
+                      Text(pendiente, style: theme.textTheme.bodyMedium),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
+
+        // Cerrar mes
+        OutlinedButton.icon(
+          onPressed: () => _cerrarMes(context, ref, mes, resumen, segmentos),
+          icon: const Icon(Icons.event_available_outlined),
+          label: Text('Cerrar ${_mesNombre(mes.month)}'),
+          style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md)),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _cerrarMes(BuildContext context, WidgetRef ref, DateTime mes,
+      ResumenMes resumen, List<DonutSegmento> segmentos) async {
+    final nota = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Cerrar ${_mesNombre(mes.month)} ${mes.year}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Guardaré un resumen de este mes. Anota lo que quede pendiente '
+              'para el otro mes (opcional).',
+              style: Theme.of(ctx).textTheme.bodySmall,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: nota,
+              maxLines: 3,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                labelText: 'Pendiente para el otro mes',
+                hintText: 'Ej. pagar luz, revisar cuota Falabella…',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Cerrar mes')),
+        ],
+      ),
+    );
+    final texto = nota.text;
+    nota.dispose();
+    if (ok != true || !context.mounted) return;
+    await accionSegura(context, () async {
+      await ref.read(finanzasAccionesProvider).cerrarMes(
+        mes,
+        resumen: {
+          'ingresos': resumen.ingresos,
+          'gastos': resumen.gastos,
+          'balance': resumen.balance,
+          'por_categoria': resumen.porCategoria,
+        },
+        pendiente: texto,
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Mes cerrado. Lo pendiente pasa al otro mes.')),
+        );
+      }
+    });
+  }
+}
+
+/// Saldos de cuentas y tarjetas, agrupados y editables.
+class _SaldosCard extends ConsumerWidget {
+  const _SaldosCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cuentas = ref.watch(cuentasProvider).valueOrNull ?? const <Cuenta>[];
+    final tarjetas = ref.watch(tarjetasProvider).valueOrNull ?? const <Tarjeta>[];
+
+    return VitaCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('SALDOS',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                      letterSpacing: 1.1,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.accent)),
+              TextButton.icon(
+                onPressed: () => mostrarEditorCuenta(context, ref),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Cuenta'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          if (cuentas.isEmpty && tarjetas.isEmpty)
+            Text('Aún no registras cuentas ni tarjetas.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant))
+          else ...[
+            for (final c in cuentas)
+              _SaldoFila(
+                nombre: c.nombre,
+                titular: c.titular,
+                monto: c.saldo,
+                onEditar: () =>
+                    mostrarEditorCuenta(context, ref, existente: c),
+              ),
+            for (final t in tarjetas)
+              _SaldoFila(
+                nombre: t.nombre,
+                titular: t.titular,
+                monto: -t.saldoDeuda, // deuda: resta
+                onEditar: () =>
+                    mostrarEditorTarjeta(context, ref, existente: t),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SaldoFila extends StatelessWidget {
+  const _SaldoFila({
+    required this.nombre,
+    required this.titular,
+    required this.monto,
+    required this.onEditar,
+  });
+  final String nombre;
+  final String? titular;
+  final double monto;
+  final VoidCallback onEditar;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final negativo = monto < 0;
+    return InkWell(
+      onTap: onEditar,
+      borderRadius: BorderRadius.circular(AppSpacing.radius),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(nombre,
+                      style: theme.textTheme.bodyLarge
+                          ?.copyWith(fontWeight: FontWeight.w600)),
+                  if (titular != null)
+                    Text(titular!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            Text(
+              (negativo ? '-' : '') + formatoMoneda(monto),
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: negativo ? AppColors.danger : theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.edit_outlined,
+                size: 16, color: theme.colorScheme.onSurfaceVariant),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Avance de metas dentro del resumen (mini barras).
+class _MetasResumen extends ConsumerWidget {
+  const _MetasResumen();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final metas = ref.watch(metasProvider).valueOrNull ?? const <Meta>[];
+    if (metas.isEmpty) return const SizedBox.shrink();
+    // Muestra solo las que tienen avance o las 3 primeras.
+    final conAvance = metas.where((m) => m.ahorrado > 0).toList();
+    final mostrar = conAvance.isNotEmpty ? conAvance : metas.take(3).toList();
+    return VitaCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('AVANCE DE METAS',
+              style: theme.textTheme.labelSmall?.copyWith(
+                  letterSpacing: 1.1,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.accent)),
+          const SizedBox(height: AppSpacing.sm),
+          for (final m in mostrar)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text('${m.emoji ?? '🎯'}  ${m.label}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w600)),
+                      ),
+                      Text(
+                        '${formatoMoneda(m.ahorrado)} / ${formatoMoneda(m.metaMonto)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: m.fraccion,
+                      minHeight: 7,
+                      backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                      color: AppColors.accent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -817,6 +1217,8 @@ class _Creditos extends ConsumerWidget {
                         style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant),
                       ),
+                      const Divider(height: AppSpacing.lg),
+                      _PagosCredito(credito: c),
                     ],
                   ),
                 ),
@@ -824,6 +1226,100 @@ class _Creditos extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// Resumen de pagos de un crédito + acciones (registrar / ver pagos).
+class _PagosCredito extends ConsumerWidget {
+  const _PagosCredito({required this.credito});
+  final Credito credito;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final resumen = ref.watch(resumenPagosProvider).valueOrNull ?? {};
+    final r = resumen[credito.id] ?? ResumenCredito.vacio;
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            r.cuotas == 0
+                ? 'Sin pagos registrados'
+                : '${r.cuotas} ${r.cuotas == 1 ? 'cuota' : 'cuotas'} · ${formatoMoneda(r.totalPagado)} pagado',
+            style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: r.cuotas == 0
+                    ? theme.colorScheme.onSurfaceVariant
+                    : AppColors.success),
+          ),
+        ),
+        if (r.cuotas > 0)
+          TextButton(
+            onPressed: () => _verPagos(context, ref, credito),
+            child: const Text('Ver'),
+          ),
+        FilledButton.tonal(
+          onPressed: () => _registrarPago(context, ref, credito),
+          child: const Text('Registrar pago'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _registrarPago(
+      BuildContext context, WidgetRef ref, Credito c) async {
+    final r = await pedirMontoYFecha(context,
+        titulo: 'Pago de ${c.nombre}', etiquetaMonto: 'Monto de la cuota');
+    if (r == null || !context.mounted) return;
+    await accionSegura(
+      context,
+      () => ref
+          .read(finanzasAccionesProvider)
+          .registrarPagoCredito(c.id, monto: r.monto, fecha: r.fecha),
+    );
+  }
+
+  void _verPagos(BuildContext context, WidgetRef ref, Credito c) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => Consumer(
+        builder: (context, ref, _) {
+          final pagos =
+              ref.watch(pagosDeCreditoProvider(c.id)).valueOrNull ?? const [];
+          final theme = Theme.of(context);
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Pagos de ${c.nombre}',
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: AppSpacing.sm),
+                for (final p in pagos)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(formatoMoneda(p.monto)),
+                    subtitle: Text(_fechaCorta(p.fecha)),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20),
+                      onPressed: () => accionSegura(
+                        context,
+                        () => ref
+                            .read(finanzasAccionesProvider)
+                            .eliminarPagoCredito(p.id, c.id),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -891,19 +1387,41 @@ class _Metas extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      if (m.ahorrado > 0) ...[
-                        const SizedBox(height: AppSpacing.xs),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: LinearProgressIndicator(
-                            value: m.fraccion,
-                            minHeight: 8,
-                            backgroundColor:
-                                theme.colorScheme.surfaceContainerHighest,
-                            color: AppColors.accent,
-                          ),
+                      const SizedBox(height: AppSpacing.xs),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: m.fraccion,
+                          minHeight: 8,
+                          backgroundColor:
+                              theme.colorScheme.surfaceContainerHighest,
+                          color: m.cumplida
+                              ? AppColors.success
+                              : AppColors.accent,
                         ),
-                      ],
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              m.cumplida
+                                  ? '¡Meta cumplida! 🎉'
+                                  : 'Llevas ${formatoMoneda(m.ahorrado)} · faltan ${formatoMoneda(m.metaMonto - m.ahorrado)}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                  color: m.cumplida
+                                      ? AppColors.success
+                                      : theme.colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: () => _abonarMeta(context, ref, m),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Abonar'),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -911,6 +1429,19 @@ class _Metas extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+
+  Future<void> _abonarMeta(
+      BuildContext context, WidgetRef ref, Meta m) async {
+    final r = await pedirMontoYFecha(context,
+        titulo: 'Abonar a ${m.label}', etiquetaMonto: 'Cuánto ahorraste');
+    if (r == null || !context.mounted) return;
+    await accionSegura(
+      context,
+      () => ref
+          .read(finanzasAccionesProvider)
+          .abonarMeta(m.id, monto: r.monto, fecha: r.fecha),
     );
   }
 }

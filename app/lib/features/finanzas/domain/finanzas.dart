@@ -148,6 +148,59 @@ class Meta {
       );
 }
 
+/// Cuenta con saldo (débito, efectivo, RUT, etc.).
+class Cuenta {
+  const Cuenta({
+    required this.id,
+    required this.nombre,
+    required this.saldo,
+    this.titular,
+  });
+
+  final String id;
+  final String nombre;
+  final String? titular; // 'Yurby' | 'Juan' | 'Ambos'
+  final double saldo;
+
+  factory Cuenta.fromMap(Map<String, dynamic> m) => Cuenta(
+        id: m['id'] as String,
+        nombre: m['nombre'] as String,
+        titular: m['titular'] as String?,
+        saldo: (m['saldo'] as num?)?.toDouble() ?? 0,
+      );
+}
+
+/// Un pago hecho a un crédito (una cuota).
+class PagoCredito {
+  const PagoCredito({
+    required this.id,
+    required this.monto,
+    required this.fecha,
+    this.nota,
+  });
+
+  final String id;
+  final double monto;
+  final DateTime fecha;
+  final String? nota;
+
+  factory PagoCredito.fromMap(Map<String, dynamic> m) => PagoCredito(
+        id: m['id'] as String,
+        monto: (m['monto'] as num).toDouble(),
+        fecha: DateTime.parse(m['fecha'] as String),
+        nota: m['nota'] as String?,
+      );
+}
+
+/// Resumen de los pagos de un crédito: cuántas cuotas y cuánto en total.
+class ResumenCredito {
+  const ResumenCredito({required this.cuotas, required this.totalPagado});
+  final int cuotas;
+  final double totalPagado;
+  static const ResumenCredito vacio =
+      ResumenCredito(cuotas: 0, totalPagado: 0);
+}
+
 /// Balance del reparto compartido (Tricount): cuánto puso cada quien de los
 /// gastos marcados como compartidos, y quién le debe a quién para equilibrar.
 class BalanceCompartido {

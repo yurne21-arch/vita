@@ -56,6 +56,34 @@ final balanceCompartidoProvider = FutureProvider<BalanceCompartido>((ref) {
   return ref.watch(finanzasRepositoryProvider).balanceCompartido();
 });
 
+final cuentasProvider = FutureProvider<List<Cuenta>>((ref) {
+  ref.watch(usuarioActualProvider);
+  return ref.watch(finanzasRepositoryProvider).cuentas();
+});
+
+/// Resumen de pagos por crédito (cuántas cuotas y total), para todos.
+final resumenPagosProvider =
+    FutureProvider<Map<String, ResumenCredito>>((ref) {
+  ref.watch(usuarioActualProvider);
+  ref.watch(creditosProvider);
+  return ref.watch(finanzasRepositoryProvider).resumenPagosPorCredito();
+});
+
+/// Pagos de un crédito puntual (para ver el detalle).
+final pagosDeCreditoProvider =
+    FutureProvider.family<List<PagoCredito>, String>((ref, loanId) {
+  ref.watch(usuarioActualProvider);
+  ref.watch(resumenPagosProvider);
+  return ref.watch(finanzasRepositoryProvider).pagosDeCredito(loanId);
+});
+
+/// Nota pendiente heredada del mes anterior al visible.
+final pendienteMesAnteriorProvider = FutureProvider<String?>((ref) {
+  ref.watch(usuarioActualProvider);
+  final mes = ref.watch(mesFinanzasProvider);
+  return ref.watch(finanzasRepositoryProvider).pendienteMesAnterior(mes);
+});
+
 /// Acciones de Finanzas. Tras cada cambio, invalida lo que corresponda.
 class FinanzasAcciones {
   FinanzasAcciones(this._ref);
@@ -249,6 +277,51 @@ class FinanzasAcciones {
   Future<void> eliminarDeuda(String id) async {
     await _repo.eliminarDeuda(id);
     _ref.invalidate(deudasProvider);
+  }
+
+  Future<void> abonarMeta(String goalId,
+      {required double monto, required DateTime fecha}) async {
+    await _repo.abonarMeta(goalId, monto: monto, fecha: fecha);
+    _ref.invalidate(metasProvider);
+  }
+
+  // ── Cuentas ──
+  Future<void> guardarCuenta({
+    String? id,
+    required String nombre,
+    String? titular,
+    required double saldo,
+  }) async {
+    await _repo.guardarCuenta(
+        id: id, nombre: nombre, titular: titular, saldo: saldo);
+    _ref.invalidate(cuentasProvider);
+  }
+
+  Future<void> eliminarCuenta(String id) async {
+    await _repo.eliminarCuenta(id);
+    _ref.invalidate(cuentasProvider);
+  }
+
+  // ── Pagos de créditos ──
+  Future<void> registrarPagoCredito(String loanId,
+      {required double monto, required DateTime fecha, String? nota}) async {
+    await _repo.registrarPagoCredito(loanId,
+        monto: monto, fecha: fecha, nota: nota);
+    _ref.invalidate(resumenPagosProvider);
+    _ref.invalidate(pagosDeCreditoProvider(loanId));
+  }
+
+  Future<void> eliminarPagoCredito(String id, String loanId) async {
+    await _repo.eliminarPagoCredito(id);
+    _ref.invalidate(resumenPagosProvider);
+    _ref.invalidate(pagosDeCreditoProvider(loanId));
+  }
+
+  // ── Cierre de mes ──
+  Future<void> cerrarMes(DateTime mes,
+      {required Map<String, dynamic> resumen, String? pendiente}) async {
+    await _repo.cerrarMes(mes, resumen: resumen, pendiente: pendiente);
+    _ref.invalidate(pendienteMesAnteriorProvider);
   }
 }
 

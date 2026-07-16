@@ -444,6 +444,182 @@ class FinanzasRepository {
         }
         return BalanceCompartido(puestoPorYurby: yurby, puestoPorJuan: juan);
       });
+
+  // ── Cuentas (saldos) ─────────────────────────────────────────
+
+  Future<List<Cuenta>> cuentas() => _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('finance_accounts')
+            .select('id, nombre, titular, saldo')
+            .eq('user_id', userId)
+            .order('orden');
+        return (rows as List)
+            .map((m) => Cuenta.fromMap(m as Map<String, dynamic>))
+            .toList();
+      });
+
+  Future<void> guardarCuenta({
+    String? id,
+    required String nombre,
+    String? titular,
+    required double saldo,
+  }) =>
+      _guard(() async {
+        final userId = _userId();
+        if (nombre.trim().isEmpty) {
+          throw const FinanzasException('La cuenta necesita un nombre.');
+        }
+        final datos = {
+          'user_id': userId,
+          'nombre': nombre.trim(),
+          'titular': titular,
+          'saldo': saldo,
+        };
+        if (id == null) {
+          await _c.from('finance_accounts').insert(datos);
+        } else {
+          await _c.from('finance_accounts').update(datos).eq('id', id);
+        }
+      });
+
+  Future<void> eliminarCuenta(String id) => _guard(() async {
+        await _c.from('finance_accounts').delete().eq('id', id);
+      });
+
+  // ── Pagos de créditos ────────────────────────────────────────
+
+  Future<List<PagoCredito>> pagosDeCredito(String loanId) => _guard(() async {
+        final rows = await _c
+            .from('finance_loan_payments')
+            .select('id, monto, fecha, nota')
+            .eq('loan_id', loanId)
+            .order('fecha', ascending: false);
+        return (rows as List)
+            .map((m) => PagoCredito.fromMap(m as Map<String, dynamic>))
+            .toList();
+      });
+
+  /// Resumen por crédito: cuántas cuotas pagadas y total, para TODOS los
+  /// créditos de la usuaria (una sola consulta, sin N+1).
+  Future<Map<String, ResumenCredito>> resumenPagosPorCredito() =>
+      _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('finance_loan_payments')
+            .select('loan_id, monto')
+            .eq('user_id', userId);
+        final cuotas = <String, int>{};
+        final total = <String, double>{};
+        for (final r in (rows as List)) {
+          final lid = r['loan_id'] as String;
+          cuotas.update(lid, (v) => v + 1, ifAbsent: () => 1);
+          total.update(lid, (v) => v + (r['monto'] as num).toDouble(),
+              ifAbsent: () => (r['monto'] as num).toDouble());
+        }
+        return {
+          for (final lid in cuotas.keys)
+            lid: ResumenCredito(
+                cuotas: cuotas[lid]!, totalPagado: total[lid] ?? 0),
+        };
+      });
+
+  Future<void> registrarPagoCredito(
+    String loanId, {
+    required double monto,
+    required DateTime fecha,
+    String? nota,
+  }) =>
+      _guard(() async {
+        final userId = _userId();
+        if (monto <= 0) {
+          throw const FinanzasException('El monto debe ser mayor que cero.');
+        }
+        await _c.from('finance_loan_payments').insert({
+          'user_id': userId,
+          'loan_id': loanId,
+          'monto': monto,
+          'fecha': _fechaSolo(fecha),
+          'nota': (nota == null || nota.trim().isEmpty) ? null : nota.trim(),
+        });
+      });
+
+  Future<void> eliminarPagoCredito(String id) => _guard(() async {
+        await _c.from('finance_loan_payments').delete().eq('id', id);
+      });
+
+  // ── Abonos a metas ───────────────────────────────────────────
+
+  /// Registra un abono a una meta y actualiza su total ahorrado.
+  Future<void> abonarMeta(
+    String goalId, {
+    required double monto,
+    required DateTime fecha,
+  }) =>
+      _guard(() async {
+        final userId = _userId();
+        if (monto == 0) {
+          throw const FinanzasException('El monto no puede ser cero.');
+        }
+        await _c.from('finance_goal_contributions').insert({
+          'user_id': userId,
+          'goal_id': goalId,
+          'monto': monto,
+          'fecha': _fechaSolo(fecha),
+        });
+        // Recalcula el ahorrado de la meta desde sus abonos (fuente de verdad).
+        final abonos = await _c
+            .from('finance_goal_contributions')
+            .select('monto')
+            .eq('goal_id', goalId);
+        final ahorrado = (abonos as List)
+            .fold<double>(0, (a, r) => a + (r['monto'] as num).toDouble());
+        final meta = await _c
+            .from('finance_goals')
+            .select('meta_monto')
+            .eq('id', goalId)
+            .single();
+        final metaMonto = (meta['meta_monto'] as num).toDouble();
+        await _c.from('finance_goals').update({
+          'ahorrado': ahorrado,
+          'cumplida': metaMonto > 0 && ahorrado >= metaMonto,
+        }).eq('id', goalId);
+      });
+
+  // ── Cierres de mes ───────────────────────────────────────────
+
+  Future<void> cerrarMes(
+    DateTime mes, {
+    required Map<String, dynamic> resumen,
+    String? pendiente,
+  }) =>
+      _guard(() async {
+        final userId = _userId();
+        await _c.from('finance_month_closes').upsert({
+          'user_id': userId,
+          'anno': mes.year,
+          'mes': mes.month,
+          'resumen': resumen,
+          'pendiente':
+              (pendiente == null || pendiente.trim().isEmpty)
+                  ? null
+                  : pendiente.trim(),
+        }, onConflict: 'user_id,anno,mes');
+      });
+
+  /// Nota de pendientes del mes anterior a [mes] (para arrastrar contexto).
+  Future<String?> pendienteMesAnterior(DateTime mes) => _guard(() async {
+        final userId = _userId();
+        final anterior = DateTime(mes.year, mes.month - 1, 1);
+        final rows = await _c
+            .from('finance_month_closes')
+            .select('pendiente')
+            .eq('user_id', userId)
+            .eq('anno', anterior.year)
+            .eq('mes', anterior.month)
+            .maybeSingle();
+        return rows?['pendiente'] as String?;
+      });
 }
 
 final finanzasRepositoryProvider = Provider<FinanzasRepository>(
