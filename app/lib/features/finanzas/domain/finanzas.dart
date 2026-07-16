@@ -295,22 +295,27 @@ class ResumenMes {
       ResumenMes(gastos: 0, ingresos: 0, porCategoria: {});
 }
 
-/// Categorías sugeridas (no es un enum rígido: la usuaria puede escribir otra).
+/// Categorías de gasto. Son las MISMAS que las del presupuesto (mismos textos),
+/// para que Movimientos, Presupuesto y el gráfico concuerden y no haya despelote.
 const List<String> kCategoriasGasto = [
-  'Comida',
-  'Casa',
-  'Transporte',
-  'Salud',
+  'Alimentacion',
+  'Familia',
+  'Estilo de vida',
   'Servicios',
-  'Ocio',
-  'Ropa',
-  'Educación',
-  'Otros',
+  'Hogar',
+  'Vivienda',
+  'Personal',
+  'Salud',
+  'Mantenciones',
+  'Imprevistos',
+  'Contribucion',
+  'Pago Deuda',
 ];
 
 const List<String> kCategoriasIngreso = [
   'Sueldo',
+  'Utilidades',
+  'Bono',
   'Extra',
-  'Regalo',
   'Otros',
 ];
