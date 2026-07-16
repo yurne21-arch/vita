@@ -207,10 +207,12 @@ class BalanceCompartido {
   const BalanceCompartido({
     required this.puestoPorYurby,
     required this.puestoPorJuan,
+    this.saldadoHasta,
   });
 
   final double puestoPorYurby;
   final double puestoPorJuan;
+  final DateTime? saldadoHasta; // fecha del último "quedar a mano"
 
   double get total => puestoPorYurby + puestoPorJuan;
   double get mitad => total / 2;

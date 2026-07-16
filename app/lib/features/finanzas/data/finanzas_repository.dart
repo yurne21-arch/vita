@@ -417,16 +417,30 @@ class FinanzasRepository {
 
   // ── Tricount: balance del reparto compartido ─────────────────
 
-  /// Suma los gastos compartidos por [quien]. Base del "quién le debe a quién".
-  /// Se calcula sobre todo el historial (no por mes): es un saldo acumulado.
+  /// Suma los gastos compartidos por [quien], solo los POSTERIORES a la última
+  /// vez que se saldaron ("quedar a mano"). Base del "quién le debe a quién".
   Future<BalanceCompartido> balanceCompartido() => _guard(() async {
         final userId = _userId();
-        final rows = await _c
+
+        // ¿Hasta qué fecha ya se pagaron entre ellos?
+        final perfil = await _c
+            .from('profiles')
+            .select('tricount_saldado_hasta')
+            .eq('id', userId)
+            .maybeSingle();
+        final saldadoHasta = perfil?['tricount_saldado_hasta'] as String?;
+
+        var query = _c
             .from('finance_transactions')
             .select('monto, quien')
             .eq('user_id', userId)
             .eq('tipo', 'gasto')
             .eq('compartido', true);
+        if (saldadoHasta != null) {
+          query = query.gt('fecha', saldadoHasta);
+        }
+        final rows = await query;
+
         var yurby = 0.0;
         var juan = 0.0;
         for (final r in (rows as List)) {
@@ -442,7 +456,21 @@ class FinanzasRepository {
             juan += monto / 2;
           }
         }
-        return BalanceCompartido(puestoPorYurby: yurby, puestoPorJuan: juan);
+        return BalanceCompartido(
+          puestoPorYurby: yurby,
+          puestoPorJuan: juan,
+          saldadoHasta:
+              saldadoHasta != null ? DateTime.parse(saldadoHasta) : null,
+        );
+      });
+
+  /// Marca el reparto compartido como saldado hasta hoy: el balance vuelve a
+  /// cero y solo contará los gastos compartidos futuros.
+  Future<void> saldarCompartido() => _guard(() async {
+        final userId = _userId();
+        await _c.from('profiles').update({
+          'tricount_saldado_hasta': _fechaSolo(DateTime.now()),
+        }).eq('id', userId);
       });
 
   // ── Cuentas (saldos) ─────────────────────────────────────────

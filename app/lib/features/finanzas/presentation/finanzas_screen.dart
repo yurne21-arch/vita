@@ -344,19 +344,30 @@ class _TricountCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final b = ref.watch(balanceCompartidoProvider).valueOrNull;
-    if (b == null || b.total == 0) {
-      return const _Vacio(
+    if (b == null) return const SizedBox.shrink();
+
+    // Sin nada por repartir (nunca hubo, o ya se saldó todo).
+    if (b.total == 0) {
+      return _Vacio(
         icon: Icons.groups_outlined,
-        titulo: 'Sin gastos compartidos.',
-        subtitulo:
-            'Marca un gasto como compartido y verás aquí quién le debe a quién.',
+        titulo: b.saldadoHasta != null
+            ? 'Están a mano ✓'
+            : 'Sin gastos compartidos.',
+        subtitulo: b.saldadoHasta != null
+            ? 'Saldaron el ${_fechaCorta(b.saldadoHasta!)}. Los gastos '
+                'compartidos nuevos empezarán a sumar desde ahí.'
+            : 'Marca un gasto como compartido y verás aquí quién le debe a quién.',
       );
     }
+
     final texto = b.equilibrado
         ? 'Están a mano.'
         : b.juanLeDebeAYurby
             ? 'Juan le debe a Yurby'
             : 'Yurby le debe a Juan';
+    final desde = b.saldadoHasta != null
+        ? 'DESDE EL ${_fechaCorta(b.saldadoHasta!).toUpperCase()}'
+        : 'TODO EL HISTORIAL';
     return Column(
       children: [
         Container(
@@ -370,7 +381,7 @@ class _TricountCard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('REPARTO COMPARTIDO · TODO EL HISTORIAL',
+              Text('REPARTO COMPARTIDO · $desde',
                   style: theme.textTheme.labelSmall?.copyWith(
                     letterSpacing: 1.1,
                     fontWeight: FontWeight.w600,
@@ -404,15 +415,51 @@ class _TricountCard extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: AppSpacing.sm),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.tonalIcon(
+            onPressed: () => _saldar(context, ref),
+            icon: const Icon(Icons.handshake_outlined, size: 18),
+            label: const Text('Ya nos pagamos (quedar a mano)'),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
         Text(
-          'Suma TODOS los gastos que marcaste como "compartidos" (no solo el '
-          'mes). Se reparten por igual; la diferencia es lo que falta para '
-          'quedar a mano.',
+          'Suma los gastos compartidos ${b.saldadoHasta != null ? 'desde la última vez que saldaron' : 'de todo el historial'}. '
+          'Se reparten por igual; la diferencia es lo que falta para quedar a '
+          'mano. Al pagarse entre ustedes, toca el botón y el saldo vuelve a cero.',
           style: theme.textTheme.bodySmall
               ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
       ],
+    );
+  }
+
+  Future<void> _saldar(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Quedaron a mano?'),
+        content: const Text(
+          'Se marca el reparto compartido como saldado hasta hoy. El saldo '
+          'vuelve a cero y solo contará los gastos compartidos de aquí en '
+          'adelante. Tus gastos no se borran.',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Sí, quedamos a mano')),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    await accionSegura(
+      context,
+      () => ref.read(finanzasAccionesProvider).saldarCompartido(),
     );
   }
 }
@@ -1240,28 +1287,42 @@ class _PagosCredito extends ConsumerWidget {
     final theme = Theme.of(context);
     final resumen = ref.watch(resumenPagosProvider).valueOrNull ?? {};
     final r = resumen[credito.id] ?? ResumenCredito.vacio;
-    return Row(
+    // Texto y botones en filas separadas: así el texto no se aplasta.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Text(
-            r.cuotas == 0
-                ? 'Sin pagos registrados'
-                : '${r.cuotas} ${r.cuotas == 1 ? 'cuota' : 'cuotas'} · ${formatoMoneda(r.totalPagado)} pagado',
-            style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: r.cuotas == 0
-                    ? theme.colorScheme.onSurfaceVariant
-                    : AppColors.success),
-          ),
+        Text(
+          r.cuotas == 0
+              ? 'Sin pagos registrados'
+              : '${r.cuotas} ${r.cuotas == 1 ? 'cuota pagada' : 'cuotas pagadas'} · ${formatoMoneda(r.totalPagado)}',
+          style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: r.cuotas == 0
+                  ? theme.colorScheme.onSurfaceVariant
+                  : AppColors.success),
         ),
-        if (r.cuotas > 0)
-          TextButton(
-            onPressed: () => _verPagos(context, ref, credito),
-            child: const Text('Ver'),
-          ),
-        FilledButton.tonal(
-          onPressed: () => _registrarPago(context, ref, credito),
-          child: const Text('Registrar pago'),
+        const SizedBox(height: AppSpacing.xs),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            if (r.cuotas > 0)
+              TextButton(
+                onPressed: () => _verPagos(context, ref, credito),
+                child: const Text('Ver pagos'),
+              ),
+            const SizedBox(width: AppSpacing.sm),
+            FilledButton.tonal(
+              // minimumSize acotado: el tema pone ancho infinito por defecto
+              // (para botones de ancho completo), que aquí aplastaría el texto.
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 40),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              ),
+              onPressed: () => _registrarPago(context, ref, credito),
+              child: const Text('Registrar pago'),
+            ),
+          ],
         ),
       ],
     );

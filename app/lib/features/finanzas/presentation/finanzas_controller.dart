@@ -323,6 +323,12 @@ class FinanzasAcciones {
     await _repo.cerrarMes(mes, resumen: resumen, pendiente: pendiente);
     _ref.invalidate(pendienteMesAnteriorProvider);
   }
+
+  // ── Saldar reparto compartido ──
+  Future<void> saldarCompartido() async {
+    await _repo.saldarCompartido();
+    _ref.invalidate(balanceCompartidoProvider);
+  }
 }
 
 final finanzasAccionesProvider =
