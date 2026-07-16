@@ -32,6 +32,37 @@ class HabitosController extends AsyncNotifier<List<Habito>> {
       rethrow;
     }
   }
+
+  Future<void> crear({
+    required String nombre,
+    String? emoji,
+    String? hora,
+  }) async {
+    await ref
+        .read(habitosRepositoryProvider)
+        .crear(nombre: nombre, emoji: emoji, hora: hora);
+    ref.invalidateSelf();
+    await future;
+  }
+
+  Future<void> editar(
+    String id, {
+    required String nombre,
+    String? emoji,
+    String? hora,
+  }) async {
+    await ref
+        .read(habitosRepositoryProvider)
+        .editar(id, nombre: nombre, emoji: emoji, hora: hora);
+    ref.invalidateSelf();
+    await future;
+  }
+
+  Future<void> eliminar(String id) async {
+    await ref.read(habitosRepositoryProvider).eliminar(id);
+    ref.invalidateSelf();
+    await future;
+  }
 }
 
 final habitosControllerProvider =

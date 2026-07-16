@@ -96,11 +96,15 @@ imports): **no usarlos**; el sistema vivo es `core/theme/`.
 
 ## 6. Arquitectura de producto
 
-**Implementado hoy** (4 pestañas): **Mi Vida** (dashboard: versículo diario,
+**Implementado hoy** (5 pestañas): **Mi Vida** (dashboard: versículo diario,
 prioridades ≤3, estado —peso/energía/ánimo/sueño—, agenda del día, proyecto
-principal, hábitos), **Proyectos** (≤3 activos, pasos/hitos, bitácora,
-principal único), **Calendario/Agenda** (eventos, recordatorios), **Ajustes**
-(cuenta, cerrar sesión). Salud y Hábitos viven *dentro* de Mi Vida.
+principal, hábitos con administración), **Proyectos** (≤3 activos, pasos/hitos,
+bitácora, principal único), **Calendario/Agenda** (eventos, recordatorios; feed
+`.ics` suscribible para avisos con sonido vía Google/Apple Calendar),
+**Finanzas** (movimientos con quién/compartido, presupuesto, tarjetas, créditos,
+metas, reparto Tricount Yurby↔Juan — todo editable; datos reales migrados),
+**Ajustes** (cuenta editable, enlace de calendario, cerrar sesión). Salud y
+Hábitos viven *dentro* de Mi Vida.
 
 **Aprobado en diseño, no construido** (roadmap): Dios diario (espiritual),
 Salud como módulo con evolución/gráficos, Nutrición, Entrenamiento, Ciclo,
@@ -206,6 +210,8 @@ Cargar el **mínimo**. Casi ninguna tarea necesita más de MASTER + 1 documento.
 - **Design system:** los tokens de `core/design/tokens/` están muertos; decidir
   si se borran o se migra a ellos. Hoy el sistema vivo es `core/theme/`.
 - **Módulo Salud con evolución/gráficos** no construido (se registra en Mi Vida,
-  pero no hay historial visual).
+  pero no hay historial visual). Es el siguiente candidato de módulo nuevo.
+- **Motor de IA** sin construir (`AIProviderPort` vacío): es el alma del producto
+  y el gran capítulo pendiente. Todo lo actual es la versión "manual".
 - **`vita-prod`** no creado: hoy se usan datos reales en `vita-dev`.
 - **`docs/manuales/`** referenciado en `docs/README.md` pero inexistente.

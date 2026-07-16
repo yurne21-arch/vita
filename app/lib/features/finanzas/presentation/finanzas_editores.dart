@@ -252,30 +252,49 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
   }
 }
 
-/// Editor de deuda (yo debo / me deben).
-Future<void> mostrarEditorDeuda(BuildContext context, WidgetRef ref) {
+/// Editor de deuda (yo debo / me deben). Crea o edita.
+Future<void> mostrarEditorDeuda(
+  BuildContext context,
+  WidgetRef ref, {
+  Deuda? existente,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => const _DeudaEditor(),
+    builder: (_) => _DeudaEditor(existente: existente),
   );
 }
 
 class _DeudaEditor extends ConsumerStatefulWidget {
-  const _DeudaEditor();
+  const _DeudaEditor({this.existente});
+  final Deuda? existente;
 
   @override
   ConsumerState<_DeudaEditor> createState() => _DeudaEditorState();
 }
 
 class _DeudaEditorState extends ConsumerState<_DeudaEditor> {
-  String _direccion = 'debo';
+  late String _direccion;
   DateTime _fecha = DateTime.now();
-  final _persona = TextEditingController();
-  final _monto = TextEditingController();
-  final _desc = TextEditingController();
+  late final TextEditingController _persona;
+  late final TextEditingController _monto;
+  late final TextEditingController _desc;
   bool _guardando = false;
+
+  bool get _esEdicion => widget.existente != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existente;
+    _direccion = e?.direccion ?? 'debo';
+    _fecha = e?.fecha ?? DateTime.now();
+    _persona = TextEditingController(text: e?.persona ?? '');
+    _monto =
+        TextEditingController(text: e != null ? e.monto.round().toString() : '');
+    _desc = TextEditingController(text: e?.descripcion ?? '');
+  }
 
   @override
   void dispose() {
@@ -297,13 +316,24 @@ class _DeudaEditorState extends ConsumerState<_DeudaEditor> {
     }
     setState(() => _guardando = true);
     try {
-      await ref.read(finanzasAccionesProvider).crearDeuda(
-            direccion: _direccion,
-            persona: _persona.text,
-            monto: monto,
-            fecha: _fecha,
-            descripcion: _desc.text,
-          );
+      final acc = ref.read(finanzasAccionesProvider);
+      if (_esEdicion) {
+        await acc.editarDeuda(
+          widget.existente!.id,
+          direccion: _direccion,
+          persona: _persona.text,
+          monto: monto,
+          descripcion: _desc.text,
+        );
+      } else {
+        await acc.crearDeuda(
+          direccion: _direccion,
+          persona: _persona.text,
+          monto: monto,
+          fecha: _fecha,
+          descripcion: _desc.text,
+        );
+      }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
@@ -328,7 +358,7 @@ class _DeudaEditorState extends ConsumerState<_DeudaEditor> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Nueva deuda',
+            Text(_esEdicion ? 'Editar deuda' : 'Nueva deuda',
                 style: theme.textTheme.titleLarge
                     ?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: AppSpacing.lg),
@@ -515,7 +545,394 @@ class _PresupuestoEditorState extends ConsumerState<_PresupuestoEditor> {
   }
 }
 
-/// Segmento tipo pill (dos o tres opciones). Reutilizado por los tres editores.
+// ═══════════════════════════════════════════════════════════════
+// TARJETA DE CRÉDITO
+// ═══════════════════════════════════════════════════════════════
+
+Future<void> mostrarEditorTarjeta(
+  BuildContext context,
+  WidgetRef ref, {
+  Tarjeta? existente,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => _TarjetaEditor(existente: existente),
+  );
+}
+
+class _TarjetaEditor extends ConsumerStatefulWidget {
+  const _TarjetaEditor({this.existente});
+  final Tarjeta? existente;
+  @override
+  ConsumerState<_TarjetaEditor> createState() => _TarjetaEditorState();
+}
+
+class _TarjetaEditorState extends ConsumerState<_TarjetaEditor> {
+  late final TextEditingController _nombre;
+  late final TextEditingController _cupo;
+  late final TextEditingController _saldo;
+  late final TextEditingController _cuota;
+  String _titular = 'Yurby';
+  bool _guardando = false;
+
+  bool get _esEdicion => widget.existente != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final t = widget.existente;
+    _nombre = TextEditingController(text: t?.nombre ?? '');
+    _cupo = TextEditingController(text: _num(t?.cupo));
+    _saldo = TextEditingController(text: _num(t?.saldoDeuda));
+    _cuota = TextEditingController(text: _num(t?.cuotaMes));
+    _titular = t?.titular ?? 'Yurby';
+  }
+
+  @override
+  void dispose() {
+    _nombre.dispose();
+    _cupo.dispose();
+    _saldo.dispose();
+    _cuota.dispose();
+    super.dispose();
+  }
+
+  Future<void> _guardar() async {
+    if (_nombre.text.trim().isEmpty) {
+      _snack(context, 'Ponle un nombre a la tarjeta.');
+      return;
+    }
+    setState(() => _guardando = true);
+    try {
+      await ref.read(finanzasAccionesProvider).guardarTarjeta(
+            id: widget.existente?.id,
+            nombre: _nombre.text,
+            titular: _titular,
+            cupo: _monto(_cupo),
+            saldoDeuda: _monto(_saldo),
+            cuotaMes: _monto(_cuota),
+            diaCierre: widget.existente?.diaCierre,
+            diaPago: widget.existente?.diaPago,
+          );
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _guardando = false);
+        _snack(context, mensajeDeError(e));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _HojaEditor(
+      titulo: _esEdicion ? 'Editar tarjeta' : 'Nueva tarjeta',
+      guardando: _guardando,
+      onGuardar: _guardar,
+      campos: [
+        _campoTexto(_nombre, 'Nombre (ej. Falabella)'),
+        const SizedBox(height: AppSpacing.md),
+        _Segmento(
+          opciones: const [('Yurby', 'Yurby'), ('Juan', 'Juan')],
+          valor: _titular,
+          onChanged: (v) => setState(() => _titular = v),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _campoMonto(_cupo, 'Cupo total'),
+        const SizedBox(height: AppSpacing.md),
+        _campoMonto(_saldo, 'Deuda actual'),
+        const SizedBox(height: AppSpacing.md),
+        _campoMonto(_cuota, 'Cuota del mes'),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CRÉDITO / DEUDA ESTRUCTURADA
+// ═══════════════════════════════════════════════════════════════
+
+Future<void> mostrarEditorCredito(
+  BuildContext context,
+  WidgetRef ref, {
+  Credito? existente,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => _CreditoEditor(existente: existente),
+  );
+}
+
+class _CreditoEditor extends ConsumerStatefulWidget {
+  const _CreditoEditor({this.existente});
+  final Credito? existente;
+  @override
+  ConsumerState<_CreditoEditor> createState() => _CreditoEditorState();
+}
+
+class _CreditoEditorState extends ConsumerState<_CreditoEditor> {
+  late final TextEditingController _nombre;
+  late final TextEditingController _cuota;
+  late final TextEditingController _total;
+  late final TextEditingController _fin;
+  double _progreso = 0;
+  bool _guardando = false;
+
+  bool get _esEdicion => widget.existente != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final c = widget.existente;
+    _nombre = TextEditingController(text: c?.nombre ?? '');
+    _cuota = TextEditingController(text: _num(c?.cuotaMensual));
+    _total = TextEditingController(text: _num(c?.montoTotal));
+    _fin = TextEditingController(text: c?.fin ?? '');
+    _progreso = (c?.progreso ?? 0).toDouble();
+  }
+
+  @override
+  void dispose() {
+    _nombre.dispose();
+    _cuota.dispose();
+    _total.dispose();
+    _fin.dispose();
+    super.dispose();
+  }
+
+  Future<void> _guardar() async {
+    if (_nombre.text.trim().isEmpty) {
+      _snack(context, 'Ponle un nombre al crédito.');
+      return;
+    }
+    setState(() => _guardando = true);
+    try {
+      await ref.read(finanzasAccionesProvider).guardarCredito(
+            id: widget.existente?.id,
+            nombre: _nombre.text,
+            cuotaMensual: _monto(_cuota),
+            montoTotal: _monto(_total),
+            fin: _fin.text,
+            progreso: _progreso.round(),
+            saldada: _progreso >= 100,
+          );
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _guardando = false);
+        _snack(context, mensajeDeError(e));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return _HojaEditor(
+      titulo: _esEdicion ? 'Editar crédito' : 'Nuevo crédito',
+      guardando: _guardando,
+      onGuardar: _guardar,
+      campos: [
+        _campoTexto(_nombre, 'Nombre (ej. Hipoteca casa)'),
+        const SizedBox(height: AppSpacing.md),
+        _campoMonto(_cuota, 'Cuota mensual'),
+        const SizedBox(height: AppSpacing.md),
+        _campoMonto(_total, 'Monto total'),
+        const SizedBox(height: AppSpacing.md),
+        _campoTexto(_fin, 'Hasta (ej. Abr 2030)'),
+        const SizedBox(height: AppSpacing.md),
+        Text('Avance: ${_progreso.round()}%', style: theme.textTheme.labelLarge),
+        Slider(
+          value: _progreso,
+          max: 100,
+          divisions: 100,
+          label: '${_progreso.round()}%',
+          onChanged: (v) => setState(() => _progreso = v),
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// META DE AHORRO
+// ═══════════════════════════════════════════════════════════════
+
+Future<void> mostrarEditorMeta(
+  BuildContext context,
+  WidgetRef ref, {
+  Meta? existente,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => _MetaEditor(existente: existente),
+  );
+}
+
+class _MetaEditor extends ConsumerStatefulWidget {
+  const _MetaEditor({this.existente});
+  final Meta? existente;
+  @override
+  ConsumerState<_MetaEditor> createState() => _MetaEditorState();
+}
+
+class _MetaEditorState extends ConsumerState<_MetaEditor> {
+  late final TextEditingController _label;
+  late final TextEditingController _emoji;
+  late final TextEditingController _meta;
+  late final TextEditingController _ahorrado;
+  bool _guardando = false;
+
+  bool get _esEdicion => widget.existente != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final m = widget.existente;
+    _label = TextEditingController(text: m?.label ?? '');
+    _emoji = TextEditingController(text: m?.emoji ?? '');
+    _meta = TextEditingController(text: _num(m?.metaMonto));
+    _ahorrado = TextEditingController(text: _num(m?.ahorrado));
+  }
+
+  @override
+  void dispose() {
+    _label.dispose();
+    _emoji.dispose();
+    _meta.dispose();
+    _ahorrado.dispose();
+    super.dispose();
+  }
+
+  Future<void> _guardar() async {
+    if (_label.text.trim().isEmpty) {
+      _snack(context, 'Ponle un nombre a la meta.');
+      return;
+    }
+    setState(() => _guardando = true);
+    try {
+      await ref.read(finanzasAccionesProvider).guardarMeta(
+            id: widget.existente?.id,
+            label: _label.text,
+            emoji: _emoji.text,
+            metaMonto: _monto(_meta),
+            ahorrado: _monto(_ahorrado),
+          );
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _guardando = false);
+        _snack(context, mensajeDeError(e));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _HojaEditor(
+      titulo: _esEdicion ? 'Editar meta' : 'Nueva meta',
+      guardando: _guardando,
+      onGuardar: _guardar,
+      campos: [
+        Row(
+          children: [
+            SizedBox(
+              width: 72,
+              child: _campoTexto(_emoji, '🎯'),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(child: _campoTexto(_label, 'Nombre (ej. Viaje)')),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _campoMonto(_meta, 'Monto a juntar'),
+        const SizedBox(height: AppSpacing.md),
+        _campoMonto(_ahorrado, 'Ya ahorrado'),
+      ],
+    );
+  }
+}
+
+// ── Piezas compartidas de los editores ──────────────────────────
+
+String _num(double? v) => (v == null || v == 0) ? '' : v.round().toString();
+double _monto(TextEditingController c) =>
+    double.tryParse(c.text.trim().replaceAll('.', '')) ?? 0;
+
+void _snack(BuildContext context, String m) =>
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+
+Widget _campoTexto(TextEditingController c, String label) => TextField(
+      controller: c,
+      textCapitalization: TextCapitalization.sentences,
+      decoration: InputDecoration(labelText: label),
+    );
+
+Widget _campoMonto(TextEditingController c, String label) => TextField(
+      controller: c,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      decoration: InputDecoration(labelText: label, prefixText: '\$ '),
+    );
+
+/// Hoja inferior estándar para los editores de finanzas (título + campos +
+/// botón Guardar), para no repetir el andamiaje en cada uno.
+class _HojaEditor extends StatelessWidget {
+  const _HojaEditor({
+    required this.titulo,
+    required this.campos,
+    required this.guardando,
+    required this.onGuardar,
+  });
+  final String titulo;
+  final List<Widget> campos;
+  final bool guardando;
+  final VoidCallback onGuardar;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg + bottom),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(titulo,
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: AppSpacing.lg),
+            ...campos,
+            const SizedBox(height: AppSpacing.lg),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: guardando ? null : onGuardar,
+                child: guardando
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Guardar'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Segmento tipo pill (dos o tres opciones). Reutilizado por los editores.
 class _Segmento extends StatelessWidget {
   const _Segmento({
     required this.opciones,

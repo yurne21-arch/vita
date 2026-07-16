@@ -235,6 +235,30 @@ class FinanzasRepository {
         });
       });
 
+  Future<void> editarDeuda(
+    String id, {
+    required String direccion,
+    required String persona,
+    required double monto,
+    String? descripcion,
+  }) =>
+      _guard(() async {
+        if (monto <= 0) {
+          throw const FinanzasException('El monto debe ser mayor que cero.');
+        }
+        if (persona.trim().isEmpty) {
+          throw const FinanzasException('¿Con quién es la deuda?');
+        }
+        await _c.from('finance_debts').update({
+          'direccion': direccion,
+          'persona': persona.trim(),
+          'monto': monto,
+          'descripcion': (descripcion == null || descripcion.trim().isEmpty)
+              ? null
+              : descripcion.trim(),
+        }).eq('id', id);
+      });
+
   Future<void> marcarDeuda(String id, {required bool saldada}) =>
       _guard(() async {
         await _c
@@ -261,6 +285,42 @@ class FinanzasRepository {
             .toList();
       });
 
+  Future<void> guardarTarjeta({
+    String? id,
+    required String nombre,
+    String? titular,
+    required double cupo,
+    required double saldoDeuda,
+    required double cuotaMes,
+    int? diaCierre,
+    int? diaPago,
+  }) =>
+      _guard(() async {
+        final userId = _userId();
+        if (nombre.trim().isEmpty) {
+          throw const FinanzasException('La tarjeta necesita un nombre.');
+        }
+        final datos = {
+          'user_id': userId,
+          'nombre': nombre.trim(),
+          'titular': titular,
+          'cupo': cupo,
+          'saldo_deuda': saldoDeuda,
+          'cuota_mes': cuotaMes,
+          'dia_cierre': diaCierre,
+          'dia_pago': diaPago,
+        };
+        if (id == null) {
+          await _c.from('finance_cards').insert(datos);
+        } else {
+          await _c.from('finance_cards').update(datos).eq('id', id);
+        }
+      });
+
+  Future<void> eliminarTarjeta(String id) => _guard(() async {
+        await _c.from('finance_cards').delete().eq('id', id);
+      });
+
   // ── Créditos / deudas estructuradas ──────────────────────────
 
   Future<List<Credito>> creditos() => _guard(() async {
@@ -276,6 +336,40 @@ class FinanzasRepository {
             .toList();
       });
 
+  Future<void> guardarCredito({
+    String? id,
+    required String nombre,
+    required double cuotaMensual,
+    required double montoTotal,
+    String? fin,
+    int? progreso,
+    bool saldada = false,
+  }) =>
+      _guard(() async {
+        final userId = _userId();
+        if (nombre.trim().isEmpty) {
+          throw const FinanzasException('El crédito necesita un nombre.');
+        }
+        final datos = {
+          'user_id': userId,
+          'nombre': nombre.trim(),
+          'cuota_mensual': cuotaMensual,
+          'monto_total': montoTotal,
+          'fin': (fin == null || fin.trim().isEmpty) ? null : fin.trim(),
+          'progreso': progreso,
+          'saldada': saldada,
+        };
+        if (id == null) {
+          await _c.from('finance_loans').insert(datos);
+        } else {
+          await _c.from('finance_loans').update(datos).eq('id', id);
+        }
+      });
+
+  Future<void> eliminarCredito(String id) => _guard(() async {
+        await _c.from('finance_loans').delete().eq('id', id);
+      });
+
   // ── Metas de ahorro ──────────────────────────────────────────
 
   Future<List<Meta>> metas() => _guard(() async {
@@ -288,6 +382,37 @@ class FinanzasRepository {
         return (rows as List)
             .map((m) => Meta.fromMap(m as Map<String, dynamic>))
             .toList();
+      });
+
+  Future<void> guardarMeta({
+    String? id,
+    required String label,
+    String? emoji,
+    required double metaMonto,
+    double ahorrado = 0,
+  }) =>
+      _guard(() async {
+        final userId = _userId();
+        if (label.trim().isEmpty) {
+          throw const FinanzasException('La meta necesita un nombre.');
+        }
+        final datos = {
+          'user_id': userId,
+          'label': label.trim(),
+          'emoji': (emoji == null || emoji.trim().isEmpty) ? null : emoji.trim(),
+          'meta_monto': metaMonto,
+          'ahorrado': ahorrado,
+          'cumplida': metaMonto > 0 && ahorrado >= metaMonto,
+        };
+        if (id == null) {
+          await _c.from('finance_goals').insert(datos);
+        } else {
+          await _c.from('finance_goals').update(datos).eq('id', id);
+        }
+      });
+
+  Future<void> eliminarMeta(String id) => _guard(() async {
+        await _c.from('finance_goals').delete().eq('id', id);
       });
 
   // ── Tricount: balance del reparto compartido ─────────────────

@@ -1084,8 +1084,19 @@ class _Habitos extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _Eyebrow('HÁBITOS'),
-          const SizedBox(height: AppSpacing.sm),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const _Eyebrow('HÁBITOS'),
+              IconButton(
+                tooltip: 'Administrar hábitos',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.tune, size: 18, color: AppColors.accent),
+                onPressed: () => _administrarHabitos(context, ref),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
           habitosAsync.when(
             loading: () => const Padding(
               padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
@@ -1126,6 +1137,147 @@ class _Habitos extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Hoja para administrar hábitos: lista con editar/quitar + agregar.
+Future<void> _administrarHabitos(BuildContext context, WidgetRef ref) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => Consumer(
+      builder: (context, ref, _) {
+        final theme = Theme.of(context);
+        final habitos =
+            ref.watch(habitosControllerProvider).valueOrNull ?? const <Habito>[];
+        return Padding(
+          padding: EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg,
+              AppSpacing.lg + MediaQuery.of(context).viewInsets.bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Tus hábitos',
+                  style: theme.textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: AppSpacing.sm),
+              for (final h in habitos)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Text(h.emoji ?? '•',
+                      style: const TextStyle(fontSize: 18)),
+                  title: Text(h.nombre),
+                  subtitle: h.hora != null ? Text(h.hora!) : null,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'Editar',
+                        icon: const Icon(Icons.edit_outlined, size: 20),
+                        onPressed: () => _dialogoHabito(context, ref, existente: h),
+                      ),
+                      IconButton(
+                        tooltip: 'Quitar',
+                        icon: const Icon(Icons.delete_outline, size: 20),
+                        onPressed: () => accionSegura(
+                          context,
+                          () => ref
+                              .read(habitosControllerProvider.notifier)
+                              .eliminar(h.id),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => _dialogoHabito(context, ref),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Agregar hábito'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
+/// Diálogo para crear o editar un hábito (emoji + nombre + hora).
+Future<void> _dialogoHabito(BuildContext context, WidgetRef ref,
+    {Habito? existente}) async {
+  final nombre = TextEditingController(text: existente?.nombre ?? '');
+  final emoji = TextEditingController(text: existente?.emoji ?? '');
+  final hora = TextEditingController(text: existente?.hora ?? '');
+  final esEdicion = existente != null;
+
+  final guardar = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(esEdicion ? 'Editar hábito' : 'Nuevo hábito'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              SizedBox(
+                width: 64,
+                child: TextField(
+                  controller: emoji,
+                  decoration: const InputDecoration(hintText: '💊'),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: TextField(
+                  controller: nombre,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: const InputDecoration(labelText: 'Nombre'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          TextField(
+            controller: hora,
+            decoration:
+                const InputDecoration(labelText: 'Hora (opcional, ej. 9:00 PM)'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('Guardar'),
+        ),
+      ],
+    ),
+  );
+
+  final n = nombre.text;
+  final e = emoji.text;
+  final h = hora.text;
+  nombre.dispose();
+  emoji.dispose();
+  hora.dispose();
+  if (guardar != true || n.trim().isEmpty || !context.mounted) return;
+
+  await accionSegura(context, () async {
+    final ctrl = ref.read(habitosControllerProvider.notifier);
+    if (esEdicion) {
+      await ctrl.editar(existente.id, nombre: n, emoji: e, hora: h);
+    } else {
+      await ctrl.crear(nombre: n, emoji: e, hora: h);
+    }
+  });
 }
 
 // ============================ PIEZAS ============================

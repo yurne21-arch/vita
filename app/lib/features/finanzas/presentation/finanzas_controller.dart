@@ -145,6 +145,102 @@ class FinanzasAcciones {
     _ref.invalidate(deudasProvider);
   }
 
+  Future<void> editarDeuda(
+    String id, {
+    required String direccion,
+    required String persona,
+    required double monto,
+    String? descripcion,
+  }) async {
+    await _repo.editarDeuda(
+      id,
+      direccion: direccion,
+      persona: persona,
+      monto: monto,
+      descripcion: descripcion,
+    );
+    _ref.invalidate(deudasProvider);
+  }
+
+  // ── Tarjetas ──
+  Future<void> guardarTarjeta({
+    String? id,
+    required String nombre,
+    String? titular,
+    required double cupo,
+    required double saldoDeuda,
+    required double cuotaMes,
+    int? diaCierre,
+    int? diaPago,
+  }) async {
+    await _repo.guardarTarjeta(
+      id: id,
+      nombre: nombre,
+      titular: titular,
+      cupo: cupo,
+      saldoDeuda: saldoDeuda,
+      cuotaMes: cuotaMes,
+      diaCierre: diaCierre,
+      diaPago: diaPago,
+    );
+    _ref.invalidate(tarjetasProvider);
+  }
+
+  Future<void> eliminarTarjeta(String id) async {
+    await _repo.eliminarTarjeta(id);
+    _ref.invalidate(tarjetasProvider);
+  }
+
+  // ── Créditos ──
+  Future<void> guardarCredito({
+    String? id,
+    required String nombre,
+    required double cuotaMensual,
+    required double montoTotal,
+    String? fin,
+    int? progreso,
+    bool saldada = false,
+  }) async {
+    await _repo.guardarCredito(
+      id: id,
+      nombre: nombre,
+      cuotaMensual: cuotaMensual,
+      montoTotal: montoTotal,
+      fin: fin,
+      progreso: progreso,
+      saldada: saldada,
+    );
+    _ref.invalidate(creditosProvider);
+  }
+
+  Future<void> eliminarCredito(String id) async {
+    await _repo.eliminarCredito(id);
+    _ref.invalidate(creditosProvider);
+  }
+
+  // ── Metas ──
+  Future<void> guardarMeta({
+    String? id,
+    required String label,
+    String? emoji,
+    required double metaMonto,
+    double ahorrado = 0,
+  }) async {
+    await _repo.guardarMeta(
+      id: id,
+      label: label,
+      emoji: emoji,
+      metaMonto: metaMonto,
+      ahorrado: ahorrado,
+    );
+    _ref.invalidate(metasProvider);
+  }
+
+  Future<void> eliminarMeta(String id) async {
+    await _repo.eliminarMeta(id);
+    _ref.invalidate(metasProvider);
+  }
+
   Future<void> marcarDeuda(String id, {required bool saldada}) async {
     await _repo.marcarDeuda(id, saldada: saldada);
     _ref.invalidate(deudasProvider);

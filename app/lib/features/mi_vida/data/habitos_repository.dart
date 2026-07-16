@@ -161,6 +161,43 @@ class HabitosRepository {
           onConflict: 'habito_id,fecha',
         );
       });
+
+  /// Crea un hábito. `upsert` por si existe uno desactivado con el mismo nombre
+  /// (evita chocar con UNIQUE(user_id, nombre)); lo reactiva.
+  Future<void> crear({required String nombre, String? emoji, String? hora}) =>
+      _guard(() async {
+        final userId = _userId();
+        final limpio = nombre.trim();
+        if (limpio.isEmpty) {
+          throw const HabitosException('Ponle un nombre al hábito.');
+        }
+        await _c.from('habitos').upsert({
+          'user_id': userId,
+          'nombre': limpio,
+          'emoji': (emoji == null || emoji.trim().isEmpty) ? null : emoji.trim(),
+          'hora': (hora == null || hora.trim().isEmpty) ? null : hora.trim(),
+          'activo': true,
+        }, onConflict: 'user_id,nombre');
+      });
+
+  Future<void> editar(String id,
+          {required String nombre, String? emoji, String? hora}) =>
+      _guard(() async {
+        final limpio = nombre.trim();
+        if (limpio.isEmpty) {
+          throw const HabitosException('Ponle un nombre al hábito.');
+        }
+        await _c.from('habitos').update({
+          'nombre': limpio,
+          'emoji': (emoji == null || emoji.trim().isEmpty) ? null : emoji.trim(),
+          'hora': (hora == null || hora.trim().isEmpty) ? null : hora.trim(),
+        }).eq('id', id);
+      });
+
+  /// Quita un hábito sin borrar su historial: lo desactiva.
+  Future<void> eliminar(String id) => _guard(() async {
+        await _c.from('habitos').update({'activo': false}).eq('id', id);
+      });
 }
 
 final habitosRepositoryProvider = Provider<HabitosRepository>(

@@ -48,4 +48,15 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
     return profile;
   }
+
+  @override
+  Future<void> actualizarNombre(String nombre) async {
+    final user = _supabase.client.auth.currentUser;
+    if (user == null) return;
+    final limpio = nombre.trim();
+    if (limpio.isEmpty) return;
+    await _supabase.client
+        .from('profiles')
+        .update({'display_name': limpio}).eq('id', user.id);
+  }
 }

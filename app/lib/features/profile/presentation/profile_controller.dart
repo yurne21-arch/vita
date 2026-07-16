@@ -11,6 +11,12 @@ class ProfileController extends AsyncNotifier<Profile?> {
     if (uid == null) return null;
     return ref.read(profileRepositoryProvider).loadOwnProfile();
   }
+
+  Future<void> actualizarNombre(String nombre) async {
+    await ref.read(profileRepositoryProvider).actualizarNombre(nombre);
+    ref.invalidateSelf();
+    await future;
+  }
 }
 
 final profileControllerProvider =

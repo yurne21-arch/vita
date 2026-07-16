@@ -54,10 +54,7 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
         DateTime(actual.year, actual.month + delta, 1);
   }
 
-  bool get _puedeAgregar => switch (_seccion) {
-        _Seccion.movimientos || _Seccion.presupuesto || _Seccion.deudas => true,
-        _ => false,
-      };
+  bool get _puedeAgregar => true; // todas las secciones permiten agregar
 
   void _agregar() {
     switch (_seccion) {
@@ -65,10 +62,14 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
         _menuMovimiento();
       case _Seccion.presupuesto:
         mostrarEditorPresupuesto(context, ref);
+      case _Seccion.tarjetas:
+        mostrarEditorTarjeta(context, ref);
+      case _Seccion.creditos:
+        mostrarEditorCredito(context, ref);
+      case _Seccion.metas:
+        mostrarEditorMeta(context, ref);
       case _Seccion.deudas:
         mostrarEditorDeuda(context, ref);
-      default:
-        break;
     }
   }
 
@@ -684,6 +685,16 @@ class _Tarjetas extends ConsumerWidget {
                           Text('Cuota ${formatoMoneda(t.cuotaMes)}',
                               style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant)),
+                          _MenuEditarEliminar(
+                            onEditar: () =>
+                                mostrarEditorTarjeta(context, ref, existente: t),
+                            onEliminar: () => accionSegura(
+                              context,
+                              () => ref
+                                  .read(finanzasAccionesProvider)
+                                  .eliminarTarjeta(t.id),
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: AppSpacing.xs),
@@ -774,6 +785,16 @@ class _Creditos extends ConsumerWidget {
                           Text('Cuota ${formatoMoneda(c.cuotaMensual)}',
                               style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant)),
+                          _MenuEditarEliminar(
+                            onEditar: () =>
+                                mostrarEditorCredito(context, ref, existente: c),
+                            onEliminar: () => accionSegura(
+                              context,
+                              () => ref
+                                  .read(finanzasAccionesProvider)
+                                  .eliminarCredito(c.id),
+                            ),
+                          ),
                         ],
                       ),
                       if (c.progreso != null) ...[
@@ -858,6 +879,16 @@ class _Metas extends ConsumerWidget {
                           Text(formatoMoneda(m.metaMonto),
                               style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant)),
+                          _MenuEditarEliminar(
+                            onEditar: () =>
+                                mostrarEditorMeta(context, ref, existente: m),
+                            onEliminar: () => accionSegura(
+                              context,
+                              () => ref
+                                  .read(finanzasAccionesProvider)
+                                  .eliminarMeta(m.id),
+                            ),
+                          ),
                         ],
                       ),
                       if (m.ahorrado > 0) ...[
@@ -992,7 +1023,9 @@ class _DeudaRow extends ConsumerWidget {
                   size: 18, color: theme.colorScheme.onSurfaceVariant),
               tooltip: 'Opciones',
               onSelected: (op) {
-                if (op == 'eliminar') {
+                if (op == 'editar') {
+                  mostrarEditorDeuda(context, ref, existente: d);
+                } else if (op == 'eliminar') {
                   accionSegura(
                     context,
                     () =>
@@ -1001,6 +1034,7 @@ class _DeudaRow extends ConsumerWidget {
                 }
               },
               itemBuilder: (_) => const [
+                PopupMenuItem(value: 'editar', child: Text('Editar')),
                 PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
               ],
             ),
@@ -1012,6 +1046,28 @@ class _DeudaRow extends ConsumerWidget {
 }
 
 // ── Piezas ───────────────────────────────────────────────────────
+
+/// Menú de tres puntos con Editar / Eliminar, reutilizado por tarjetas,
+/// créditos y metas.
+class _MenuEditarEliminar extends StatelessWidget {
+  const _MenuEditarEliminar({required this.onEditar, required this.onEliminar});
+  final VoidCallback onEditar;
+  final VoidCallback onEliminar;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      icon: Icon(Icons.more_vert,
+          size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
+      tooltip: 'Opciones',
+      onSelected: (op) => op == 'editar' ? onEditar() : onEliminar(),
+      itemBuilder: (_) => const [
+        PopupMenuItem(value: 'editar', child: Text('Editar')),
+        PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
+      ],
+    );
+  }
+}
 
 class _Vacio extends StatelessWidget {
   const _Vacio(

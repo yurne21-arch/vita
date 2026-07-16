@@ -66,23 +66,38 @@ class AjustesScreen extends ConsumerWidget {
                           onReintentar: () =>
                               ref.invalidate(profileControllerProvider),
                         ),
-                        data: (p) => Column(
+                        data: (p) => Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              p?.displayName ?? 'Sin nombre',
-                              style: theme.textTheme.titleLarge
-                                  ?.copyWith(fontWeight: FontWeight.w700),
-                            ),
-                            if (correo != null) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                correo,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    p?.displayName ?? 'Sin nombre',
+                                    style: theme.textTheme.titleLarge
+                                        ?.copyWith(fontWeight: FontWeight.w700),
+                                  ),
+                                  if (correo != null) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      correo,
+                                      style:
+                                          theme.textTheme.bodyMedium?.copyWith(
+                                        color:
+                                            theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
-                            ],
+                            ),
+                            IconButton(
+                              tooltip: 'Cambiar nombre',
+                              icon: const Icon(Icons.edit_outlined),
+                              onPressed: () => _editarNombre(
+                                  context, ref, p?.displayName ?? ''),
+                            ),
                           ],
                         ),
                       ),
@@ -210,6 +225,39 @@ class _CalendarioCard extends StatelessWidget {
       );
     }
   }
+}
+
+Future<void> _editarNombre(
+    BuildContext context, WidgetRef ref, String actual) async {
+  final controller = TextEditingController(text: actual);
+  final nuevo = await showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Tu nombre'),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.words,
+        decoration: const InputDecoration(hintText: 'Cómo quieres que te llame'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+          child: const Text('Guardar'),
+        ),
+      ],
+    ),
+  );
+  controller.dispose();
+  if (nuevo == null || nuevo.isEmpty || !context.mounted) return;
+  await accionSegura(
+    context,
+    () => ref.read(profileControllerProvider.notifier).actualizarNombre(nuevo),
+  );
 }
 
 Future<void> _confirmarSalir(BuildContext context, WidgetRef ref) async {
