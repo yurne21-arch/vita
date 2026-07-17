@@ -1,4 +1,4 @@
-/// Entidades de dominio de Finanzas (Dart puro, sin Flutter ni Supabase).
+// Entidades de dominio de Finanzas (Dart puro, sin Flutter ni Supabase).
 
 /// Un movimiento: gasto o ingreso.
 class Movimiento {
@@ -14,6 +14,9 @@ class Movimiento {
     this.compartido = false,
     this.metodo,
     this.tarjeta,
+    this.cuentaId,
+    this.tarjetaId,
+    this.loanId,
   });
 
   final String id;
@@ -26,7 +29,10 @@ class Movimiento {
   final String? quien; // 'Yurby' | 'Juan' | 'Ambos'
   final bool compartido; // se reparte entre ambos
   final String? metodo; // 'efectivo' | 'tarjeta' | 'cuenta'
-  final String? tarjeta; // medio de pago (texto libre)
+  final String? tarjeta; // medio de pago (texto libre, histórico)
+  final String? cuentaId; // cuenta de la que salió/entró (ajusta saldo)
+  final String? tarjetaId; // tarjeta con la que se pagó (ajusta deuda)
+  final String? loanId; // crédito que este movimiento paga (cuota)
 
   bool get esGasto => tipo == 'gasto';
   bool get esIngreso => tipo == 'ingreso';
@@ -46,6 +52,9 @@ class Movimiento {
         compartido: (m['compartido'] as bool?) ?? false,
         metodo: m['metodo'] as String?,
         tarjeta: m['tarjeta'] as String?,
+        cuentaId: m['cuenta_id'] as String?,
+        tarjetaId: m['tarjeta_id'] as String?,
+        loanId: m['loan_id'] as String?,
       );
 }
 

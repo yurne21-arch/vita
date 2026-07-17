@@ -55,7 +55,8 @@ class FinanzasRepository {
         final hasta = DateTime(mes.year, mes.month + 1, 1);
         final rows = await _c
             .from('finance_transactions')
-            .select('id, tipo, monto, categoria, ambito, nota, fecha')
+            .select(
+                'id, tipo, monto, categoria, ambito, nota, fecha, quien, compartido, cuenta_id, tarjeta_id, loan_id')
             .eq('user_id', userId)
             .gte('fecha', _fechaSolo(desde))
             .lt('fecha', _fechaSolo(hasta))
@@ -75,6 +76,9 @@ class FinanzasRepository {
     String? nota,
     String? quien,
     bool compartido = false,
+    String? cuentaId,
+    String? tarjetaId,
+    String? loanId,
   }) =>
       _guard(() async {
         final userId = _userId();
@@ -93,6 +97,9 @@ class FinanzasRepository {
           'nota': (nota == null || nota.trim().isEmpty) ? null : nota.trim(),
           'quien': quien,
           'compartido': compartido,
+          'cuenta_id': cuentaId,
+          'tarjeta_id': tarjetaId,
+          'loan_id': loanId,
           'fecha': _fechaSolo(fecha),
         });
       });
@@ -106,6 +113,9 @@ class FinanzasRepository {
     String? nota,
     String? quien,
     bool compartido = false,
+    String? cuentaId,
+    String? tarjetaId,
+    String? loanId,
   }) =>
       _guard(() async {
         if (monto <= 0) {
@@ -118,6 +128,9 @@ class FinanzasRepository {
           'nota': (nota == null || nota.trim().isEmpty) ? null : nota.trim(),
           'quien': quien,
           'compartido': compartido,
+          'cuenta_id': cuentaId,
+          'tarjeta_id': tarjetaId,
+          'loan_id': loanId,
           'fecha': _fechaSolo(fecha),
         }).eq('id', id);
       });
@@ -515,11 +528,13 @@ class FinanzasRepository {
         await _c.from('finance_accounts').delete().eq('id', id);
       });
 
-  // ── Pagos de créditos ────────────────────────────────────────
+  // ── Pagos de créditos (son movimientos con loan_id) ──────────
+  // Pagar un crédito ES un gasto que sale de una cuenta: así descuenta el saldo
+  // y queda en el historial de movimientos, todo en un solo lugar.
 
   Future<List<PagoCredito>> pagosDeCredito(String loanId) => _guard(() async {
         final rows = await _c
-            .from('finance_loan_payments')
+            .from('finance_transactions')
             .select('id, monto, fecha, nota')
             .eq('loan_id', loanId)
             .order('fecha', ascending: false);
@@ -534,9 +549,10 @@ class FinanzasRepository {
       _guard(() async {
         final userId = _userId();
         final rows = await _c
-            .from('finance_loan_payments')
+            .from('finance_transactions')
             .select('loan_id, monto')
-            .eq('user_id', userId);
+            .eq('user_id', userId)
+            .not('loan_id', 'is', null);
         final cuotas = <String, int>{};
         final total = <String, double>{};
         for (final r in (rows as List)) {
@@ -552,29 +568,27 @@ class FinanzasRepository {
         };
       });
 
+  /// Registra el pago de una cuota como un movimiento (gasto categoría
+  /// "Pago Deuda") ligado al crédito y descontado de una cuenta.
   Future<void> registrarPagoCredito(
     String loanId, {
     required double monto,
     required DateTime fecha,
-    String? nota,
+    String? cuentaId,
+    String? quien,
   }) =>
-      _guard(() async {
-        final userId = _userId();
-        if (monto <= 0) {
-          throw const FinanzasException('El monto debe ser mayor que cero.');
-        }
-        await _c.from('finance_loan_payments').insert({
-          'user_id': userId,
-          'loan_id': loanId,
-          'monto': monto,
-          'fecha': _fechaSolo(fecha),
-          'nota': (nota == null || nota.trim().isEmpty) ? null : nota.trim(),
-        });
-      });
+      crearMovimiento(
+        tipo: 'gasto',
+        monto: monto,
+        categoria: 'Pago Deuda',
+        ambito: 'casa',
+        fecha: fecha,
+        quien: quien,
+        cuentaId: cuentaId,
+        loanId: loanId,
+      );
 
-  Future<void> eliminarPagoCredito(String id) => _guard(() async {
-        await _c.from('finance_loan_payments').delete().eq('id', id);
-      });
+  Future<void> eliminarPagoCredito(String id) => eliminarMovimiento(id);
 
   // ── Abonos a metas ───────────────────────────────────────────
 

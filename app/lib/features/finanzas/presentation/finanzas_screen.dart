@@ -1328,17 +1328,11 @@ class _PagosCredito extends ConsumerWidget {
     );
   }
 
-  Future<void> _registrarPago(
-      BuildContext context, WidgetRef ref, Credito c) async {
-    final r = await pedirMontoYFecha(context,
-        titulo: 'Pago de ${c.nombre}', etiquetaMonto: 'Monto de la cuota');
-    if (r == null || !context.mounted) return;
-    await accionSegura(
-      context,
-      () => ref
-          .read(finanzasAccionesProvider)
-          .registrarPagoCredito(c.id, monto: r.monto, fecha: r.fecha),
-    );
+  void _registrarPago(BuildContext context, WidgetRef ref, Credito c) {
+    // Abre el editor de movimiento como "Pago Deuda" ligado a este crédito:
+    // así eliges de qué cuenta sale (descuenta el saldo) y queda la cuota.
+    mostrarEditorMovimiento(context, ref,
+        categoriaInicial: 'Pago Deuda', loanIdInicial: c.id);
   }
 
   void _verPagos(BuildContext context, WidgetRef ref, Credito c) {

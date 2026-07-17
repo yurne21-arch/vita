@@ -93,6 +93,11 @@ class FinanzasAcciones {
   void _refrescarMovimientos() {
     _ref.invalidate(movimientosProvider);
     _ref.invalidate(resumenMesProvider);
+    // Los saldos se ajustan solos en la base: refrescar para verlos al día.
+    _ref.invalidate(cuentasProvider);
+    _ref.invalidate(tarjetasProvider);
+    _ref.invalidate(resumenPagosProvider);
+    _ref.invalidate(balanceCompartidoProvider);
   }
 
   Future<void> crearMovimiento({
@@ -104,6 +109,9 @@ class FinanzasAcciones {
     String? nota,
     String? quien,
     bool compartido = false,
+    String? cuentaId,
+    String? tarjetaId,
+    String? loanId,
   }) async {
     await _repo.crearMovimiento(
       tipo: tipo,
@@ -114,6 +122,9 @@ class FinanzasAcciones {
       nota: nota,
       quien: quien,
       compartido: compartido,
+      cuentaId: cuentaId,
+      tarjetaId: tarjetaId,
+      loanId: loanId,
     );
     _refrescarMovimientos();
   }
@@ -127,6 +138,9 @@ class FinanzasAcciones {
     String? nota,
     String? quien,
     bool compartido = false,
+    String? cuentaId,
+    String? tarjetaId,
+    String? loanId,
   }) async {
     await _repo.editarMovimiento(
       id,
@@ -137,6 +151,9 @@ class FinanzasAcciones {
       nota: nota,
       quien: quien,
       compartido: compartido,
+      cuentaId: cuentaId,
+      tarjetaId: tarjetaId,
+      loanId: loanId,
     );
     _refrescarMovimientos();
   }
@@ -302,18 +319,21 @@ class FinanzasAcciones {
     _ref.invalidate(cuentasProvider);
   }
 
-  // ── Pagos de créditos ──
+  // ── Pagos de créditos (son movimientos) ──
   Future<void> registrarPagoCredito(String loanId,
-      {required double monto, required DateTime fecha, String? nota}) async {
+      {required double monto,
+      required DateTime fecha,
+      String? cuentaId,
+      String? quien}) async {
     await _repo.registrarPagoCredito(loanId,
-        monto: monto, fecha: fecha, nota: nota);
-    _ref.invalidate(resumenPagosProvider);
+        monto: monto, fecha: fecha, cuentaId: cuentaId, quien: quien);
+    _refrescarMovimientos();
     _ref.invalidate(pagosDeCreditoProvider(loanId));
   }
 
   Future<void> eliminarPagoCredito(String id, String loanId) async {
     await _repo.eliminarPagoCredito(id);
-    _ref.invalidate(resumenPagosProvider);
+    _refrescarMovimientos();
     _ref.invalidate(pagosDeCreditoProvider(loanId));
   }
 

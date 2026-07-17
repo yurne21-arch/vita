@@ -15,20 +15,33 @@ Future<void> mostrarEditorMovimiento(
   WidgetRef ref, {
   Movimiento? existente,
   String tipoInicial = 'gasto',
+  String? categoriaInicial,
+  String? loanIdInicial,
 }) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) =>
-        _MovimientoEditor(existente: existente, tipoInicial: tipoInicial),
+    builder: (_) => _MovimientoEditor(
+      existente: existente,
+      tipoInicial: tipoInicial,
+      categoriaInicial: categoriaInicial,
+      loanIdInicial: loanIdInicial,
+    ),
   );
 }
 
 class _MovimientoEditor extends ConsumerStatefulWidget {
-  const _MovimientoEditor({this.existente, required this.tipoInicial});
+  const _MovimientoEditor({
+    this.existente,
+    required this.tipoInicial,
+    this.categoriaInicial,
+    this.loanIdInicial,
+  });
   final Movimiento? existente;
   final String tipoInicial;
+  final String? categoriaInicial;
+  final String? loanIdInicial;
 
   @override
   ConsumerState<_MovimientoEditor> createState() => _MovimientoEditorState();
@@ -45,6 +58,10 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
   late final TextEditingController _nota;
   bool _guardando = false;
 
+  // Medio de pago: 'efectivo' | 'cuenta:<id>' | 'tarjeta:<id>'
+  String _medio = 'efectivo';
+  String? _loanId; // crédito a pagar (si categoría = Pago Deuda)
+
   bool get _esEdicion => widget.existente != null;
 
   @override
@@ -53,14 +70,25 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
     final e = widget.existente;
     _tipo = e?.tipo ?? widget.tipoInicial;
     _ambito = e?.ambito ?? 'personal';
-    _categoria = e?.categoria;
+    _categoria = e?.categoria ?? widget.categoriaInicial;
     _quien = e?.quien ?? 'Yurby';
     _compartido = e?.compartido ?? false;
     _fecha = e?.fecha ?? DateTime.now();
+    _loanId = e?.loanId ?? widget.loanIdInicial;
+    if (e?.cuentaId != null) {
+      _medio = 'cuenta:${e!.cuentaId}';
+    } else if (e?.tarjetaId != null) {
+      _medio = 'tarjeta:${e!.tarjetaId}';
+    }
     _monto = TextEditingController(
         text: e != null ? e.monto.round().toString() : '');
     _nota = TextEditingController(text: e?.nota ?? '');
   }
+
+  String? get _cuentaId =>
+      _medio.startsWith('cuenta:') ? _medio.substring(7) : null;
+  String? get _tarjetaId =>
+      _medio.startsWith('tarjeta:') ? _medio.substring(8) : null;
 
   @override
   void dispose() {
@@ -85,6 +113,7 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
     setState(() => _guardando = true);
     final acc = ref.read(finanzasAccionesProvider);
     try {
+      final esPagoDeuda = _categoria == 'Pago Deuda';
       if (_esEdicion) {
         await acc.editarMovimiento(
           widget.existente!.id,
@@ -95,6 +124,9 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
           nota: _nota.text,
           quien: _quien,
           compartido: _compartido,
+          cuentaId: _cuentaId,
+          tarjetaId: _tarjetaId,
+          loanId: esPagoDeuda ? _loanId : null,
         );
       } else {
         await acc.crearMovimiento(
@@ -106,6 +138,9 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
           nota: _nota.text,
           quien: _quien,
           compartido: _compartido,
+          cuentaId: _cuentaId,
+          tarjetaId: _tarjetaId,
+          loanId: esPagoDeuda ? _loanId : null,
         );
       }
       if (mounted) Navigator.of(context).pop();
@@ -185,6 +220,25 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
                   ),
               ],
             ),
+            // Si es "Pago Deuda": elegir a qué crédito va (para que se registre
+            // la cuota automáticamente).
+            if (_categoria == 'Pago Deuda') ...[
+              const SizedBox(height: AppSpacing.md),
+              _SelectorCredito(
+                valor: _loanId,
+                onChanged: (v) => setState(() => _loanId = v),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.md),
+            // Medio de pago: ajusta el saldo de la cuenta/tarjeta al guardar.
+            _SelectorMedio(
+              valor: _medio,
+              onChanged: (v, quienSugerido, compartidoSugerido) => setState(() {
+                _medio = v;
+                if (quienSugerido != null) _quien = quienSugerido;
+                if (compartidoSugerido != null) _compartido = compartidoSugerido;
+              }),
+            ),
             const SizedBox(height: AppSpacing.md),
             _Segmento(
               opciones: const [('personal', 'Personal'), ('casa', 'Casa')],
@@ -248,6 +302,73 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Selector de medio de pago (efectivo / cuentas / tarjetas). Al elegir una
+/// tarjeta de crédito sugiere quién pagó (su titular) y "compartido"; al elegir
+/// una cuenta sugiere su titular. Ajusta el saldo al guardar.
+class _SelectorMedio extends ConsumerWidget {
+  const _SelectorMedio({required this.valor, required this.onChanged});
+  final String valor;
+  // (medioKey, quienSugerido, compartidoSugerido)
+  final void Function(String, String?, bool?) onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cuentas = ref.watch(cuentasProvider).valueOrNull ?? const <Cuenta>[];
+    final tarjetas =
+        ref.watch(tarjetasProvider).valueOrNull ?? const <Tarjeta>[];
+    return DropdownButtonFormField<String>(
+      initialValue: valor,
+      isExpanded: true,
+      decoration: const InputDecoration(labelText: 'Pagado con'),
+      items: [
+        const DropdownMenuItem(value: 'efectivo', child: Text('Efectivo')),
+        for (final c in cuentas)
+          DropdownMenuItem(
+              value: 'cuenta:${c.id}', child: Text(c.nombre)),
+        for (final t in tarjetas)
+          DropdownMenuItem(
+              value: 'tarjeta:${t.id}', child: Text(t.nombre)),
+      ],
+      onChanged: (v) {
+        if (v == null) return;
+        if (v.startsWith('tarjeta:')) {
+          final t = tarjetas.firstWhere((x) => 'tarjeta:${x.id}' == v);
+          // Tarjeta de crédito: la puso su titular y suele ser gasto de casa.
+          onChanged(v, t.titular, true);
+        } else if (v.startsWith('cuenta:')) {
+          final c = cuentas.firstWhere((x) => 'cuenta:${x.id}' == v);
+          onChanged(v, c.titular, null);
+        } else {
+          onChanged(v, null, null);
+        }
+      },
+    );
+  }
+}
+
+/// Selector del crédito a pagar (para movimientos categoría "Pago Deuda").
+class _SelectorCredito extends ConsumerWidget {
+  const _SelectorCredito({required this.valor, required this.onChanged});
+  final String? valor;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final creditos =
+        ref.watch(creditosProvider).valueOrNull ?? const <Credito>[];
+    return DropdownButtonFormField<String>(
+      initialValue: valor,
+      isExpanded: true,
+      decoration: const InputDecoration(labelText: '¿Qué crédito pagas?'),
+      items: [
+        for (final c in creditos)
+          DropdownMenuItem(value: c.id, child: Text(c.nombre)),
+      ],
+      onChanged: onChanged,
     );
   }
 }
