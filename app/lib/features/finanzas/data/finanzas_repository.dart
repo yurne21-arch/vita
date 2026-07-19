@@ -162,13 +162,16 @@ class FinanzasRepository {
     var ingresos = 0.0;
     final porCategoria = <String, double>{};
     for (final m in movimientos) {
-      if (m.esGasto) {
+      if (m.esIngreso) {
+        ingresos += m.monto;
+      } else if (m.esGasto && m.categoria != 'Pago Deuda') {
+        // Los pagos de deuda/tarjeta no son consumo: no entran al gasto del mes
+        // ni al gráfico (mueven plata para bajar deuda, no gastan de más).
         gastos += m.monto;
         porCategoria.update(m.categoria, (v) => v + m.monto,
             ifAbsent: () => m.monto);
-      } else {
-        ingresos += m.monto;
       }
+      // pago_tarjeta y 'Pago Deuda' se omiten del resumen de gasto.
     }
     return ResumenMes(
         gastos: gastos, ingresos: ingresos, porCategoria: porCategoria);
@@ -430,29 +433,18 @@ class FinanzasRepository {
 
   // ── Tricount: balance del reparto compartido ─────────────────
 
-  /// Suma los gastos compartidos por [quien], solo los POSTERIORES a la última
-  /// vez que se saldaron ("quedar a mano"). Base del "quién le debe a quién".
+  /// Suma los gastos compartidos por [quien] que aún NO se han saldado.
+  /// Base del "quién le debe a quién". Se marca por gasto (no por fecha), así
+  /// anotar un gasto con fecha vieja no lo excluye.
   Future<BalanceCompartido> balanceCompartido() => _guard(() async {
         final userId = _userId();
-
-        // ¿Hasta qué fecha ya se pagaron entre ellos?
-        final perfil = await _c
-            .from('profiles')
-            .select('tricount_saldado_hasta')
-            .eq('id', userId)
-            .maybeSingle();
-        final saldadoHasta = perfil?['tricount_saldado_hasta'] as String?;
-
-        var query = _c
+        final rows = await _c
             .from('finance_transactions')
             .select('monto, quien')
             .eq('user_id', userId)
             .eq('tipo', 'gasto')
-            .eq('compartido', true);
-        if (saldadoHasta != null) {
-          query = query.gt('fecha', saldadoHasta);
-        }
-        final rows = await query;
+            .eq('compartido', true)
+            .eq('tricount_saldado', false);
 
         var yurby = 0.0;
         var juan = 0.0;
@@ -469,21 +461,47 @@ class FinanzasRepository {
             juan += monto / 2;
           }
         }
-        return BalanceCompartido(
-          puestoPorYurby: yurby,
-          puestoPorJuan: juan,
-          saldadoHasta:
-              saldadoHasta != null ? DateTime.parse(saldadoHasta) : null,
-        );
+        return BalanceCompartido(puestoPorYurby: yurby, puestoPorJuan: juan);
       });
 
-  /// Marca el reparto compartido como saldado hasta hoy: el balance vuelve a
-  /// cero y solo contará los gastos compartidos futuros.
+  /// Marca como saldados TODOS los gastos compartidos actuales: el balance
+  /// vuelve a cero. Los gastos no se borran; solo dejan de contar en el reparto.
   Future<void> saldarCompartido() => _guard(() async {
         final userId = _userId();
-        await _c.from('profiles').update({
-          'tricount_saldado_hasta': _fechaSolo(DateTime.now()),
-        }).eq('id', userId);
+        await _c
+            .from('finance_transactions')
+            .update({'tricount_saldado': true})
+            .eq('user_id', userId)
+            .eq('tipo', 'gasto')
+            .eq('compartido', true)
+            .eq('tricount_saldado', false);
+      });
+
+  /// Pagar una tarjeta de crédito: sale de una cuenta y baja la deuda de la
+  /// tarjeta (el motor de saldos hace ambos ajustes).
+  Future<void> pagarTarjeta({
+    required String tarjetaId,
+    required String cuentaId,
+    required double monto,
+    required DateTime fecha,
+    String? quien,
+  }) =>
+      _guard(() async {
+        final userId = _userId();
+        if (monto <= 0) {
+          throw const FinanzasException('El monto debe ser mayor que cero.');
+        }
+        await _c.from('finance_transactions').insert({
+          'user_id': userId,
+          'tipo': 'pago_tarjeta',
+          'monto': monto,
+          'categoria': 'Pago Tarjeta',
+          'ambito': 'personal',
+          'quien': quien,
+          'tarjeta_id': tarjetaId,
+          'cuenta_id': cuentaId,
+          'fecha': _fechaSolo(fecha),
+        });
       });
 
   // ── Cuentas (saldos) ─────────────────────────────────────────

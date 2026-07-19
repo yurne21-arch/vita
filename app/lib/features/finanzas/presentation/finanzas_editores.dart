@@ -1135,6 +1135,84 @@ Future<({double monto, DateTime fecha})?> pedirMontoYFecha(
   return (monto: valor, fecha: fecha);
 }
 
+/// Diálogo para pagar una tarjeta: de qué cuenta sale, cuánto y cuándo.
+Future<({String cuentaId, double monto, DateTime fecha})?> pedirPagoTarjeta(
+  BuildContext context,
+  WidgetRef ref, {
+  required Tarjeta tarjeta,
+}) async {
+  final cuentas = ref.read(cuentasProvider).valueOrNull ?? const <Cuenta>[];
+  if (cuentas.isEmpty) {
+    _snack(context, 'Primero crea una cuenta (en Resumen → Saldos).');
+    return null;
+  }
+  final monto = TextEditingController(text: tarjeta.cuotaMes > 0
+      ? tarjeta.cuotaMes.round().toString()
+      : '');
+  String cuentaId = cuentas.first.id;
+  var fecha = DateTime.now();
+  final r = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setState) => AlertDialog(
+        title: Text('Pagar ${tarjeta.nombre}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              initialValue: cuentaId,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Desde qué cuenta'),
+              items: [
+                for (final c in cuentas)
+                  DropdownMenuItem(value: c.id, child: Text(c.nombre)),
+              ],
+              onChanged: (v) => setState(() => cuentaId = v ?? cuentaId),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            TextField(
+              controller: monto,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration:
+                  const InputDecoration(labelText: 'Monto', prefixText: '\$ '),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                label: Text('${fecha.day}/${fecha.month}/${fecha.year}'),
+                onPressed: () async {
+                  final sel = await showDatePicker(
+                    context: ctx,
+                    initialDate: fecha,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2035),
+                  );
+                  if (sel != null) setState(() => fecha = sel);
+                },
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Registrar pago')),
+        ],
+      ),
+    ),
+  );
+  final valor = double.tryParse(monto.text.trim().replaceAll('.', ''));
+  monto.dispose();
+  if (r != true || valor == null || valor <= 0) return null;
+  return (cuentaId: cuentaId, monto: valor, fecha: fecha);
+}
+
 // ── Piezas compartidas de los editores ──────────────────────────
 
 String _num(double? v) => (v == null || v == 0) ? '' : v.round().toString();

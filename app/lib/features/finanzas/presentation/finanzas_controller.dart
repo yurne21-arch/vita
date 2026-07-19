@@ -349,6 +349,24 @@ class FinanzasAcciones {
     await _repo.saldarCompartido();
     _ref.invalidate(balanceCompartidoProvider);
   }
+
+  // ── Pagar tarjeta de crédito ──
+  Future<void> pagarTarjeta({
+    required String tarjetaId,
+    required String cuentaId,
+    required double monto,
+    required DateTime fecha,
+    String? quien,
+  }) async {
+    await _repo.pagarTarjeta(
+      tarjetaId: tarjetaId,
+      cuentaId: cuentaId,
+      monto: monto,
+      fecha: fecha,
+      quien: quien,
+    );
+    _refrescarMovimientos();
+  }
 }
 
 final finanzasAccionesProvider =

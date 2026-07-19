@@ -348,15 +348,12 @@ class _TricountCard extends ConsumerWidget {
 
     // Sin nada por repartir (nunca hubo, o ya se saldó todo).
     if (b.total == 0) {
-      return _Vacio(
+      return const _Vacio(
         icon: Icons.groups_outlined,
-        titulo: b.saldadoHasta != null
-            ? 'Están a mano ✓'
-            : 'Sin gastos compartidos.',
-        subtitulo: b.saldadoHasta != null
-            ? 'Saldaron el ${_fechaCorta(b.saldadoHasta!)}. Los gastos '
-                'compartidos nuevos empezarán a sumar desde ahí.'
-            : 'Marca un gasto como compartido y verás aquí quién le debe a quién.',
+        titulo: 'Nada por repartir.',
+        subtitulo:
+            'Marca un gasto como "compartido" y verás aquí quién le debe a quién. '
+            'Cuando se paguen entre ustedes, toca "Ya nos pagamos".',
       );
     }
 
@@ -365,9 +362,6 @@ class _TricountCard extends ConsumerWidget {
         : b.juanLeDebeAYurby
             ? 'Juan le debe a Yurby'
             : 'Yurby le debe a Juan';
-    final desde = b.saldadoHasta != null
-        ? 'DESDE EL ${_fechaCorta(b.saldadoHasta!).toUpperCase()}'
-        : 'TODO EL HISTORIAL';
     return Column(
       children: [
         Container(
@@ -381,7 +375,7 @@ class _TricountCard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('REPARTO COMPARTIDO · $desde',
+              Text('REPARTO COMPARTIDO · SIN SALDAR',
                   style: theme.textTheme.labelSmall?.copyWith(
                     letterSpacing: 1.1,
                     fontWeight: FontWeight.w600,
@@ -426,9 +420,10 @@ class _TricountCard extends ConsumerWidget {
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          'Suma los gastos compartidos ${b.saldadoHasta != null ? 'desde la última vez que saldaron' : 'de todo el historial'}. '
-          'Se reparten por igual; la diferencia es lo que falta para quedar a '
-          'mano. Al pagarse entre ustedes, toca el botón y el saldo vuelve a cero.',
+          'Suma todos los gastos marcados como "compartidos" que aún no se han '
+          'saldado. Se reparten por igual; la diferencia es lo que falta para '
+          'quedar a mano. Al pagarse entre ustedes, toca el botón y el saldo '
+          'vuelve a cero (los gastos no se borran).',
           style: theme.textTheme.bodySmall
               ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
@@ -892,8 +887,9 @@ class _MovimientoRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final m = movimiento;
-    final color = m.esGasto ? AppColors.danger : AppColors.success;
+    final color = m.esSalida ? AppColors.danger : AppColors.success;
     final detalle = [
+      if (m.esPagoTarjeta) 'pago de tarjeta',
       if (m.quien != null) m.quien,
       if (m.compartido) 'compartido',
       if (m.nota != null) m.nota,
@@ -909,8 +905,12 @@ class _MovimientoRow extends ConsumerWidget {
             CircleAvatar(
               radius: 18,
               backgroundColor: color.withValues(alpha: 0.12),
-              child: Icon(m.esGasto ? Icons.south_west : Icons.north_east,
-                  size: 18, color: color),
+              child: Icon(
+                  m.esPagoTarjeta
+                      ? Icons.credit_card
+                      : (m.esSalida ? Icons.south_west : Icons.north_east),
+                  size: 18,
+                  color: color),
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
@@ -929,7 +929,7 @@ class _MovimientoRow extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            Text('${m.esGasto ? '-' : '+'}${formatoMoneda(m.monto)}',
+            Text('${m.esSalida ? '-' : '+'}${formatoMoneda(m.monto)}',
                 style: theme.textTheme.titleSmall
                     ?.copyWith(fontWeight: FontWeight.w700, color: color)),
             PopupMenuButton<String>(
@@ -1164,6 +1164,19 @@ class _Tarjetas extends ConsumerWidget {
                         style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant),
                       ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton.tonal(
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size(0, 40),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md),
+                          ),
+                          onPressed: () => _pagarTarjeta(context, ref, t),
+                          child: const Text('Pagar tarjeta'),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1171,6 +1184,22 @@ class _Tarjetas extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+
+  Future<void> _pagarTarjeta(
+      BuildContext context, WidgetRef ref, Tarjeta t) async {
+    final r = await pedirPagoTarjeta(context, ref, tarjeta: t);
+    if (r == null || !context.mounted) return;
+    await accionSegura(
+      context,
+      () => ref.read(finanzasAccionesProvider).pagarTarjeta(
+            tarjetaId: t.id,
+            cuentaId: r.cuentaId,
+            monto: r.monto,
+            fecha: r.fecha,
+            quien: t.titular,
+          ),
     );
   }
 }

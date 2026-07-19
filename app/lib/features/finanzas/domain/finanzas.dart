@@ -36,9 +36,13 @@ class Movimiento {
 
   bool get esGasto => tipo == 'gasto';
   bool get esIngreso => tipo == 'ingreso';
+  bool get esPagoTarjeta => tipo == 'pago_tarjeta';
 
-  /// Aporte al balance: los gastos restan, los ingresos suman.
-  double get signo => esGasto ? -monto : monto;
+  /// Sale plata: gastos y pagos de tarjeta restan; los ingresos suman.
+  bool get esSalida => esGasto || esPagoTarjeta;
+
+  /// Aporte al balance: lo que sale resta, lo que entra suma.
+  double get signo => esSalida ? -monto : monto;
 
   factory Movimiento.fromMap(Map<String, dynamic> m) => Movimiento(
         id: m['id'] as String,
@@ -216,12 +220,10 @@ class BalanceCompartido {
   const BalanceCompartido({
     required this.puestoPorYurby,
     required this.puestoPorJuan,
-    this.saldadoHasta,
   });
 
   final double puestoPorYurby;
   final double puestoPorJuan;
-  final DateTime? saldadoHasta; // fecha del último "quedar a mano"
 
   double get total => puestoPorYurby + puestoPorJuan;
   double get mitad => total / 2;
