@@ -17,6 +17,7 @@ class Movimiento {
     this.cuentaId,
     this.tarjetaId,
     this.loanId,
+    this.tricountSaldado = false,
   });
 
   final String id;
@@ -33,6 +34,7 @@ class Movimiento {
   final String? cuentaId; // cuenta de la que salió/entró (ajusta saldo)
   final String? tarjetaId; // tarjeta con la que se pagó (ajusta deuda)
   final String? loanId; // crédito que este movimiento paga (cuota)
+  final bool tricountSaldado; // si ya se saldó en un cuadre
 
   bool get esGasto => tipo == 'gasto';
   bool get esIngreso => tipo == 'ingreso';
@@ -59,6 +61,7 @@ class Movimiento {
         cuentaId: m['cuenta_id'] as String?,
         tarjetaId: m['tarjeta_id'] as String?,
         loanId: m['loan_id'] as String?,
+        tricountSaldado: (m['tricount_saldado'] as bool?) ?? false,
       );
 }
 

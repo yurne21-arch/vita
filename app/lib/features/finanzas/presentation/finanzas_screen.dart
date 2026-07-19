@@ -1554,6 +1554,8 @@ class _Deudas extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.md)),
         ),
         const SizedBox(height: AppSpacing.lg),
+        const _GastosCompartidosLista(),
+        const SizedBox(height: AppSpacing.lg),
         const _HistorialSaldados(),
         const SizedBox(height: AppSpacing.lg),
         Text('Otras cuentas',
@@ -1628,6 +1630,108 @@ Future<void> _compartirGastos(BuildContext context, WidgetRef ref) async {
         const SnackBar(content: Text('Copiado. Pégalo en el WhatsApp.')),
       );
     }
+  }
+}
+
+/// Lista de todos los gastos compartidos (saldados y no). Así siempre se ven
+/// los anteriores, aunque ya se hayan cuadrado.
+class _GastosCompartidosLista extends ConsumerWidget {
+  const _GastosCompartidosLista();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final gastos =
+        ref.watch(todosCompartidosProvider).valueOrNull ?? const <Movimiento>[];
+    if (gastos.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Gastos compartidos',
+            style: theme.textTheme.labelLarge
+                ?.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: AppSpacing.sm),
+        VitaCard(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+          child: Column(
+            children: [
+              for (var i = 0; i < gastos.length; i++) ...[
+                if (i > 0) const Divider(height: 1),
+                _CompartidoRow(m: gastos[i]),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompartidoRow extends ConsumerWidget {
+  const _CompartidoRow({required this.m});
+  final Movimiento m;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: () => mostrarEditorMovimiento(context, ref, existente: m),
+      borderRadius: BorderRadius.circular(AppSpacing.radius),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(m.categoria,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyLarge
+                                ?.copyWith(fontWeight: FontWeight.w600)),
+                      ),
+                      if (m.tricountSaldado) ...[
+                        const SizedBox(width: AppSpacing.sm),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text('saldado',
+                              style: theme.textTheme.labelSmall
+                                  ?.copyWith(color: AppColors.success)),
+                        ),
+                      ],
+                    ],
+                  ),
+                  Text(
+                    '${m.quien ?? '—'}${m.nota != null ? ' · ${m.nota}' : ''} · ${_fechaCorta(m.fecha)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Text(formatoMoneda(m.monto),
+                style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: m.tricountSaldado
+                        ? theme.colorScheme.onSurfaceVariant
+                        : theme.colorScheme.onSurface)),
+          ],
+        ),
+      ),
+    );
   }
 }
 

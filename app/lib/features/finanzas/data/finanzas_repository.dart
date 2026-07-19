@@ -464,18 +464,36 @@ class FinanzasRepository {
         return BalanceCompartido(puestoPorYurby: yurby, puestoPorJuan: juan);
       });
 
+  static const _colsMov =
+      'id, tipo, monto, categoria, ambito, nota, fecha, quien, compartido, cuenta_id, tarjeta_id, loan_id, tricount_saldado';
+
   /// Gastos compartidos aún sin saldar, con detalle (para compartir/exportar).
   Future<List<Movimiento>> gastosCompartidosPendientes() => _guard(() async {
         final userId = _userId();
         final rows = await _c
             .from('finance_transactions')
-            .select(
-                'id, tipo, monto, categoria, ambito, nota, fecha, quien, compartido, cuenta_id, tarjeta_id, loan_id')
+            .select(_colsMov)
             .eq('user_id', userId)
             .eq('tipo', 'gasto')
             .eq('compartido', true)
             .eq('tricount_saldado', false)
             .order('fecha');
+        return (rows as List)
+            .map((m) => Movimiento.fromMap(m as Map<String, dynamic>))
+            .toList();
+      });
+
+  /// TODOS los gastos compartidos (saldados y sin saldar), recientes primero.
+  /// Para ver el historial completo de lo compartido.
+  Future<List<Movimiento>> todosLosGastosCompartidos() => _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('finance_transactions')
+            .select(_colsMov)
+            .eq('user_id', userId)
+            .eq('tipo', 'gasto')
+            .eq('compartido', true)
+            .order('fecha', ascending: false);
         return (rows as List)
             .map((m) => Movimiento.fromMap(m as Map<String, dynamic>))
             .toList();

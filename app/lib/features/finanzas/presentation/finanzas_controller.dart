@@ -70,6 +70,13 @@ final historialSaldadosProvider = FutureProvider<List<Saldado>>((ref) {
   return ref.watch(finanzasRepositoryProvider).historialSaldados();
 });
 
+/// TODOS los gastos compartidos (saldados y no), para verlos siempre.
+final todosCompartidosProvider = FutureProvider<List<Movimiento>>((ref) {
+  ref.watch(usuarioActualProvider);
+  ref.watch(balanceCompartidoProvider);
+  return ref.watch(finanzasRepositoryProvider).todosLosGastosCompartidos();
+});
+
 final cuentasProvider = FutureProvider<List<Cuenta>>((ref) {
   ref.watch(usuarioActualProvider);
   return ref.watch(finanzasRepositoryProvider).cuentas();
