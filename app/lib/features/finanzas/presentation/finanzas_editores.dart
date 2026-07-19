@@ -246,15 +246,16 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
               onChanged: (v) => setState(() => _ambito = v),
             ),
             const SizedBox(height: AppSpacing.md),
-            Text('Quién pagó', style: theme.textTheme.labelLarge),
+            Text('Quién puso la plata', style: theme.textTheme.labelLarge),
             const SizedBox(height: AppSpacing.xs),
             _Segmento(
+              // Siempre paga una persona. Que sea "de ambos" lo maneja el
+              // interruptor "Gasto compartido" de abajo.
               opciones: const [
                 ('Yurby', 'Yurby'),
                 ('Juan', 'Juan'),
-                ('Ambos', 'Ambos'),
               ],
-              valor: _quien,
+              valor: _quien == 'Ambos' ? 'Yurby' : _quien,
               onChanged: (v) => setState(() => _quien = v),
             ),
             const SizedBox(height: AppSpacing.xs),
