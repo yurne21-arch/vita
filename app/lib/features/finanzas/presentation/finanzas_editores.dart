@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/moneda.dart';
 import '../../../core/widgets/errores.dart';
 import '../domain/finanzas.dart';
 import 'finanzas_controller.dart';
@@ -81,7 +82,7 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
       _medio = 'tarjeta:${e!.tarjetaId}';
     }
     _monto = TextEditingController(
-        text: e != null ? e.monto.round().toString() : '');
+        text: e != null ? milesConPuntos(e.monto.round()) : '');
     _nota = TextEditingController(text: e?.nota ?? '');
   }
 
@@ -199,7 +200,7 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
               controller: _monto,
               autofocus: !_esEdicion,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: [MilesInputFormatter()],
               decoration: const InputDecoration(
                 labelText: 'Monto',
                 prefixText: '\$ ',
@@ -414,7 +415,7 @@ class _DeudaEditorState extends ConsumerState<_DeudaEditor> {
     _fecha = e?.fecha ?? DateTime.now();
     _persona = TextEditingController(text: e?.persona ?? '');
     _monto =
-        TextEditingController(text: e != null ? e.monto.round().toString() : '');
+        TextEditingController(text: e != null ? milesConPuntos(e.monto.round()) : '');
     _desc = TextEditingController(text: e?.descripcion ?? '');
   }
 
@@ -501,7 +502,7 @@ class _DeudaEditorState extends ConsumerState<_DeudaEditor> {
             TextField(
               controller: _monto,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: [MilesInputFormatter()],
               decoration: const InputDecoration(
                   labelText: 'Monto', prefixText: '\$ '),
             ),
@@ -570,7 +571,7 @@ class _PresupuestoEditorState extends ConsumerState<_PresupuestoEditor> {
     _categoria = widget.categoriaInicial;
     _monto = TextEditingController(
         text: widget.montoInicial != null
-            ? widget.montoInicial!.round().toString()
+            ? milesConPuntos(widget.montoInicial!.round())
             : '');
   }
 
@@ -643,7 +644,7 @@ class _PresupuestoEditorState extends ConsumerState<_PresupuestoEditor> {
             TextField(
               controller: _monto,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: [MilesInputFormatter()],
               decoration: const InputDecoration(
                   labelText: 'Monto mensual', prefixText: '\$ '),
             ),
@@ -1096,7 +1097,7 @@ Future<({double monto, DateTime fecha})?> pedirMontoYFecha(
               controller: monto,
               autofocus: true,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: [MilesInputFormatter()],
               decoration:
                   InputDecoration(labelText: etiquetaMonto, prefixText: '\$ '),
             ),
@@ -1148,7 +1149,7 @@ Future<({String cuentaId, double monto, DateTime fecha})?> pedirPagoTarjeta(
     return null;
   }
   final monto = TextEditingController(text: tarjeta.cuotaMes > 0
-      ? tarjeta.cuotaMes.round().toString()
+      ? milesConPuntos(tarjeta.cuotaMes.round())
       : '');
   String cuentaId = cuentas.first.id;
   var fecha = DateTime.now();
@@ -1174,7 +1175,7 @@ Future<({String cuentaId, double monto, DateTime fecha})?> pedirPagoTarjeta(
             TextField(
               controller: monto,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: [MilesInputFormatter()],
               decoration:
                   const InputDecoration(labelText: 'Monto', prefixText: '\$ '),
             ),
@@ -1216,7 +1217,7 @@ Future<({String cuentaId, double monto, DateTime fecha})?> pedirPagoTarjeta(
 
 // ── Piezas compartidas de los editores ──────────────────────────
 
-String _num(double? v) => (v == null || v == 0) ? '' : v.round().toString();
+String _num(double? v) => (v == null || v == 0) ? '' : milesConPuntos(v.round());
 double _monto(TextEditingController c) =>
     double.tryParse(c.text.trim().replaceAll('.', '')) ?? 0;
 
@@ -1232,7 +1233,7 @@ Widget _campoTexto(TextEditingController c, String label) => TextField(
 Widget _campoMonto(TextEditingController c, String label) => TextField(
       controller: c,
       keyboardType: TextInputType.number,
-      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      inputFormatters: [MilesInputFormatter()],
       decoration: InputDecoration(labelText: label, prefixText: '\$ '),
     );
 

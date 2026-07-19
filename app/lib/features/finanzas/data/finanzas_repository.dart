@@ -499,6 +499,28 @@ class FinanzasRepository {
             .toList();
       });
 
+  /// Gastos compartidos (pagados y por pagar) con fecha entre [desde] y [hasta].
+  /// Para la cartola por fechas.
+  Future<List<Movimiento>> gastosCompartidosEnRango(
+    DateTime desde,
+    DateTime hasta,
+  ) =>
+      _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('finance_transactions')
+            .select(_colsMov)
+            .eq('user_id', userId)
+            .eq('tipo', 'gasto')
+            .eq('compartido', true)
+            .gte('fecha', _fechaSolo(desde))
+            .lte('fecha', _fechaSolo(hasta))
+            .order('fecha');
+        return (rows as List)
+            .map((m) => Movimiento.fromMap(m as Map<String, dynamic>))
+            .toList();
+      });
+
   /// Marca como saldados TODOS los gastos compartidos actuales y guarda el
   /// cuadre en el historial. Los gastos no se borran; solo dejan de contar.
   Future<void> saldarCompartido() => _guard(() async {
