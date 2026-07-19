@@ -1,7 +1,6 @@
-import 'package:cross_file/cross_file.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:share_plus/share_plus.dart';
+import 'package:printing/printing.dart';
 
 import '../../../core/utils/moneda.dart';
 import '../domain/finanzas.dart';
@@ -86,10 +85,9 @@ Future<void> compartirCartolaPdf(Saldado s, List<Movimiento> gastos) async {
 
   final bytes = await doc.save();
   final nombre = 'cartola_${s.fecha.year}_${s.fecha.month}.pdf';
-  await Share.shareXFiles(
-    [XFile.fromData(bytes, name: nombre, mimeType: 'application/pdf')],
-    fileNameOverrides: [nombre],
-  );
+  // sharePdf funciona en todos lados: en el navegador descarga el PDF; en el
+  // teléfono abre el menú para compartir (WhatsApp).
+  await Printing.sharePdf(bytes: bytes, filename: nombre);
 }
 
 pw.Widget _fila(String label, String valor, {bool bold = false}) => pw.Padding(
