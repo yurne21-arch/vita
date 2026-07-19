@@ -56,6 +56,20 @@ final balanceCompartidoProvider = FutureProvider<BalanceCompartido>((ref) {
   return ref.watch(finanzasRepositoryProvider).balanceCompartido();
 });
 
+/// Gastos compartidos sin saldar (para compartir por WhatsApp).
+final gastosCompartidosPendientesProvider =
+    FutureProvider<List<Movimiento>>((ref) {
+  ref.watch(usuarioActualProvider);
+  ref.watch(balanceCompartidoProvider);
+  return ref.watch(finanzasRepositoryProvider).gastosCompartidosPendientes();
+});
+
+/// Historial de cuadres (a mano).
+final historialSaldadosProvider = FutureProvider<List<Saldado>>((ref) {
+  ref.watch(usuarioActualProvider);
+  return ref.watch(finanzasRepositoryProvider).historialSaldados();
+});
+
 final cuentasProvider = FutureProvider<List<Cuenta>>((ref) {
   ref.watch(usuarioActualProvider);
   return ref.watch(finanzasRepositoryProvider).cuentas();
@@ -348,6 +362,8 @@ class FinanzasAcciones {
   Future<void> saldarCompartido() async {
     await _repo.saldarCompartido();
     _ref.invalidate(balanceCompartidoProvider);
+    _ref.invalidate(historialSaldadosProvider);
+    _ref.invalidate(gastosCompartidosPendientesProvider);
   }
 
   // ── Pagar tarjeta de crédito ──

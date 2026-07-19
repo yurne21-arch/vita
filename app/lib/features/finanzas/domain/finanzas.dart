@@ -161,6 +161,40 @@ class Meta {
       );
 }
 
+/// Un cuadre del reparto compartido (cuando quedaron "a mano").
+class Saldado {
+  const Saldado({
+    required this.id,
+    required this.fecha,
+    required this.totalRepartido,
+    required this.puestoPorYurby,
+    required this.puestoPorJuan,
+    required this.montoAjuste,
+    required this.gastos,
+    this.quienCobra,
+  });
+
+  final String id;
+  final DateTime fecha;
+  final double totalRepartido;
+  final double puestoPorYurby;
+  final double puestoPorJuan;
+  final double montoAjuste;
+  final int gastos;
+  final String? quienCobra; // a quién le debían ('Yurby' | 'Juan' | null)
+
+  factory Saldado.fromMap(Map<String, dynamic> m) => Saldado(
+        id: m['id'] as String,
+        fecha: DateTime.parse(m['fecha'] as String),
+        totalRepartido: (m['total_repartido'] as num?)?.toDouble() ?? 0,
+        puestoPorYurby: (m['puso_yurby'] as num?)?.toDouble() ?? 0,
+        puestoPorJuan: (m['puso_juan'] as num?)?.toDouble() ?? 0,
+        montoAjuste: (m['monto_ajuste'] as num?)?.toDouble() ?? 0,
+        gastos: (m['gastos'] as num?)?.toInt() ?? 0,
+        quienCobra: m['quien_cobra'] as String?,
+      );
+}
+
 /// Cuenta con saldo (débito, efectivo, RUT, etc.).
 class Cuenta {
   const Cuenta({

@@ -464,10 +464,43 @@ class FinanzasRepository {
         return BalanceCompartido(puestoPorYurby: yurby, puestoPorJuan: juan);
       });
 
-  /// Marca como saldados TODOS los gastos compartidos actuales: el balance
-  /// vuelve a cero. Los gastos no se borran; solo dejan de contar en el reparto.
+  /// Gastos compartidos aún sin saldar, con detalle (para compartir/exportar).
+  Future<List<Movimiento>> gastosCompartidosPendientes() => _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('finance_transactions')
+            .select(
+                'id, tipo, monto, categoria, ambito, nota, fecha, quien, compartido, cuenta_id, tarjeta_id, loan_id')
+            .eq('user_id', userId)
+            .eq('tipo', 'gasto')
+            .eq('compartido', true)
+            .eq('tricount_saldado', false)
+            .order('fecha');
+        return (rows as List)
+            .map((m) => Movimiento.fromMap(m as Map<String, dynamic>))
+            .toList();
+      });
+
+  /// Marca como saldados TODOS los gastos compartidos actuales y guarda el
+  /// cuadre en el historial. Los gastos no se borran; solo dejan de contar.
   Future<void> saldarCompartido() => _guard(() async {
         final userId = _userId();
+        final balance = await balanceCompartido();
+        final pendientes = await gastosCompartidosPendientes();
+        // Registrar el cuadre en el historial (si había algo que repartir).
+        if (balance.total > 0) {
+          await _c.from('finance_settlements').insert({
+            'user_id': userId,
+            'total_repartido': balance.total,
+            'puso_yurby': balance.puestoPorYurby,
+            'puso_juan': balance.puestoPorJuan,
+            'quien_cobra': balance.equilibrado
+                ? null
+                : (balance.juanLeDebeAYurby ? 'Yurby' : 'Juan'),
+            'monto_ajuste': balance.montoAjuste,
+            'gastos': pendientes.length,
+          });
+        }
         await _c
             .from('finance_transactions')
             .update({'tricount_saldado': true})
@@ -475,6 +508,20 @@ class FinanzasRepository {
             .eq('tipo', 'gasto')
             .eq('compartido', true)
             .eq('tricount_saldado', false);
+      });
+
+  /// Historial de cuadres (más reciente primero).
+  Future<List<Saldado>> historialSaldados() => _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('finance_settlements')
+            .select(
+                'id, fecha, total_repartido, puso_yurby, puso_juan, quien_cobra, monto_ajuste, gastos')
+            .eq('user_id', userId)
+            .order('fecha', ascending: false);
+        return (rows as List)
+            .map((m) => Saldado.fromMap(m as Map<String, dynamic>))
+            .toList();
       });
 
   /// Pagar una tarjeta de crédito: sale de una cuenta y baja la deuda de la

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -1542,6 +1544,17 @@ class _Deudas extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const _TricountCard(),
+        const SizedBox(height: AppSpacing.sm),
+        // Compartir la lista por WhatsApp.
+        OutlinedButton.icon(
+          onPressed: () => _compartirGastos(context, ref),
+          icon: const Icon(Icons.ios_share, size: 18),
+          label: const Text('Compartir gastos (WhatsApp)'),
+          style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md)),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        const _HistorialSaldados(),
         const SizedBox(height: AppSpacing.lg),
         Text('Otras cuentas',
             style: Theme.of(context)
@@ -1572,6 +1585,101 @@ class _Deudas extends ConsumerWidget {
             return Column(children: [for (final d in deudas) _DeudaRow(deuda: d)]);
           },
         ),
+      ],
+    );
+  }
+}
+
+/// Arma el texto de los gastos compartidos y lo comparte (WhatsApp, etc.).
+Future<void> _compartirGastos(BuildContext context, WidgetRef ref) async {
+  final gastos = ref.read(gastosCompartidosPendientesProvider).valueOrNull ??
+      const <Movimiento>[];
+  final b = ref.read(balanceCompartidoProvider).valueOrNull;
+  if (gastos.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('No hay gastos compartidos sin saldar.')),
+    );
+    return;
+  }
+  final buf = StringBuffer('GASTOS COMPARTIDOS\n\n');
+  for (final m in gastos) {
+    buf.writeln(
+        '• ${_fechaCorta(m.fecha)} · ${m.categoria}${m.nota != null ? ' (${m.nota})' : ''} · '
+        'puso ${m.quien ?? '—'} · ${formatoMoneda(m.monto)}');
+  }
+  if (b != null) {
+    buf.writeln('\nTOTAL: ${formatoMoneda(b.total)}');
+    buf.writeln('Cada uno: ${formatoMoneda(b.mitad)}');
+    if (!b.equilibrado) {
+      final quienDebe = b.juanLeDebeAYurby ? 'Juan le debe a Yurby' : 'Yurby le debe a Juan';
+      buf.writeln('→ $quienDebe ${formatoMoneda(b.montoAjuste)}');
+    } else {
+      buf.writeln('→ Están a mano');
+    }
+  }
+  buf.writeln('\n(desde VITA)');
+  try {
+    await Share.share(buf.toString());
+  } catch (_) {
+    // Si compartir no está disponible, copiar al portapapeles.
+    await Clipboard.setData(ClipboardData(text: buf.toString()));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Copiado. Pégalo en el WhatsApp.')),
+      );
+    }
+  }
+}
+
+/// Historial de cuadres (cuando quedaron a mano).
+class _HistorialSaldados extends ConsumerWidget {
+  const _HistorialSaldados();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final saldados =
+        ref.watch(historialSaldadosProvider).valueOrNull ?? const <Saldado>[];
+    if (saldados.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Historial de cuadres',
+            style:
+                theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: AppSpacing.sm),
+        for (final s in saldados)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: VitaCard(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_outline,
+                      size: 20, color: AppColors.success),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${_fechaCorta(s.fecha)} ${s.fecha.year}',
+                            style: theme.textTheme.bodyLarge
+                                ?.copyWith(fontWeight: FontWeight.w600)),
+                        Text(
+                          s.quienCobra == null
+                              ? '${s.gastos} gastos · ${formatoMoneda(s.totalRepartido)} · a mano'
+                              : '${s.gastos} gastos · ${formatoMoneda(s.totalRepartido)} · '
+                                  'le pagaron a ${s.quienCobra} ${formatoMoneda(s.montoAjuste)}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }
