@@ -522,28 +522,43 @@ class FinanzasRepository {
       });
 
   /// Marca como saldados TODOS los gastos compartidos actuales y guarda el
-  /// cuadre en el historial. Los gastos no se borran; solo dejan de contar.
+  /// cuadre en el historial, ligando cada gasto al cuadre y guardando el rango
+  /// de fechas. Los gastos no se borran; solo dejan de contar.
   Future<void> saldarCompartido() => _guard(() async {
         final userId = _userId();
         final balance = await balanceCompartido();
         final pendientes = await gastosCompartidosPendientes();
-        // Registrar el cuadre en el historial (si había algo que repartir).
-        if (balance.total > 0) {
-          await _c.from('finance_settlements').insert({
-            'user_id': userId,
-            'total_repartido': balance.total,
-            'puso_yurby': balance.puestoPorYurby,
-            'puso_juan': balance.puestoPorJuan,
-            'quien_cobra': balance.equilibrado
-                ? null
-                : (balance.juanLeDebeAYurby ? 'Yurby' : 'Juan'),
-            'monto_ajuste': balance.montoAjuste,
-            'gastos': pendientes.length,
-          });
-        }
+        if (pendientes.isEmpty) return;
+
+        // Rango de fechas de este cuadre.
+        final fechas = pendientes.map((m) => m.fecha).toList()..sort();
+        final desde = fechas.first;
+        final hasta = fechas.last;
+
+        // 1) Registrar el cuadre y obtener su id.
+        final cuadre = await _c
+            .from('finance_settlements')
+            .insert({
+              'user_id': userId,
+              'total_repartido': balance.total,
+              'puso_yurby': balance.puestoPorYurby,
+              'puso_juan': balance.puestoPorJuan,
+              'quien_cobra': balance.equilibrado
+                  ? null
+                  : (balance.juanLeDebeAYurby ? 'Yurby' : 'Juan'),
+              'monto_ajuste': balance.montoAjuste,
+              'gastos': pendientes.length,
+              'desde': _fechaSolo(desde),
+              'hasta': _fechaSolo(hasta),
+            })
+            .select('id')
+            .single();
+        final cuadreId = cuadre['id'] as String;
+
+        // 2) Ligar y saldar los gastos de este cuadre.
         await _c
             .from('finance_transactions')
-            .update({'tricount_saldado': true})
+            .update({'tricount_saldado': true, 'settlement_id': cuadreId})
             .eq('user_id', userId)
             .eq('tipo', 'gasto')
             .eq('compartido', true)
@@ -556,11 +571,23 @@ class FinanzasRepository {
         final rows = await _c
             .from('finance_settlements')
             .select(
-                'id, fecha, total_repartido, puso_yurby, puso_juan, quien_cobra, monto_ajuste, gastos')
+                'id, fecha, total_repartido, puso_yurby, puso_juan, quien_cobra, monto_ajuste, gastos, desde, hasta')
             .eq('user_id', userId)
             .order('fecha', ascending: false);
         return (rows as List)
             .map((m) => Saldado.fromMap(m as Map<String, dynamic>))
+            .toList();
+      });
+
+  /// Gastos que se saldaron en un cuadre (para su cartola).
+  Future<List<Movimiento>> gastosDeCuadre(String cuadreId) => _guard(() async {
+        final rows = await _c
+            .from('finance_transactions')
+            .select(_colsMov)
+            .eq('settlement_id', cuadreId)
+            .order('fecha');
+        return (rows as List)
+            .map((m) => Movimiento.fromMap(m as Map<String, dynamic>))
             .toList();
       });
 

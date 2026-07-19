@@ -11,6 +11,7 @@ import '../../../core/widgets/errores.dart';
 import '../../../core/widgets/vita_card.dart';
 import '../data/finanzas_repository.dart';
 import '../domain/finanzas.dart';
+import 'cartola_pdf.dart';
 import 'finanzas_controller.dart';
 import 'finanzas_editores.dart';
 
@@ -1578,14 +1579,6 @@ class _Deudas extends ConsumerWidget {
           style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.md)),
         ),
-        const SizedBox(height: AppSpacing.sm),
-        OutlinedButton.icon(
-          onPressed: () => _abrirCartola(context, ref),
-          icon: const Icon(Icons.receipt_long_outlined, size: 18),
-          label: const Text('Cartola por fechas'),
-          style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md)),
-        ),
         const SizedBox(height: AppSpacing.lg),
         const _HistorialSaldados(),
         const SizedBox(height: AppSpacing.lg),
@@ -1668,240 +1661,6 @@ Future<void> _compartirTexto(BuildContext context, String texto) async {
   }
 }
 
-/// Abre la cartola por fechas: elige rango, ve la lista (pagado / por pagar) y
-/// la comparte.
-void _abrirCartola(BuildContext context, WidgetRef ref) {
-  showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (_) => const _CartolaSheet(),
-  );
-}
-
-class _CartolaSheet extends ConsumerStatefulWidget {
-  const _CartolaSheet();
-  @override
-  ConsumerState<_CartolaSheet> createState() => _CartolaSheetState();
-}
-
-class _CartolaSheetState extends ConsumerState<_CartolaSheet> {
-  late DateTime _desde;
-  late DateTime _hasta;
-  List<Movimiento>? _gastos;
-  bool _cargando = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final n = DateTime.now();
-    _desde = DateTime(n.year, n.month - 1, 1); // desde el mes pasado
-    _hasta = n;
-    _cargar();
-  }
-
-  Future<void> _cargar() async {
-    setState(() => _cargando = true);
-    try {
-      final g = await ref
-          .read(finanzasRepositoryProvider)
-          .gastosCompartidosEnRango(_desde, _hasta);
-      if (mounted) setState(() => _gastos = g);
-    } catch (_) {
-      if (mounted) setState(() => _gastos = const []);
-    } finally {
-      if (mounted) setState(() => _cargando = false);
-    }
-  }
-
-  Future<void> _elegir({required bool desde}) async {
-    final sel = await showDatePicker(
-      context: context,
-      initialDate: desde ? _desde : _hasta,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2035),
-    );
-    if (sel != null) {
-      setState(() => desde ? _desde = sel : _hasta = sel);
-      _cargar();
-    }
-  }
-
-  String _texto(List<Movimiento> gastos) {
-    final porPagar = gastos.where((m) => !m.tricountSaldado).toList();
-    final pagados = gastos.where((m) => m.tricountSaldado).toList();
-    final buf = StringBuffer('CARTOLA GASTOS COMPARTIDOS\n');
-    buf.writeln('${_fechaCorta(_desde)} a ${_fechaCorta(_hasta)}\n');
-    double sube(List<Movimiento> l) => l.fold(0.0, (a, m) => a + m.monto);
-    if (porPagar.isNotEmpty) {
-      buf.writeln('POR PAGAR:');
-      for (final m in porPagar) {
-        buf.writeln(
-            '• ${_fechaCorta(m.fecha)} · ${m.categoria}${m.nota != null ? ' (${m.nota})' : ''} · puso ${m.quien ?? '—'} · ${formatoMoneda(m.monto)}');
-      }
-      buf.writeln('Subtotal por pagar: ${formatoMoneda(sube(porPagar))}');
-      buf.writeln('Cada uno: ${formatoMoneda(sube(porPagar) / 2)}\n');
-    }
-    if (pagados.isNotEmpty) {
-      buf.writeln('YA PAGADO:');
-      for (final m in pagados) {
-        buf.writeln(
-            '• ${_fechaCorta(m.fecha)} · ${m.categoria} · ${formatoMoneda(m.monto)}');
-      }
-      buf.writeln('Subtotal pagado: ${formatoMoneda(sube(pagados))}\n');
-    }
-    buf.writeln('(desde VITA)');
-    return buf.toString();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final gastos = _gastos ?? const <Movimiento>[];
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-          AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg + bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Cartola por fechas',
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _elegir(desde: true),
-                  icon: const Icon(Icons.calendar_today_outlined, size: 16),
-                  label: Text('Desde ${_fechaCorta(_desde)}'),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _elegir(desde: false),
-                  icon: const Icon(Icons.calendar_today_outlined, size: 16),
-                  label: Text('Hasta ${_fechaCorta(_hasta)}'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          if (_cargando)
-            const Padding(
-              padding: EdgeInsets.all(AppSpacing.lg),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (gastos.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-              child: Text('Sin gastos compartidos en estas fechas.',
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-            )
-          else
-            Flexible(
-              child: SingleChildScrollView(
-                child: VitaCard(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-                  child: Column(
-                    children: [
-                      for (var i = 0; i < gastos.length; i++) ...[
-                        if (i > 0) const Divider(height: 1),
-                        _CompartidoRow(m: gastos[i]),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: gastos.isEmpty
-                  ? null
-                  : () => _compartirTexto(context, _texto(gastos)),
-              icon: const Icon(Icons.ios_share, size: 18),
-              label: const Text('Compartir cartola (WhatsApp)'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CompartidoRow extends ConsumerWidget {
-  const _CompartidoRow({required this.m});
-  final Movimiento m;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: () => mostrarEditorMovimiento(context, ref, existente: m),
-      borderRadius: BorderRadius.circular(AppSpacing.radius),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(m.categoria,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyLarge
-                                ?.copyWith(fontWeight: FontWeight.w600)),
-                      ),
-                      if (m.tricountSaldado) ...[
-                        const SizedBox(width: AppSpacing.sm),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: AppColors.success.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text('saldado',
-                              style: theme.textTheme.labelSmall
-                                  ?.copyWith(color: AppColors.success)),
-                        ),
-                      ],
-                    ],
-                  ),
-                  Text(
-                    '${m.quien ?? '—'}${m.nota != null ? ' · ${m.nota}' : ''} · ${_fechaCorta(m.fecha)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Text(formatoMoneda(m.monto),
-                style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: m.tricountSaldado
-                        ? theme.colorScheme.onSurfaceVariant
-                        : theme.colorScheme.onSurface)),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 /// Historial de cuadres (cuando quedaron a mano).
 class _HistorialSaldados extends ConsumerWidget {
@@ -1925,27 +1684,49 @@ class _HistorialSaldados extends ConsumerWidget {
             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
             child: VitaCard(
               padding: const EdgeInsets.all(AppSpacing.md),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.check_circle_outline,
-                      size: 20, color: AppColors.success),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('${_fechaCorta(s.fecha)} ${s.fecha.year}',
-                            style: theme.textTheme.bodyLarge
-                                ?.copyWith(fontWeight: FontWeight.w600)),
-                        Text(
-                          s.quienCobra == null
-                              ? '${s.gastos} gastos · ${formatoMoneda(s.totalRepartido)} · a mano'
-                              : '${s.gastos} gastos · ${formatoMoneda(s.totalRepartido)} · '
-                                  'le pagaron a ${s.quienCobra} ${formatoMoneda(s.montoAjuste)}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant),
+                  Row(
+                    children: [
+                      const Icon(Icons.check_circle_outline,
+                          size: 20, color: AppColors.success),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                                s.desde != null && s.hasta != null
+                                    ? '${_fechaCorta(s.desde!)} a ${_fechaCorta(s.hasta!)}'
+                                    : '${_fechaCorta(s.fecha)} ${s.fecha.year}',
+                                style: theme.textTheme.bodyLarge
+                                    ?.copyWith(fontWeight: FontWeight.w600)),
+                            Text(
+                              s.quienCobra == null
+                                  ? '${s.gastos} gastos · ${formatoMoneda(s.totalRepartido)} · a mano'
+                                  : '${s.gastos} gastos · ${formatoMoneda(s.totalRepartido)} · '
+                                      'le pagaron a ${s.quienCobra} ${formatoMoneda(s.montoAjuste)}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.tonalIcon(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 38),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md),
+                      ),
+                      onPressed: () => _descargarCartola(context, ref, s),
+                      icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                      label: const Text('Descargar cartola (PDF)'),
                     ),
                   ),
                 ],
@@ -1954,6 +1735,15 @@ class _HistorialSaldados extends ConsumerWidget {
           ),
       ],
     );
+  }
+
+  Future<void> _descargarCartola(
+      BuildContext context, WidgetRef ref, Saldado s) async {
+    await accionSegura(context, () async {
+      final gastos =
+          await ref.read(finanzasRepositoryProvider).gastosDeCuadre(s.id);
+      await compartirCartolaPdf(s, gastos);
+    });
   }
 }
 

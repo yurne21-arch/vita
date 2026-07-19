@@ -175,6 +175,8 @@ class Saldado {
     required this.montoAjuste,
     required this.gastos,
     this.quienCobra,
+    this.desde,
+    this.hasta,
   });
 
   final String id;
@@ -185,6 +187,8 @@ class Saldado {
   final double montoAjuste;
   final int gastos;
   final String? quienCobra; // a quién le debían ('Yurby' | 'Juan' | null)
+  final DateTime? desde; // primer gasto del cuadre
+  final DateTime? hasta; // último gasto del cuadre
 
   factory Saldado.fromMap(Map<String, dynamic> m) => Saldado(
         id: m['id'] as String,
@@ -195,6 +199,8 @@ class Saldado {
         montoAjuste: (m['monto_ajuste'] as num?)?.toDouble() ?? 0,
         gastos: (m['gastos'] as num?)?.toInt() ?? 0,
         quienCobra: m['quien_cobra'] as String?,
+        desde: m['desde'] != null ? DateTime.parse(m['desde'] as String) : null,
+        hasta: m['hasta'] != null ? DateTime.parse(m['hasta'] as String) : null,
       );
 }
 
