@@ -21,11 +21,7 @@ Future<Object?> mostrarEditorProyecto(
     isScrollControlled: true,
     showDragHandle: true,
     backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
-    builder: (_) => Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: _EditorProyecto(existente: existente),
-    ),
+    builder: (_) => _EditorProyecto(existente: existente),
   );
 }
 
@@ -132,8 +128,9 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
         constraints: const BoxConstraints(maxWidth: 560),
         child: ListView(
           shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+          // El teclado no debe tapar el botón: se le deja sitio abajo.
+          padding: EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg,
+              AppSpacing.lg + MediaQuery.of(context).viewInsets.bottom),
           children: [
             Text(esNuevo ? 'Nuevo proyecto' : 'Editar proyecto',
                 style: theme.textTheme.titleLarge
@@ -260,14 +257,10 @@ Future<void> mostrarEditorTarea(
     isScrollControlled: true,
     showDragHandle: true,
     backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
-    builder: (_) => Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: _EditorTarea(
-        projectId: projectId,
-        existente: existente,
-        tipoInicial: tipoInicial,
-      ),
+    builder: (_) => _EditorTarea(
+      projectId: projectId,
+      existente: existente,
+      tipoInicial: tipoInicial,
     ),
   );
 }
@@ -342,8 +335,8 @@ class _EditorTareaState extends ConsumerState<_EditorTarea> {
         constraints: const BoxConstraints(maxWidth: 560),
         child: ListView(
           shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+          padding: EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg,
+              AppSpacing.lg + MediaQuery.of(context).viewInsets.bottom),
           children: [
             Text(esNuevo ? 'Nuevo paso o hito' : 'Editar',
                 style: theme.textTheme.titleLarge
@@ -412,11 +405,7 @@ Future<void> mostrarRegistroBitacora(
     isScrollControlled: true,
     showDragHandle: true,
     backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
-    builder: (_) => Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: _RegistroBitacora(projectId: projectId, esNota: esNota),
-    ),
+    builder: (_) => _RegistroBitacora(projectId: projectId, esNota: esNota),
   );
 }
 
@@ -468,8 +457,8 @@ class _RegistroBitacoraState extends ConsumerState<_RegistroBitacora> {
         constraints: const BoxConstraints(maxWidth: 560),
         child: ListView(
           shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+          padding: EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg,
+              AppSpacing.lg + MediaQuery.of(context).viewInsets.bottom),
           children: [
             Text(widget.esNota ? 'Nueva nota' : 'Registrar avance',
                 style: theme.textTheme.titleLarge
