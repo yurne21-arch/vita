@@ -365,17 +365,17 @@ class BarraProximoPaso extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 30,
+            height: 30,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: AppColors.accent.withValues(alpha: 0.16),
               shape: BoxShape.circle,
             ),
-            child: Icon(hay ? Icons.flag_outlined : Icons.add_task,
-                size: 20, color: AppColors.accent),
+            child: Icon(hay ? Icons.arrow_forward : Icons.add,
+                size: 16, color: AppColors.accent),
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

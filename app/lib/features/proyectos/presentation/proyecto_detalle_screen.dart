@@ -147,16 +147,21 @@ class _ProyectoDetalleScreenState
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _Cabecera(proyecto: _p, progreso: progreso, bp: bp),
-                        const SizedBox(height: AppSpacing.md),
-                        BarraProximoPaso(
-                          proximoTexto: proximo?.texto,
-                          tienePasos: tienePasos,
-                          activo: _p.activo,
-                          onAvanzar: () => avanzarProyecto(context, ref,
-                              projectId: _p.id, proximo: proximo),
-                          onAgregarPaso: () => mostrarEditorTarea(context, ref,
-                              projectId: _p.id, tipoInicial: 'paso'),
-                        ),
+                        // La barra "próximo paso" solo aporta cuando ya hay
+                        // pasos: si no, confunde con la sección de abajo, que es
+                        // la que crea el primero.
+                        if (tienePasos) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          BarraProximoPaso(
+                            proximoTexto: proximo?.texto,
+                            tienePasos: tienePasos,
+                            activo: _p.activo,
+                            onAvanzar: () => avanzarProyecto(context, ref,
+                                projectId: _p.id, proximo: proximo),
+                            onAgregarPaso: () => mostrarEditorTarea(context, ref,
+                                projectId: _p.id, tipoInicial: 'paso'),
+                          ),
+                        ],
                         const SizedBox(height: AppSpacing.lg),
                         _DashboardSecciones(
                           bp: bp,
@@ -486,50 +491,36 @@ class _VacioPasos extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+      padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: AppSpacing.xs),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            width: 56,
-            height: 56,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.accent.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.checklist_rtl_outlined,
-                color: AppColors.accentSoft),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text('Divide tu objetivo en pasos',
-              style: theme.textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          Text('Empieza por el próximo paso concreto. Suma hitos para los\nmomentos importantes.',
-              textAlign: TextAlign.center,
+          Text('Divide tu objetivo en pasos concretos. Los hitos marcan los '
+              'momentos importantes.',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: cs.onSurfaceVariant, height: 1.4)),
           const SizedBox(height: AppSpacing.md),
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              FilledButton.icon(
-                onPressed: () => onNuevo('paso'),
-                style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 11)),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Paso'),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => onNuevo('paso'),
+                  style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.accent,
+                      padding: const EdgeInsets.symmetric(vertical: 12)),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Agregar paso'),
+                ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              OutlinedButton.icon(
-                onPressed: () => onNuevo('hito'),
-                style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 11)),
-                icon: const Icon(Icons.flag_outlined, size: 18),
-                label: const Text('Hito'),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => onNuevo('hito'),
+                  style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12)),
+                  icon: const Icon(Icons.outlined_flag, size: 18),
+                  label: const Text('Agregar hito'),
+                ),
               ),
             ],
           ),
