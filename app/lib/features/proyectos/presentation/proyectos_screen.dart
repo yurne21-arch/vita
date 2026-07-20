@@ -550,18 +550,18 @@ class _TarjetaProyecto extends ConsumerWidget {
                     onEliminar: () async {
                       final ok = await showDialog<bool>(
                         context: context,
-                        builder: (_) => AlertDialog(
+                        builder: (dialogCtx) => AlertDialog(
                           title: const Text('Eliminar proyecto'),
                           content: Text(
                               'Se borrará "${proyecto.titulo}" con sus pasos y bitácora. No se puede deshacer.'),
                           actions: [
                             TextButton(
                                 onPressed: () =>
-                                    Navigator.of(context).pop(false),
+                                    Navigator.of(dialogCtx).pop(false),
                                 child: const Text('Cancelar')),
                             FilledButton(
                               onPressed: () =>
-                                  Navigator.of(context).pop(true),
+                                  Navigator.of(dialogCtx).pop(true),
                               style: FilledButton.styleFrom(
                                   backgroundColor: AppColors.danger),
                               child: const Text('Eliminar'),

@@ -856,15 +856,15 @@ Future<bool?> _confirmar(
     BuildContext context, String titulo, String mensaje, String boton) {
   return showDialog<bool>(
     context: context,
-    builder: (_) => AlertDialog(
+    builder: (dialogCtx) => AlertDialog(
       title: Text(titulo),
       content: Text(mensaje),
       actions: [
         TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
             child: const Text('Cancelar')),
         FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
+          onPressed: () => Navigator.of(dialogCtx).pop(true),
           style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
           child: Text(boton),
         ),
