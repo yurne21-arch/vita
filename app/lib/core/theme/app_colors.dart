@@ -10,13 +10,13 @@ abstract class AppColors {
   static const Color accentDeep = Color(0xFF3C614E);
   static const Color accentSoft = Color(0xFF7FA790); // decorativo / iconos
 
-  // Modo claro — marfil cálido + verde salvia (combinación natural, premium).
-  static const Color lightBg = Color(0xFFF4F1EA); // marfil cálido (página)
-  static const Color lightPanel = Color(0xFFFCFAF5); // tarjetas: blanco cálido
+  // Modo claro — crema mantequilla cálido + verde salvia (acogedor, personal).
+  static const Color lightBg = Color(0xFFFBF4E4); // crema cálido con toque amarillo
+  static const Color lightPanel = Color(0xFFFFFDF7); // tarjetas: crema muy claro
   static const Color lightSurface = Color(0xFFFFFFFF); // inputs / chips
-  static const Color lightInk = Color(0xFF262320); // texto principal (cálido)
-  static const Color lightMuted = Color(0xFF6F6A60); // texto secundario
-  static const Color lightHairline = Color(0xFFE7E1D5); // líneas suaves (greige)
+  static const Color lightInk = Color(0xFF2B2620); // texto principal (cálido)
+  static const Color lightMuted = Color(0xFF756D5C); // texto secundario
+  static const Color lightHairline = Color(0xFFEDE2CC); // líneas suaves (arena)
 
   // Modo oscuro (lavanda nocturna; coherente por si se usa)
   static const Color darkBg = Color(0xFF17151C);
