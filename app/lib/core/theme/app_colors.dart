@@ -5,11 +5,10 @@ import 'package:flutter/material.dart';
 abstract class AppColors {
   const AppColors._();
 
-  // Acento de marca — malva sereno. (Histórico: se llamaba "olive"/verde;
-  // el nombre cambió a `accent` al adoptar la paleta lavanda.)
-  static const Color accent = Color(0xFF6E5E96);
-  static const Color accentDeep = Color(0xFF564A78);
-  static const Color accentSoft = Color(0xFF857AAB); // decorativo / iconos
+  // Acento de marca — verde salvia, sereno y unisex.
+  static const Color accent = Color(0xFF4E7A63);
+  static const Color accentDeep = Color(0xFF3C614E);
+  static const Color accentSoft = Color(0xFF7FA790); // decorativo / iconos
 
   // Modo claro (lavanda serena)
   static const Color lightBg = Color(0xFFF5F3FA); // página lila muy claro
@@ -26,7 +25,7 @@ abstract class AppColors {
   static const Color darkHairline = Color(0xFF2E2A38);
 
   // Estados (apagados, legibles sobre fondo claro)
-  static const Color success = Color(0xFF4E7A63);
+  static const Color success = Color(0xFF3E8E5A); // verde confirmación (distinto del acento)
   static const Color warning = Color(0xFFB7860B);
   static const Color danger = Color(0xFFB5563F);
   static const Color info = Color(0xFF4A6B8A);

@@ -29,16 +29,16 @@ const _labels = {
 
 /// Paleta serena para el gráfico de gastos (no arcoíris chillón).
 const _paletaCategorias = [
-  Color(0xFF6E5E96), // malva (acento)
-  Color(0xFF4E7A63), // salvia
+  Color(0xFF4E7A63), // salvia (acento)
+  Color(0xFF3E7C88), // teal
   Color(0xFFC56A4E), // terracota
   Color(0xFF4A6B8A), // azul
   Color(0xFFB7860B), // ámbar
-  Color(0xFF8A6E9E),
+  Color(0xFF6E8A5E), // verde oliva
   Color(0xFF6B8A9E),
   Color(0xFFA0885E),
   Color(0xFF7A9E6B),
-  Color(0xFF9E6B7A),
+  Color(0xFF8A6E9E),
   Color(0xFF6B6E7A),
 ];
 
