@@ -30,6 +30,11 @@ class AppShell extends StatelessWidget {
             label: 'Proyectos',
           ),
           NavigationDestination(
+            icon: Icon(Icons.insights_outlined),
+            selectedIcon: Icon(Icons.insights),
+            label: 'Mi Mes',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.calendar_today_outlined),
             selectedIcon: Icon(Icons.calendar_today),
             label: 'Calendario',

@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../features/ajustes/presentation/ajustes_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/mi_vida/presentation/mi_vida_screen.dart';
+import '../../features/mi_mes/presentation/mi_mes_screen.dart';
 import '../../features/agenda/presentation/calendario_screen.dart';
 import '../../features/finanzas/presentation/finanzas_screen.dart';
 import '../../features/proyectos/presentation/proyectos_screen.dart';
@@ -42,6 +43,11 @@ GoRouter createRouter() {
                 path: '/proyectos',
                 builder: (_, __) => const ProyectosScreen(),
               ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/mi-mes', builder: (_, __) => const MiMesScreen()),
             ],
           ),
           StatefulShellBranch(
