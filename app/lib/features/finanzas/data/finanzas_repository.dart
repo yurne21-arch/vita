@@ -177,6 +177,48 @@ class FinanzasRepository {
         gastos: gastos, ingresos: ingresos, porCategoria: porCategoria);
   }
 
+  // ── Materiales por proyecto (cruce con Proyectos) ────────────
+  //
+  // Finanzas no importa el feature Proyectos (features aislados); lee la tabla
+  // projects directamente para el resumen de materiales.
+
+  Future<List<MaterialProyecto>> materialesPorProyecto() => _guard(() async {
+        final userId = _userId();
+        final proyectos = await _c
+            .from('projects')
+            .select('id, titulo, presupuesto_materiales')
+            .eq('user_id', userId)
+            .not('presupuesto_materiales', 'is', null)
+            .order('titulo');
+        final lista = (proyectos as List).cast<Map<String, dynamic>>();
+        if (lista.isEmpty) return <MaterialProyecto>[];
+
+        // Gasto ligado a cada proyecto (una sola consulta, luego se agrupa).
+        final gastos = await _c
+            .from('finance_transactions')
+            .select('monto, tipo, project_id')
+            .eq('user_id', userId)
+            .not('project_id', 'is', null);
+        final porProyecto = <String, double>{};
+        for (final g in gastos as List) {
+          if (g['tipo'] != 'gasto') continue;
+          final pid = g['project_id'] as String?;
+          if (pid == null) continue;
+          porProyecto.update(pid, (v) => v + (g['monto'] as num).toDouble(),
+              ifAbsent: () => (g['monto'] as num).toDouble());
+        }
+
+        return lista
+            .map((p) => MaterialProyecto(
+                  projectId: p['id'] as String,
+                  titulo: p['titulo'] as String,
+                  presupuesto:
+                      (p['presupuesto_materiales'] as num).toDouble(),
+                  gastado: porProyecto[p['id']] ?? 0,
+                ))
+            .toList();
+      });
+
   // ── Presupuestos ─────────────────────────────────────────────
 
   Future<List<Presupuesto>> presupuestos() => _guard(() async {

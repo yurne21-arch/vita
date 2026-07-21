@@ -29,6 +29,13 @@ final presupuestosProvider = FutureProvider<List<Presupuesto>>((ref) {
   return ref.watch(finanzasRepositoryProvider).presupuestos();
 });
 
+/// Materiales por proyecto (presupuesto vs gastado), cruce con Proyectos.
+final materialesPorProyectoProvider =
+    FutureProvider<List<MaterialProyecto>>((ref) {
+  ref.watch(usuarioActualProvider);
+  return ref.watch(finanzasRepositoryProvider).materialesPorProyecto();
+});
+
 final deudasProvider = FutureProvider<List<Deuda>>((ref) {
   ref.watch(usuarioActualProvider);
   return ref.watch(finanzasRepositoryProvider).deudas();

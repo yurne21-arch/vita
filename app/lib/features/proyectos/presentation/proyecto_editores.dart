@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/moneda.dart';
 import '../data/projects_repository.dart';
 import 'projects_controller.dart';
 import 'proyectos_widgets.dart';
@@ -36,9 +37,11 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
   late final TextEditingController _titulo;
   late final TextEditingController _objetivo;
   late final TextEditingController _porque;
+  late final TextEditingController _presupuesto;
   String? _area;
   DateTime? _fecha;
   bool _principal = false;
+  bool _tieneMateriales = false;
   bool _masOpciones = false;
   bool _guardando = false;
 
@@ -49,10 +52,18 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
     _titulo = TextEditingController(text: e?.titulo ?? '');
     _objetivo = TextEditingController(text: e?.objetivo ?? '');
     _porque = TextEditingController(text: e?.descripcion ?? '');
+    _tieneMateriales = e?.presupuestoMateriales != null;
+    _presupuesto = TextEditingController(
+        text: (e?.presupuestoMateriales != null &&
+                e!.presupuestoMateriales! > 0)
+            ? milesConPuntos(e.presupuestoMateriales!.round())
+            : '');
     _area = e?.area;
     _fecha = e?.fechaObjetivo;
     // Si ya hay datos secundarios, abre la sección para no esconderlos.
-    _masOpciones = (e?.descripcion != null) || (e?.fechaObjetivo != null);
+    _masOpciones = (e?.descripcion != null) ||
+        (e?.fechaObjetivo != null) ||
+        _tieneMateriales;
   }
 
   @override
@@ -60,7 +71,13 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
     _titulo.dispose();
     _objetivo.dispose();
     _porque.dispose();
+    _presupuesto.dispose();
     super.dispose();
+  }
+
+  double? get _presupuestoValor {
+    if (!_tieneMateriales) return null;
+    return parseMonto(_presupuesto.text) ?? 0;
   }
 
   Future<void> _guardar() async {
@@ -76,6 +93,7 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
           descripcion: _porque.text,
           area: _area,
           fechaObjetivo: _fecha,
+          presupuestoMateriales: _presupuestoValor,
           esPrincipal: _principal,
         );
         if (mounted) Navigator.of(context).pop(id);
@@ -87,6 +105,7 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
           descripcion: _porque.text,
           area: _area,
           fechaObjetivo: _fecha,
+          presupuestoMateriales: _presupuestoValor,
         );
         final e = widget.existente!;
         final actualizado = Project(
@@ -101,6 +120,7 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
           esPrincipal: e.esPrincipal,
           fechaObjetivo: _fecha,
           progresoManual: e.progresoManual,
+          presupuestoMateriales: _presupuestoValor,
           orden: e.orden,
           createdAt: e.createdAt,
           updatedAt: DateTime.now(),
@@ -219,6 +239,29 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
                 fecha: _fecha,
                 onCambiar: (d) => setState(() => _fecha = d),
               ),
+              const SizedBox(height: AppSpacing.xs),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Lleva materiales o compras'),
+                subtitle: Text('Ponle un presupuesto y registra sus gastos',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant)),
+                value: _tieneMateriales,
+                onChanged: (v) => setState(() => _tieneMateriales = v),
+              ),
+              if (_tieneMateriales) ...[
+                const SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: _presupuesto,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [MilesInputFormatter()],
+                  decoration: const InputDecoration(
+                    labelText: 'Presupuesto de materiales',
+                    prefixText: '\$ ',
+                    hintText: 'Cuánto piensas gastar',
+                  ),
+                ),
+              ],
             ],
 
             const SizedBox(height: AppSpacing.lg),
@@ -280,6 +323,7 @@ class _EditorTarea extends ConsumerStatefulWidget {
 
 class _EditorTareaState extends ConsumerState<_EditorTarea> {
   late final TextEditingController _texto;
+  late final TextEditingController _nota;
   late String _tipo;
   DateTime? _fecha;
   bool _guardando = false;
@@ -289,6 +333,7 @@ class _EditorTareaState extends ConsumerState<_EditorTarea> {
     super.initState();
     final e = widget.existente;
     _texto = TextEditingController(text: e?.texto ?? '');
+    _nota = TextEditingController(text: e?.nota ?? '');
     _tipo = e?.tipo ?? widget.tipoInicial;
     _fecha = e?.fechaObjetivo;
   }
@@ -296,6 +341,7 @@ class _EditorTareaState extends ConsumerState<_EditorTarea> {
   @override
   void dispose() {
     _texto.dispose();
+    _nota.dispose();
     super.dispose();
   }
 
@@ -304,16 +350,19 @@ class _EditorTareaState extends ConsumerState<_EditorTarea> {
     if (texto.isEmpty || _guardando) return;
     setState(() => _guardando = true);
     final acc = ref.read(proyectosAccionesProvider);
+    final nota = _nota.text;
     try {
       if (widget.existente == null) {
         if (_tipo == 'hito') {
-          await acc.crearHito(widget.projectId, texto, fechaObjetivo: _fecha);
+          await acc.crearHito(widget.projectId, texto,
+              fechaObjetivo: _fecha, nota: nota);
         } else {
-          await acc.crearPaso(widget.projectId, texto, fechaObjetivo: _fecha);
+          await acc.crearPaso(widget.projectId, texto,
+              fechaObjetivo: _fecha, nota: nota);
         }
       } else {
         await acc.editarTarea(widget.existente!,
-            texto: texto, tipo: _tipo, fechaObjetivo: _fecha);
+            texto: texto, tipo: _tipo, fechaObjetivo: _fecha, nota: nota);
       }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -369,6 +418,17 @@ class _EditorTareaState extends ConsumerState<_EditorTarea> {
             _SelectorFecha(
               fecha: _fecha,
               onCambiar: (d) => setState(() => _fecha = d),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: _nota,
+              maxLines: null,
+              minLines: 2,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                labelText: 'Nota (opcional)',
+                hintText: 'Un apunte para este paso',
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             FilledButton(

@@ -349,6 +349,27 @@ class ResumenMes {
       ResumenMes(gastos: 0, ingresos: 0, porCategoria: {});
 }
 
+/// Materiales de un proyecto: su presupuesto y lo ya gastado (cruce con
+/// Proyectos). Se usa en la sección "Materiales" de Finanzas.
+class MaterialProyecto {
+  const MaterialProyecto({
+    required this.projectId,
+    required this.titulo,
+    required this.presupuesto,
+    required this.gastado,
+  });
+
+  final String projectId;
+  final String titulo;
+  final double presupuesto;
+  final double gastado;
+
+  double get restante => presupuesto - gastado;
+  bool get excedido => presupuesto > 0 && gastado > presupuesto;
+  double get fraccion =>
+      presupuesto > 0 ? (gastado / presupuesto).clamp(0.0, 1.0) : 0.0;
+}
+
 /// Categorías de gasto. Son las MISMAS que las del presupuesto (mismos textos),
 /// para que Movimientos, Presupuesto y el gráfico concuerden y no haya despelote.
 const List<String> kCategoriasGasto = [

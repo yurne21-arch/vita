@@ -52,6 +52,11 @@ final proximoPasoProvider = FutureProvider.family<ProjectTask?, String>(
       ref.watch(projectsRepositoryProvider).obtenerProximoPasoPendiente(id),
 );
 
+/// Total gastado en materiales de un proyecto (gastos etiquetados en Finanzas).
+final gastoMaterialesProvider = FutureProvider.family<double, String>(
+  (ref, id) => ref.watch(projectsRepositoryProvider).gastoMaterialesDe(id),
+);
+
 /// Progreso 0..100 derivado de los PASOS completados. 0 si no hay pasos.
 /// (Para el respaldo con `progresoManual` cuando no hay pasos, usar
 /// `Project.progresoCon(tareas)` desde donde se tenga el Project.)
@@ -133,6 +138,7 @@ class ProyectosAcciones {
     String? area,
     DateTime? fechaObjetivo,
     int? progresoManual,
+    double? presupuestoMateriales,
     bool esPrincipal = false,
   }) async {
     final id = await _repo.crearProyecto(
@@ -142,6 +148,7 @@ class ProyectosAcciones {
       area: area,
       fechaObjetivo: fechaObjetivo,
       progresoManual: progresoManual,
+      presupuestoMateriales: presupuestoMateriales,
       esPrincipal: esPrincipal,
     );
     await _repo.registrarCreado(id, texto: 'Proyecto creado'); // bitácora auto
@@ -156,6 +163,7 @@ class ProyectosAcciones {
     String? objetivo,
     String? area,
     DateTime? fechaObjetivo,
+    double? presupuestoMateriales,
   }) async {
     await _repo.editarProyecto(
       id,
@@ -164,9 +172,22 @@ class ProyectosAcciones {
       objetivo: objetivo,
       area: area,
       fechaObjetivo: fechaObjetivo,
+      presupuestoMateriales: presupuestoMateriales,
     );
     _refrescarCartera();
     _refrescarProyecto(id);
+  }
+
+  /// Registra un gasto de materiales del proyecto (aparece también en Finanzas).
+  Future<void> agregarGastoMateriales(
+    String projectId, {
+    required double monto,
+    String? nota,
+    DateTime? fecha,
+  }) async {
+    await _repo.agregarGastoMateriales(projectId,
+        monto: monto, nota: nota, fecha: fecha);
+    _ref.invalidate(gastoMaterialesProvider(projectId));
   }
 
   /// Pausa y registra 'cambio_estado'.
@@ -212,17 +233,17 @@ class ProyectosAcciones {
   // ───────────────── Pasos / Hitos ─────────────────
 
   Future<String> crearPaso(String projectId, String texto,
-      {DateTime? fechaObjetivo}) async {
-    final id =
-        await _repo.crearPaso(projectId, texto, fechaObjetivo: fechaObjetivo);
+      {DateTime? fechaObjetivo, String? nota}) async {
+    final id = await _repo.crearPaso(projectId, texto,
+        fechaObjetivo: fechaObjetivo, nota: nota);
     _refrescarProyecto(projectId);
     return id;
   }
 
   Future<String> crearHito(String projectId, String texto,
-      {DateTime? fechaObjetivo}) async {
-    final id =
-        await _repo.crearHito(projectId, texto, fechaObjetivo: fechaObjetivo);
+      {DateTime? fechaObjetivo, String? nota}) async {
+    final id = await _repo.crearHito(projectId, texto,
+        fechaObjetivo: fechaObjetivo, nota: nota);
     _refrescarProyecto(projectId);
     return id;
   }
@@ -232,11 +253,31 @@ class ProyectosAcciones {
     required String texto,
     required String tipo,
     DateTime? fechaObjetivo,
+    String? nota,
   }) async {
     await _repo.editarTarea(tarea.id,
-        texto: texto, tipo: tipo, fechaObjetivo: fechaObjetivo);
+        texto: texto, tipo: tipo, fechaObjetivo: fechaObjetivo, nota: nota);
+    // Si la fecha se movió, queda registro en la bitácora (sin culpa: solo el
+    // hecho, para ver lo planificado vs lo real).
+    if (!_mismaFecha(tarea.fechaObjetivo, fechaObjetivo)) {
+      await _repo.registrarFechaMovida(
+        tarea.projectId,
+        taskId: tarea.id,
+        texto: 'Fecha de «${tarea.texto}»: '
+            '${_fmtFecha(tarea.fechaObjetivo)} → ${_fmtFecha(fechaObjetivo)}',
+      );
+    }
     _refrescarProyecto(tarea.projectId);
   }
+
+  static bool _mismaFecha(DateTime? a, DateTime? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  static String _fmtFecha(DateTime? d) =>
+      d == null ? 'sin fecha' : '${d.day}/${d.month}/${d.year}';
 
   /// Completa un paso/hito y registra en bitácora:
   /// hito → 'hito_completado'; paso → 'avance'.

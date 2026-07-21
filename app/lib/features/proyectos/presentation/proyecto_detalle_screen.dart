@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/moneda.dart';
 import '../data/projects_repository.dart';
 import 'projects_controller.dart';
 import 'proyecto_editores.dart';
@@ -161,6 +162,10 @@ class _ProyectoDetalleScreenState
                             onAgregarPaso: () => mostrarEditorTarea(context, ref,
                                 projectId: _p.id, tipoInicial: 'paso'),
                           ),
+                        ],
+                        if (_p.tieneMateriales) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          _MaterialesCard(proyecto: _p),
                         ],
                         const SizedBox(height: AppSpacing.lg),
                         _DashboardSecciones(
@@ -600,11 +605,40 @@ class _TareaRow extends StatelessWidget {
                   ),
                   if (tarea.fechaObjetivo != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        '${tarea.fechaObjetivo!.day}/${tarea.fechaObjetivo!.month}/${tarea.fechaObjetivo!.year}',
-                        style: theme.textTheme.labelSmall
-                            ?.copyWith(color: cs.onSurfaceVariant),
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Row(
+                        children: [
+                          Icon(Icons.event_outlined,
+                              size: 13, color: cs.onSurfaceVariant),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${tarea.fechaObjetivo!.day}/${tarea.fechaObjetivo!.month}/${tarea.fechaObjetivo!.year}',
+                            style: theme.textTheme.labelSmall
+                                ?.copyWith(color: cs.onSurfaceVariant),
+                          ),
+                          if (tarea.fechaMovida) ...[
+                            const SizedBox(width: 6),
+                            _BadgeFechaMovida(
+                                original: tarea.fechaObjetivoOriginal!),
+                          ],
+                        ],
+                      ),
+                    ),
+                  if (tarea.nota != null && tarea.nota!.trim().isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.sticky_note_2_outlined,
+                              size: 13, color: cs.onSurfaceVariant),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(tarea.nota!.trim(),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                    color: cs.onSurfaceVariant, height: 1.3)),
+                          ),
+                        ],
                       ),
                     ),
                 ],
@@ -641,6 +675,28 @@ class _TareaRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Aviso sereno de que la fecha se movió respecto a la planificada. Sin culpa:
+/// solo informa, para ver lo planificado vs lo real.
+class _BadgeFechaMovida extends StatelessWidget {
+  const _BadgeFechaMovida({required this.original});
+  final DateTime original;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Text('movida · antes ${original.day}/${original.month}',
+          style: const TextStyle(
+              color: AppColors.warning,
+              fontSize: 10,
+              fontWeight: FontWeight.w700)),
     );
   }
 }
@@ -746,6 +802,8 @@ class _BitacoraFila extends StatelessWidget {
         return (Icons.emoji_events_outlined, AppColors.warning, 'Hito');
       case 'cambio_estado':
         return (Icons.swap_horiz, AppColors.info, 'Estado');
+      case 'fecha_movida':
+        return (Icons.event_repeat_outlined, AppColors.warning, 'Fecha');
       case 'nota':
         return (Icons.sticky_note_2_outlined, AppColors.info, 'Nota');
       default:
@@ -818,6 +876,225 @@ class _BitacoraFila extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ───────────────── Materiales (cruce con Finanzas) ─────────────────
+
+class _MaterialesCard extends ConsumerWidget {
+  const _MaterialesCard({required this.proyecto});
+  final Project proyecto;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final presupuesto = proyecto.presupuestoMateriales ?? 0;
+    final gastoAsync = ref.watch(gastoMaterialesProvider(proyecto.id));
+    final gastado = gastoAsync.valueOrNull ?? 0;
+    final restante = presupuesto - gastado;
+    final frac = presupuesto > 0
+        ? (gastado / presupuesto).clamp(0.0, 1.0)
+        : 0.0;
+    final excedido = presupuesto > 0 && gastado > presupuesto;
+
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.shopping_bag_outlined,
+                    size: 18, color: AppColors.warning),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text('Materiales',
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () =>
+                    _mostrarGastoMateriales(context, ref, proyecto.id),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Gasto'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          if (presupuesto > 0) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: frac,
+                minHeight: 8,
+                backgroundColor: cs.surfaceContainerHighest,
+                color: excedido ? AppColors.danger : AppColors.accent,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          Row(
+            children: [
+              _DatoMaterial(
+                  etiqueta: 'Presupuesto',
+                  valor: formatoMoneda(presupuesto)),
+              _DatoMaterial(
+                  etiqueta: 'Gastado', valor: formatoMoneda(gastado)),
+              _DatoMaterial(
+                etiqueta: excedido ? 'Excedido' : 'Restante',
+                valor: formatoMoneda(restante.abs()),
+                color: excedido ? AppColors.danger : AppColors.success,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DatoMaterial extends StatelessWidget {
+  const _DatoMaterial(
+      {required this.etiqueta, required this.valor, this.color});
+  final String etiqueta;
+  final String valor;
+  final Color? color;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(etiqueta,
+              style: theme.textTheme.labelSmall
+                  ?.copyWith(color: cs.onSurfaceVariant)),
+          const SizedBox(height: 2),
+          Text(valor,
+              style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700, color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+Future<void> _mostrarGastoMateriales(
+    BuildContext context, WidgetRef ref, String projectId) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
+    builder: (_) => _GastoMaterialesSheet(projectId: projectId),
+  );
+}
+
+class _GastoMaterialesSheet extends ConsumerStatefulWidget {
+  const _GastoMaterialesSheet({required this.projectId});
+  final String projectId;
+  @override
+  ConsumerState<_GastoMaterialesSheet> createState() =>
+      _GastoMaterialesSheetState();
+}
+
+class _GastoMaterialesSheetState
+    extends ConsumerState<_GastoMaterialesSheet> {
+  final _monto = TextEditingController();
+  final _nota = TextEditingController();
+  bool _guardando = false;
+
+  @override
+  void dispose() {
+    _monto.dispose();
+    _nota.dispose();
+    super.dispose();
+  }
+
+  Future<void> _guardar() async {
+    final monto = parseMonto(_monto.text);
+    if (monto == null || monto <= 0 || _guardando) return;
+    setState(() => _guardando = true);
+    try {
+      await ref
+          .read(proyectosAccionesProvider)
+          .agregarGastoMateriales(widget.projectId,
+              monto: monto, nota: _nota.text);
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _guardando = false);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return SafeArea(
+      top: false,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: ListView(
+          shrinkWrap: true,
+          padding: EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg,
+              AppSpacing.lg + MediaQuery.of(context).viewInsets.bottom),
+          children: [
+            Text('Gasto de materiales',
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text('Queda ligado al proyecto y también aparece en Finanzas.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant)),
+            const SizedBox(height: AppSpacing.lg),
+            TextField(
+              controller: _monto,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              inputFormatters: [MilesInputFormatter()],
+              decoration: const InputDecoration(
+                  labelText: 'Monto', prefixText: '\$ '),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: _nota,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                  labelText: 'Nota (opcional)',
+                  hintText: 'Qué compraste'),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            FilledButton(
+              onPressed: _guardando ? null : _guardar,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.accent,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+              ),
+              child: _guardando
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : const Text('Registrar gasto'),
+            ),
+          ],
+        ),
       ),
     );
   }

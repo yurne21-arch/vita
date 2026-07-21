@@ -29,6 +29,7 @@ class Project {
     this.esPrincipal = false,
     this.fechaObjetivo,
     this.progresoManual,
+    this.presupuestoMateriales,
     this.orden = 0,
     required this.createdAt,
     required this.updatedAt,
@@ -44,7 +45,11 @@ class Project {
   final bool esPrincipal;
   final DateTime? fechaObjetivo; // date
   final int? progresoManual; // 0..100 respaldo si no hay pasos
+  final double? presupuestoMateriales; // presupuesto de materiales/compras
   final int orden;
+
+  /// El proyecto lleva seguimiento de materiales/compras (tiene presupuesto).
+  bool get tieneMateriales => presupuestoMateriales != null;
   final DateTime createdAt; // local
   final DateTime updatedAt; // local
   final DateTime? completadoAt; // local
@@ -75,6 +80,7 @@ class Project {
     bool? esPrincipal,
     DateTime? fechaObjetivo,
     int? progresoManual,
+    double? presupuestoMateriales,
     int? orden,
     DateTime? updatedAt,
     DateTime? completadoAt,
@@ -89,6 +95,8 @@ class Project {
         esPrincipal: esPrincipal ?? this.esPrincipal,
         fechaObjetivo: fechaObjetivo ?? this.fechaObjetivo,
         progresoManual: progresoManual ?? this.progresoManual,
+        presupuestoMateriales:
+            presupuestoMateriales ?? this.presupuestoMateriales,
         orden: orden ?? this.orden,
         createdAt: createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
@@ -107,6 +115,8 @@ class Project {
             ? DateTime.parse(m['fecha_objetivo'] as String)
             : null,
         progresoManual: (m['progreso_manual'] as num?)?.toInt(),
+        presupuestoMateriales:
+            (m['presupuesto_materiales'] as num?)?.toDouble(),
         orden: (m['orden'] as num?)?.toInt() ?? 0,
         createdAt: DateTime.parse(m['created_at'] as String).toLocal(),
         updatedAt: DateTime.parse(m['updated_at'] as String).toLocal(),
@@ -126,6 +136,8 @@ class ProjectTask {
     this.completada = false,
     this.orden = 0,
     this.fechaObjetivo,
+    this.fechaObjetivoOriginal,
+    this.nota,
     this.eventoId,
     required this.createdAt,
     this.completadaAt,
@@ -137,7 +149,9 @@ class ProjectTask {
   final String tipo; // paso | hito
   final bool completada;
   final int orden;
-  final DateTime? fechaObjetivo; // date
+  final DateTime? fechaObjetivo; // date (la vigente)
+  final DateTime? fechaObjetivoOriginal; // date (la que se fijó al principio)
+  final String? nota; // apunte libre del paso
   final String? eventoId; // gancho Calendario (no cableado en V1)
   final DateTime createdAt; // local
   final DateTime? completadaAt; // local
@@ -145,12 +159,23 @@ class ProjectTask {
   bool get esPaso => tipo == 'paso';
   bool get esHito => tipo == 'hito';
 
+  /// La fecha se movió respecto a la original planificada.
+  bool get fechaMovida =>
+      fechaObjetivo != null &&
+      fechaObjetivoOriginal != null &&
+      !_mismoDia(fechaObjetivo!, fechaObjetivoOriginal!);
+
+  static bool _mismoDia(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
   ProjectTask copyWith({
     String? texto,
     String? tipo,
     bool? completada,
     int? orden,
     DateTime? fechaObjetivo,
+    DateTime? fechaObjetivoOriginal,
+    String? nota,
     String? eventoId,
     DateTime? completadaAt,
   }) =>
@@ -162,6 +187,9 @@ class ProjectTask {
         completada: completada ?? this.completada,
         orden: orden ?? this.orden,
         fechaObjetivo: fechaObjetivo ?? this.fechaObjetivo,
+        fechaObjetivoOriginal:
+            fechaObjetivoOriginal ?? this.fechaObjetivoOriginal,
+        nota: nota ?? this.nota,
         eventoId: eventoId ?? this.eventoId,
         createdAt: createdAt,
         completadaAt: completadaAt ?? this.completadaAt,
@@ -177,6 +205,10 @@ class ProjectTask {
         fechaObjetivo: m['fecha_objetivo'] != null
             ? DateTime.parse(m['fecha_objetivo'] as String)
             : null,
+        fechaObjetivoOriginal: m['fecha_objetivo_original'] != null
+            ? DateTime.parse(m['fecha_objetivo_original'] as String)
+            : null,
+        nota: m['nota'] as String?,
         eventoId: m['evento_id'] as String?,
         createdAt: DateTime.parse(m['created_at'] as String).toLocal(),
         completadaAt: m['completada_at'] != null
@@ -227,10 +259,11 @@ class ProjectsRepository {
 
   static const _pCols =
       'id, titulo, descripcion, objetivo, area, estado, es_principal, '
-      'fecha_objetivo, progreso_manual, orden, created_at, updated_at, completado_at';
+      'fecha_objetivo, progreso_manual, presupuesto_materiales, orden, '
+      'created_at, updated_at, completado_at';
   static const _tCols =
       'id, project_id, texto, tipo, completada, orden, fecha_objetivo, '
-      'evento_id, created_at, completada_at';
+      'fecha_objetivo_original, nota, evento_id, created_at, completada_at';
   static const _lCols =
       'id, project_id, task_id, fecha, tipo, texto, created_at';
 
@@ -277,6 +310,7 @@ class ProjectsRepository {
     String? area,
     DateTime? fechaObjetivo,
     int? progresoManual,
+    double? presupuestoMateriales,
     bool esPrincipal = false,
   }) async {
     final uid = _userId();
@@ -291,6 +325,7 @@ class ProjectsRepository {
             'area': _limpio(area),
             'fecha_objetivo': _fechaSolo(fechaObjetivo),
             'progreso_manual': progresoManual,
+            'presupuesto_materiales': presupuestoMateriales,
             'es_principal': esPrincipal,
           })
           .select('id')
@@ -310,6 +345,7 @@ class ProjectsRepository {
     String? objetivo,
     String? area,
     DateTime? fechaObjetivo,
+    double? presupuestoMateriales,
   }) =>
       _guard('guardar el proyecto', () async {
         await _c.from('projects').update({
@@ -318,6 +354,8 @@ class ProjectsRepository {
           'objetivo': _limpio(objetivo),
           'area': _limpio(area),
           'fecha_objetivo': _fechaSolo(fechaObjetivo),
+          // null = deja de llevar materiales; un número = presupuesto vigente.
+          'presupuesto_materiales': presupuestoMateriales,
         }).eq('id', id);
       });
 
@@ -385,12 +423,14 @@ class ProjectsRepository {
             .order('completado_at', ascending: false)
             .order('updated_at', ascending: false);
       } else {
+        // Orden por fecha objetivo (lo más próximo primero); los que no tienen
+        // fecha quedan al final. Desempate por creación.
         rows = await _c
             .from('projects')
             .select(_pCols)
             .eq('user_id', u.id)
             .inFilter('estado', estados)
-            .order('orden')
+            .order('fecha_objetivo', ascending: true, nullsFirst: false)
             .order('created_at');
       }
       return rows
@@ -421,19 +461,20 @@ class ProjectsRepository {
   }
 
   Future<String> crearPaso(String projectId, String texto,
-          {DateTime? fechaObjetivo}) =>
-      _crearTarea(projectId, texto, 'paso', fechaObjetivo);
+          {DateTime? fechaObjetivo, String? nota}) =>
+      _crearTarea(projectId, texto, 'paso', fechaObjetivo, nota);
 
   Future<String> crearHito(String projectId, String texto,
-          {DateTime? fechaObjetivo}) =>
-      _crearTarea(projectId, texto, 'hito', fechaObjetivo);
+          {DateTime? fechaObjetivo, String? nota}) =>
+      _crearTarea(projectId, texto, 'hito', fechaObjetivo, nota);
 
-  Future<String> _crearTarea(
-      String projectId, String texto, String tipo, DateTime? fechaObjetivo) {
+  Future<String> _crearTarea(String projectId, String texto, String tipo,
+      DateTime? fechaObjetivo, String? nota) {
     final uid = _userId();
     final etiqueta = tipo == 'hito' ? 'el hito' : 'el paso';
     return _guard('crear $etiqueta', () async {
       final orden = await _siguienteOrden(projectId);
+      final fecha = _fechaSolo(fechaObjetivo);
       final row = await _c
           .from('project_tasks')
           .insert({
@@ -442,7 +483,10 @@ class ProjectsRepository {
             'texto': texto.trim(),
             'tipo': tipo,
             'orden': orden,
-            'fecha_objetivo': _fechaSolo(fechaObjetivo),
+            'fecha_objetivo': fecha,
+            // La fecha original nace igual a la primera fecha fijada.
+            'fecha_objetivo_original': fecha,
+            'nota': _limpio(nota),
           })
           .select('id')
           .single();
@@ -450,21 +494,45 @@ class ProjectsRepository {
     });
   }
 
-  /// Edita un paso/hito. Pasa el estado completo deseado (texto, tipo, fecha);
-  /// `tipo` permite convertir un paso en hito o viceversa.
+  /// Edita un paso/hito. Pasa el estado completo deseado (texto, tipo, fecha,
+  /// nota); `tipo` permite convertir un paso en hito o viceversa.
+  ///
+  /// Si el paso nunca tuvo fecha original y ahora se le fija una, esa queda como
+  /// la planificada. La fecha original **nunca** se reescribe: es la referencia
+  /// para ver si la fecha se movió.
   Future<void> editarTarea(
     String id, {
     required String texto,
     required String tipo,
     DateTime? fechaObjetivo,
+    String? nota,
   }) =>
       _guard('guardar la tarea', () async {
-        await _c.from('project_tasks').update({
+        final fecha = _fechaSolo(fechaObjetivo);
+        final datos = <String, dynamic>{
           'texto': texto.trim(),
           'tipo': tipo,
-          'fecha_objetivo': _fechaSolo(fechaObjetivo),
-        }).eq('id', id);
+          'fecha_objetivo': fecha,
+          'nota': _limpio(nota),
+        };
+        // Fija la fecha original solo si aún no existe y ahora hay una fecha.
+        if (fecha != null) {
+          final actual = await _c
+              .from('project_tasks')
+              .select('fecha_objetivo_original')
+              .eq('id', id)
+              .maybeSingle();
+          if (actual != null && actual['fecha_objetivo_original'] == null) {
+            datos['fecha_objetivo_original'] = fecha;
+          }
+        }
+        await _c.from('project_tasks').update(datos).eq('id', id);
       });
+
+  /// Anota en la bitácora que se movió la fecha de un paso (append-only).
+  Future<void> registrarFechaMovida(String projectId,
+          {String? texto, String? taskId}) =>
+      _log(projectId, 'fecha_movida', texto: texto, taskId: taskId);
 
   /// Marca completada (el trigger estampa `completada_at`).
   Future<void> completarTarea(String id) =>
@@ -594,6 +662,54 @@ class ProjectsRepository {
       });
     });
   }
+
+  // ════════════════════ MATERIALES (cruce con Finanzas) ════════════════════
+  //
+  // Proyectos no importa el feature Finanzas (features aislados); lee/escribe la
+  // tabla finance_transactions directamente, etiquetando el movimiento con
+  // project_id. El gasto aparece también en Finanzas como cualquier otro.
+
+  /// Total ya gastado en materiales de un proyecto (gastos etiquetados).
+  Future<double> gastoMaterialesDe(String projectId) =>
+      _guard('cargar el gasto de materiales', () async {
+        final uid = _userId();
+        final rows = await _c
+            .from('finance_transactions')
+            .select('monto, tipo')
+            .eq('user_id', uid)
+            .eq('project_id', projectId);
+        var total = 0.0;
+        for (final r in rows as List) {
+          if (r['tipo'] == 'gasto') total += (r['monto'] as num).toDouble();
+        }
+        return total;
+      });
+
+  /// Registra un gasto de materiales ligado al proyecto. Queda también en
+  /// Finanzas (categoría 'Materiales', ámbito casa por defecto).
+  Future<void> agregarGastoMateriales(
+    String projectId, {
+    required double monto,
+    String? nota,
+    DateTime? fecha,
+    String categoria = 'Materiales',
+  }) =>
+      _guard('registrar el gasto', () async {
+        final uid = _userId();
+        if (monto <= 0) {
+          throw ProjectsException('El monto debe ser mayor que cero.');
+        }
+        await _c.from('finance_transactions').insert({
+          'user_id': uid,
+          'tipo': 'gasto',
+          'monto': monto,
+          'categoria': categoria.trim().isEmpty ? 'Materiales' : categoria.trim(),
+          'ambito': 'casa',
+          'nota': _limpio(nota),
+          'project_id': projectId,
+          'fecha': _fechaSolo(fecha ?? DateTime.now()),
+        });
+      });
 
   /// Bitácora del proyecto, de la más reciente a la más antigua.
   Future<List<ProjectLogEntry>> listarBitacora(String projectId) =>
