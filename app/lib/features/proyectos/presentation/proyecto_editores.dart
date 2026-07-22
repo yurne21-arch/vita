@@ -38,6 +38,7 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
   late final TextEditingController _objetivo;
   late final TextEditingController _porque;
   String? _area;
+  String? _metaId;
   DateTime? _fecha;
   bool _principal = false;
   bool _masOpciones = false;
@@ -51,6 +52,7 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
     _objetivo = TextEditingController(text: e?.objetivo ?? '');
     _porque = TextEditingController(text: e?.descripcion ?? '');
     _area = e?.area;
+    _metaId = e?.metaId;
     _fecha = e?.fechaObjetivo;
     // Si ya hay datos secundarios, abre la sección para no esconderlos.
     _masOpciones = (e?.descripcion != null) || (e?.fechaObjetivo != null);
@@ -77,6 +79,7 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
           descripcion: _porque.text,
           area: _area,
           fechaObjetivo: _fecha,
+          metaId: _metaId,
           esPrincipal: _principal,
         );
         if (mounted) Navigator.of(context).pop(id);
@@ -88,6 +91,7 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
           descripcion: _porque.text,
           area: _area,
           fechaObjetivo: _fecha,
+          metaId: _metaId,
         );
         final e = widget.existente!;
         final actualizado = Project(
@@ -102,6 +106,7 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
           esPrincipal: e.esPrincipal,
           fechaObjetivo: _fecha,
           progresoManual: e.progresoManual,
+          metaId: _metaId,
           orden: e.orden,
           createdAt: e.createdAt,
           updatedAt: DateTime.now(),
@@ -165,6 +170,11 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
                   DropdownMenuItem<String>(value: a, child: Text(a)),
               ],
               onChanged: (v) => setState(() => _area = v),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _SelectorMeta(
+              metaId: _metaId,
+              onCambiar: (v) => setState(() => _metaId = v),
             ),
 
             // Marcar principal (solo al crear; en edición se usa el menú ⋮)
@@ -643,6 +653,47 @@ Future<void> _mostrarAvanzarSinPasos(
       ),
     ),
   );
+}
+
+// ───────────────── Selector de meta (vincular proyecto) ─────────────────
+
+class _SelectorMeta extends ConsumerWidget {
+  const _SelectorMeta({required this.metaId, required this.onCambiar});
+  final String? metaId;
+  final ValueChanged<String?> onCambiar;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final metas = ref.watch(metasVinculablesProvider).valueOrNull ?? const [];
+    // Si la meta vinculada ya no existe, no forzamos un valor inválido.
+    final valor = metas.any((m) => m.id == metaId) ? metaId : null;
+
+    return DropdownButtonFormField<String?>(
+      initialValue: valor,
+      isExpanded: true,
+      decoration: const InputDecoration(
+        labelText: 'Meta a la que pertenece',
+        helperText: 'Al completar el proyecto, avanza esta meta',
+      ),
+      items: [
+        const DropdownMenuItem<String?>(
+            value: null, child: Text('Sin meta')),
+        for (final m in metas)
+          DropdownMenuItem<String?>(
+            value: m.id,
+            child: Text('${m.emoji != null ? '${m.emoji} ' : ''}${m.label}',
+                overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: onCambiar,
+      // Si no hay metas creadas, guía a crearlas en Finanzas.
+      disabledHint: Text('Crea una meta en Finanzas primero',
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: cs.onSurfaceVariant)),
+    );
+  }
 }
 
 // ───────────────── Selector de fecha (compartido) ─────────────────

@@ -52,6 +52,12 @@ final proximoPasoProvider = FutureProvider.family<ProjectTask?, String>(
       ref.watch(projectsRepositoryProvider).obtenerProximoPasoPendiente(id),
 );
 
+/// Metas disponibles para vincular a un proyecto (de Finanzas).
+final metasVinculablesProvider = FutureProvider<List<MetaRef>>((ref) {
+  ref.watch(usuarioActualProvider);
+  return ref.watch(projectsRepositoryProvider).metasParaVincular();
+});
+
 /// Progreso 0..100 derivado de los PASOS completados. 0 si no hay pasos.
 /// (Para el respaldo con `progresoManual` cuando no hay pasos, usar
 /// `Project.progresoCon(tareas)` desde donde se tenga el Project.)
@@ -133,6 +139,7 @@ class ProyectosAcciones {
     String? area,
     DateTime? fechaObjetivo,
     int? progresoManual,
+    String? metaId,
     bool esPrincipal = false,
   }) async {
     final id = await _repo.crearProyecto(
@@ -142,6 +149,7 @@ class ProyectosAcciones {
       area: area,
       fechaObjetivo: fechaObjetivo,
       progresoManual: progresoManual,
+      metaId: metaId,
       esPrincipal: esPrincipal,
     );
     await _repo.registrarCreado(id, texto: 'Proyecto creado'); // bitácora auto
@@ -156,6 +164,7 @@ class ProyectosAcciones {
     String? objetivo,
     String? area,
     DateTime? fechaObjetivo,
+    String? metaId,
   }) async {
     await _repo.editarProyecto(
       id,
@@ -164,6 +173,7 @@ class ProyectosAcciones {
       objetivo: objetivo,
       area: area,
       fechaObjetivo: fechaObjetivo,
+      metaId: metaId,
     );
     _refrescarCartera();
     _refrescarProyecto(id);

@@ -29,6 +29,7 @@ class Project {
     this.esPrincipal = false,
     this.fechaObjetivo,
     this.progresoManual,
+    this.metaId,
     this.orden = 0,
     required this.createdAt,
     required this.updatedAt,
@@ -44,6 +45,7 @@ class Project {
   final bool esPrincipal;
   final DateTime? fechaObjetivo; // date
   final int? progresoManual; // 0..100 respaldo si no hay pasos
+  final String? metaId; // meta (finance_goals) a la que pertenece
   final int orden;
   final DateTime createdAt; // local
   final DateTime updatedAt; // local
@@ -75,6 +77,7 @@ class Project {
     bool? esPrincipal,
     DateTime? fechaObjetivo,
     int? progresoManual,
+    String? metaId,
     int? orden,
     DateTime? updatedAt,
     DateTime? completadoAt,
@@ -89,6 +92,7 @@ class Project {
         esPrincipal: esPrincipal ?? this.esPrincipal,
         fechaObjetivo: fechaObjetivo ?? this.fechaObjetivo,
         progresoManual: progresoManual ?? this.progresoManual,
+        metaId: metaId ?? this.metaId,
         orden: orden ?? this.orden,
         createdAt: createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
@@ -107,6 +111,7 @@ class Project {
             ? DateTime.parse(m['fecha_objetivo'] as String)
             : null,
         progresoManual: (m['progreso_manual'] as num?)?.toInt(),
+        metaId: m['meta_id'] as String?,
         orden: (m['orden'] as num?)?.toInt() ?? 0,
         createdAt: DateTime.parse(m['created_at'] as String).toLocal(),
         updatedAt: DateTime.parse(m['updated_at'] as String).toLocal(),
@@ -243,6 +248,15 @@ class ProjectLogEntry {
       );
 }
 
+/// Referencia ligera a una meta (Finanzas → finance_goals) para vincularla a
+/// un proyecto sin acoplar el feature Finanzas.
+class MetaRef {
+  const MetaRef({required this.id, required this.label, this.emoji});
+  final String id;
+  final String label;
+  final String? emoji;
+}
+
 // ╭──────────────────────────────────────────────────────────────╮
 // │ Repositorio                                                    │
 // ╰──────────────────────────────────────────────────────────────╯
@@ -254,7 +268,7 @@ class ProjectsRepository {
 
   static const _pCols =
       'id, titulo, descripcion, objetivo, area, estado, es_principal, '
-      'fecha_objetivo, progreso_manual, orden, created_at, updated_at, completado_at';
+      'fecha_objetivo, progreso_manual, meta_id, orden, created_at, updated_at, completado_at';
   static const _tCols =
       'id, project_id, texto, tipo, completada, orden, fecha_objetivo, '
       'fecha_objetivo_original, nota, monto, evento_id, created_at, completada_at';
@@ -304,6 +318,7 @@ class ProjectsRepository {
     String? area,
     DateTime? fechaObjetivo,
     int? progresoManual,
+    String? metaId,
     bool esPrincipal = false,
   }) async {
     final uid = _userId();
@@ -318,6 +333,7 @@ class ProjectsRepository {
             'area': _limpio(area),
             'fecha_objetivo': _fechaSolo(fechaObjetivo),
             'progreso_manual': progresoManual,
+            'meta_id': metaId,
             'es_principal': esPrincipal,
           })
           .select('id')
@@ -337,6 +353,7 @@ class ProjectsRepository {
     String? objetivo,
     String? area,
     DateTime? fechaObjetivo,
+    String? metaId,
   }) =>
       _guard('guardar el proyecto', () async {
         await _c.from('projects').update({
@@ -345,7 +362,27 @@ class ProjectsRepository {
           'objetivo': _limpio(objetivo),
           'area': _limpio(area),
           'fecha_objetivo': _fechaSolo(fechaObjetivo),
+          'meta_id': metaId,
         }).eq('id', id);
+      });
+
+  /// Metas disponibles para vincular (de Finanzas → finance_goals). Proyectos
+  /// no importa el feature Finanzas; lee la tabla directamente.
+  Future<List<MetaRef>> metasParaVincular() =>
+      _guard('cargar las metas', () async {
+        final uid = _userId();
+        final rows = await _c
+            .from('finance_goals')
+            .select('id, label, emoji')
+            .eq('user_id', uid)
+            .order('label');
+        return (rows as List)
+            .map((m) => MetaRef(
+                  id: m['id'] as String,
+                  label: m['label'] as String,
+                  emoji: m['emoji'] as String?,
+                ))
+            .toList();
       });
 
   /// Pausa el proyecto. El trigger le quita la marca de principal si la tenía.

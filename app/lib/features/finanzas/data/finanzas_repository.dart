@@ -228,6 +228,31 @@ class FinanzasRepository {
         return resultado;
       });
 
+  /// Por cada meta con proyectos vinculados: cuántos hay y cuántos completados.
+  /// Permite mostrar el avance de la meta según sus proyectos.
+  Future<Map<String, ({int total, int completados})>> proyectosPorMeta() =>
+      _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('projects')
+            .select('meta_id, estado')
+            .eq('user_id', userId)
+            .not('meta_id', 'is', null);
+        final total = <String, int>{};
+        final hechos = <String, int>{};
+        for (final r in rows as List) {
+          final mid = r['meta_id'] as String;
+          total.update(mid, (v) => v + 1, ifAbsent: () => 1);
+          if (r['estado'] == 'completado') {
+            hechos.update(mid, (v) => v + 1, ifAbsent: () => 1);
+          }
+        }
+        return {
+          for (final mid in total.keys)
+            mid: (total: total[mid]!, completados: hechos[mid] ?? 0)
+        };
+      });
+
   // ── Presupuestos ─────────────────────────────────────────────
 
   Future<List<Presupuesto>> presupuestos() => _guard(() async {

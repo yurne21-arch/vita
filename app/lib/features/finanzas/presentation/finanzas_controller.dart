@@ -58,6 +58,13 @@ final metasProvider = FutureProvider<List<Meta>>((ref) {
   return ref.watch(finanzasRepositoryProvider).metas();
 });
 
+/// Avance de proyectos por meta: {metaId: (total, completados)}.
+final proyectosPorMetaProvider =
+    FutureProvider<Map<String, ({int total, int completados})>>((ref) {
+  ref.watch(usuarioActualProvider);
+  return ref.watch(finanzasRepositoryProvider).proyectosPorMeta();
+});
+
 /// Balance del reparto compartido (Tricount), acumulado sobre todo el historial.
 final balanceCompartidoProvider = FutureProvider<BalanceCompartido>((ref) {
   ref.watch(usuarioActualProvider);

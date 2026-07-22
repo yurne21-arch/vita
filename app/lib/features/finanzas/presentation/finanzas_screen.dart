@@ -1531,6 +1531,8 @@ class _Metas extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final async = ref.watch(metasProvider);
+    final proyPorMeta =
+        ref.watch(proyectosPorMetaProvider).valueOrNull ?? const {};
     return async.when(
       loading: () => const Padding(
         padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
@@ -1618,6 +1620,9 @@ class _Metas extends ConsumerWidget {
                           ),
                         ],
                       ),
+                      if (proyPorMeta[m.id] != null &&
+                          proyPorMeta[m.id]!.total > 0)
+                        _AvanceProyectosMeta(info: proyPorMeta[m.id]!),
                     ],
                   ),
                 ),
@@ -2015,6 +2020,53 @@ class _Vacio extends StatelessWidget {
           Text(subtitulo,
               style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant, height: 1.45)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Avance de la meta según sus proyectos: "1 de 2 proyectos" + barra.
+class _AvanceProyectosMeta extends StatelessWidget {
+  const _AvanceProyectosMeta({required this.info});
+  final ({int total, int completados}) info;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final frac = info.total == 0 ? 0.0 : info.completados / info.total;
+    final todos = info.completados == info.total;
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.flag_outlined,
+                  size: 14, color: cs.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Text(
+                '${info.completados} de ${info.total} '
+                '${info.total == 1 ? 'proyecto' : 'proyectos'}'
+                '${todos ? ' ¡listos!' : ''}',
+                style: theme.textTheme.labelMedium?.copyWith(
+                    color: todos ? AppColors.success : cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: frac,
+              minHeight: 6,
+              backgroundColor: cs.surfaceContainerHighest,
+              color: todos ? AppColors.success : AppColors.accentSoft,
+            ),
+          ),
         ],
       ),
     );

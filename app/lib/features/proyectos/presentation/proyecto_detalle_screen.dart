@@ -156,6 +156,10 @@ class _ProyectoDetalleScreenState
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _Cabecera(proyecto: _p, progreso: progreso, bp: bp),
+                        if (_p.metaId != null) ...[
+                          const SizedBox(height: AppSpacing.sm),
+                          _ChipMeta(metaId: _p.metaId!),
+                        ],
                         if (vencidas > 0) ...[
                           const SizedBox(height: AppSpacing.md),
                           _BannerVencidos(cantidad: vencidas),
@@ -754,6 +758,47 @@ class _TareaRow extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Chip que muestra a qué meta pertenece el proyecto (se busca su nombre en la
+/// lista de metas de Finanzas).
+class _ChipMeta extends ConsumerWidget {
+  const _ChipMeta({required this.metaId});
+  final String metaId;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final metas = ref.watch(metasVinculablesProvider).valueOrNull ?? const [];
+    MetaRef? meta;
+    for (final m in metas) {
+      if (m.id == metaId) {
+        meta = m;
+        break;
+      }
+    }
+    if (meta == null) return const SizedBox.shrink();
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.accent.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.accent.withValues(alpha: 0.30)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.flag, size: 14, color: AppColors.accent),
+            const SizedBox(width: 6),
+            Text('Meta: ${meta.emoji != null ? '${meta.emoji} ' : ''}${meta.label}',
+                style: theme.textTheme.labelMedium?.copyWith(
+                    color: AppColors.accent, fontWeight: FontWeight.w700)),
+          ],
+        ),
       ),
     );
   }
