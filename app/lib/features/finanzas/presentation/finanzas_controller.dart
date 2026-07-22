@@ -29,11 +29,13 @@ final presupuestosProvider = FutureProvider<List<Presupuesto>>((ref) {
   return ref.watch(finanzasRepositoryProvider).presupuestos();
 });
 
-/// Materiales por proyecto (presupuesto vs gastado), cruce con Proyectos.
-final materialesPorProyectoProvider =
-    FutureProvider<List<MaterialProyecto>>((ref) {
+/// Gasto previsto por proyecto para el mes visible (suma de los montos de los
+/// pasos pendientes con fecha en ese mes). Cruce Finanzas ← Proyectos.
+final gastoProyectosDelMesProvider =
+    FutureProvider<List<GastoProyectoMes>>((ref) {
   ref.watch(usuarioActualProvider);
-  return ref.watch(finanzasRepositoryProvider).materialesPorProyecto();
+  final mes = ref.watch(mesFinanzasProvider);
+  return ref.watch(finanzasRepositoryProvider).gastoProyectosDelMes(mes);
 });
 
 final deudasProvider = FutureProvider<List<Deuda>>((ref) {

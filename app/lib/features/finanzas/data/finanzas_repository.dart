@@ -177,46 +177,55 @@ class FinanzasRepository {
         gastos: gastos, ingresos: ingresos, porCategoria: porCategoria);
   }
 
-  // ── Materiales por proyecto (cruce con Proyectos) ────────────
+  // ── Gasto previsto de proyectos (cruce con Proyectos) ────────
   //
-  // Finanzas no importa el feature Proyectos (features aislados); lee la tabla
-  // projects directamente para el resumen de materiales.
+  // Finanzas no importa el feature Proyectos (features aislados); lee las tablas
+  // project_tasks / projects directamente. Un paso con monto y fecha en el mes
+  // es un gasto previsto de ese mes hasta que se complete.
 
-  Future<List<MaterialProyecto>> materialesPorProyecto() => _guard(() async {
+  Future<List<GastoProyectoMes>> gastoProyectosDelMes(DateTime mes) =>
+      _guard(() async {
         final userId = _userId();
-        final proyectos = await _c
-            .from('projects')
-            .select('id, titulo, presupuesto_materiales')
+        final desde = DateTime(mes.year, mes.month, 1);
+        final hasta = DateTime(mes.year, mes.month + 1, 1);
+        final pasos = await _c
+            .from('project_tasks')
+            .select('project_id, monto, fecha_objetivo, completada')
             .eq('user_id', userId)
-            .not('presupuesto_materiales', 'is', null)
-            .order('titulo');
-        final lista = (proyectos as List).cast<Map<String, dynamic>>();
-        if (lista.isEmpty) return <MaterialProyecto>[];
+            .not('monto', 'is', null)
+            .eq('completada', false)
+            .gte('fecha_objetivo', _fechaSolo(desde))
+            .lt('fecha_objetivo', _fechaSolo(hasta));
+        final lista = (pasos as List).cast<Map<String, dynamic>>();
+        if (lista.isEmpty) return <GastoProyectoMes>[];
 
-        // Gasto ligado a cada proyecto (una sola consulta, luego se agrupa).
-        final gastos = await _c
-            .from('finance_transactions')
-            .select('monto, tipo, project_id')
-            .eq('user_id', userId)
-            .not('project_id', 'is', null);
         final porProyecto = <String, double>{};
-        for (final g in gastos as List) {
-          if (g['tipo'] != 'gasto') continue;
-          final pid = g['project_id'] as String?;
-          if (pid == null) continue;
-          porProyecto.update(pid, (v) => v + (g['monto'] as num).toDouble(),
-              ifAbsent: () => (g['monto'] as num).toDouble());
+        for (final p in lista) {
+          final pid = p['project_id'] as String;
+          final monto = (p['monto'] as num).toDouble();
+          porProyecto.update(pid, (v) => v + monto, ifAbsent: () => monto);
         }
 
-        return lista
-            .map((p) => MaterialProyecto(
-                  projectId: p['id'] as String,
-                  titulo: p['titulo'] as String,
-                  presupuesto:
-                      (p['presupuesto_materiales'] as num).toDouble(),
-                  gastado: porProyecto[p['id']] ?? 0,
+        final ids = porProyecto.keys.toList();
+        final proyectos = await _c
+            .from('projects')
+            .select('id, titulo')
+            .eq('user_id', userId)
+            .inFilter('id', ids);
+        final titulos = <String, String>{
+          for (final p in proyectos as List)
+            p['id'] as String: p['titulo'] as String
+        };
+
+        final resultado = porProyecto.entries
+            .map((e) => GastoProyectoMes(
+                  projectId: e.key,
+                  titulo: titulos[e.key] ?? 'Proyecto',
+                  total: e.value,
                 ))
-            .toList();
+            .toList()
+          ..sort((a, b) => b.total.compareTo(a.total));
+        return resultado;
       });
 
   // ── Presupuestos ─────────────────────────────────────────────

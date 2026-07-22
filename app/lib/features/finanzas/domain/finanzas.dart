@@ -349,25 +349,18 @@ class ResumenMes {
       ResumenMes(gastos: 0, ingresos: 0, porCategoria: {});
 }
 
-/// Materiales de un proyecto: su presupuesto y lo ya gastado (cruce con
-/// Proyectos). Se usa en la sección "Materiales" de Finanzas.
-class MaterialProyecto {
-  const MaterialProyecto({
+/// Gasto previsto de un proyecto en un mes: la suma de los montos de sus pasos
+/// pendientes con fecha en ese mes. Se muestra en Finanzas → Presupuesto.
+class GastoProyectoMes {
+  const GastoProyectoMes({
     required this.projectId,
     required this.titulo,
-    required this.presupuesto,
-    required this.gastado,
+    required this.total,
   });
 
   final String projectId;
   final String titulo;
-  final double presupuesto;
-  final double gastado;
-
-  double get restante => presupuesto - gastado;
-  bool get excedido => presupuesto > 0 && gastado > presupuesto;
-  double get fraccion =>
-      presupuesto > 0 ? (gastado / presupuesto).clamp(0.0, 1.0) : 0.0;
+  final double total;
 }
 
 /// Categorías de gasto. Son las MISMAS que las del presupuesto (mismos textos),

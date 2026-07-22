@@ -15,22 +15,12 @@ import 'cartola_pdf.dart';
 import 'finanzas_controller.dart';
 import 'finanzas_editores.dart';
 
-enum _Seccion {
-  resumen,
-  movimientos,
-  presupuesto,
-  materiales,
-  tarjetas,
-  creditos,
-  metas,
-  deudas
-}
+enum _Seccion { resumen, movimientos, presupuesto, tarjetas, creditos, metas, deudas }
 
 const _labels = {
   _Seccion.resumen: 'Resumen',
   _Seccion.movimientos: 'Movimientos',
   _Seccion.presupuesto: 'Presupuesto',
-  _Seccion.materiales: 'Materiales',
   _Seccion.tarjetas: 'Tarjetas',
   _Seccion.creditos: 'Créditos',
   _Seccion.metas: 'Metas',
@@ -84,14 +74,11 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
         DateTime(actual.year, actual.month + delta, 1);
   }
 
-  bool get _puedeAgregar =>
-      _seccion != _Seccion.resumen && _seccion != _Seccion.materiales;
+  bool get _puedeAgregar => _seccion != _Seccion.resumen;
 
   void _agregar() {
     switch (_seccion) {
       case _Seccion.resumen:
-        break;
-      case _Seccion.materiales:
         break;
       case _Seccion.movimientos:
         _menuMovimiento();
@@ -191,7 +178,6 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
                       _Seccion.resumen => _Resumen(mes: mes, ancho: maxAncho),
                       _Seccion.movimientos => const _Movimientos(),
                       _Seccion.presupuesto => const _Presupuestos(),
-                      _Seccion.materiales => const _MaterialesResumen(),
                       _Seccion.tarjetas => const _Tarjetas(),
                       _Seccion.creditos => const _Creditos(),
                       _Seccion.metas => const _Metas(),
@@ -1024,8 +1010,10 @@ class _Presupuestos extends ConsumerWidget {
     final presAsync = ref.watch(presupuestosProvider);
     final resumen =
         ref.watch(resumenMesProvider).valueOrNull ?? ResumenMes.vacio;
+    final proyectos =
+        ref.watch(gastoProyectosDelMesProvider).valueOrNull ?? const [];
 
-    return presAsync.when(
+    final contenido = presAsync.when(
       loading: () => const Padding(
         padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
         child: Center(child: CircularProgressIndicator()),
@@ -1059,6 +1047,87 @@ class _Presupuestos extends ConsumerWidget {
           ],
         );
       },
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (proyectos.isNotEmpty) ...[
+          _GastoProyectosCard(lista: proyectos),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        contenido,
+      ],
+    );
+  }
+}
+
+/// Recordatorio en Presupuesto: según los pasos con monto de tus proyectos,
+/// esto es lo que este mes tienes previsto gastar en cada proyecto.
+class _GastoProyectosCard extends StatelessWidget {
+  const _GastoProyectosCard({required this.lista});
+  final List<GastoProyectoMes> lista;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final total = lista.fold<double>(0, (a, b) => a + b.total);
+    return VitaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.flag_outlined,
+                    size: 18, color: AppColors.accent),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text('Previsto en tus proyectos',
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+              ),
+              Text(formatoMoneda(total),
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w800)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          for (final g in lista)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(g.titulo,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium),
+                  ),
+                  Text(formatoMoneda(g.total),
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                ],
+              ),
+            ),
+          const SizedBox(height: 6),
+          Text(
+            'Son los pasos con monto que vencen este mes. Al completarlos, dejan '
+            'de aparecer aquí.',
+            style: theme.textTheme.labelSmall
+                ?.copyWith(color: cs.onSurfaceVariant, height: 1.3),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1946,172 +2015,6 @@ class _Vacio extends StatelessWidget {
           Text(subtitulo,
               style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant, height: 1.45)),
-        ],
-      ),
-    );
-  }
-}
-
-/// Sección "Materiales": proyectos con presupuesto de materiales vs lo gastado.
-/// El gasto se registra desde cada proyecto; aquí solo se ve el resumen.
-class _MaterialesResumen extends ConsumerWidget {
-  const _MaterialesResumen();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final async = ref.watch(materialesPorProyectoProvider);
-
-    return async.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.all(AppSpacing.xxl),
-        child: Center(child: CircularProgressIndicator()),
-      ),
-      error: (e, _) => VitaCard(
-        child: ErrorEnTarjeta(
-          mensaje: '$e',
-          onReintentar: () => ref.invalidate(materialesPorProyectoProvider),
-        ),
-      ),
-      data: (lista) {
-        if (lista.isEmpty) {
-          return VitaCard(
-            child: Column(
-              children: [
-                const Icon(Icons.shopping_bag_outlined,
-                    color: AppColors.accentSoft, size: 32),
-                const SizedBox(height: AppSpacing.sm),
-                Text('Sin proyectos con materiales',
-                    style: theme.textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 4),
-                Text(
-                  'En un proyecto, activa "Lleva materiales o compras" y ponle '
-                  'un presupuesto. Aquí verás el resumen de todos.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
-                ),
-              ],
-            ),
-          );
-        }
-        final totalPres =
-            lista.fold<double>(0, (a, b) => a + b.presupuesto);
-        final totalGast = lista.fold<double>(0, (a, b) => a + b.gastado);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            VitaCard(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _TotalMat(
-                        etiqueta: 'Presupuestado',
-                        valor: formatoMoneda(totalPres)),
-                  ),
-                  Expanded(
-                    child: _TotalMat(
-                        etiqueta: 'Gastado',
-                        valor: formatoMoneda(totalGast)),
-                  ),
-                  Expanded(
-                    child: _TotalMat(
-                      etiqueta: 'Restante',
-                      valor: formatoMoneda((totalPres - totalGast).abs()),
-                      color: totalGast > totalPres
-                          ? AppColors.danger
-                          : AppColors.success,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            for (final m in lista) ...[
-              _MaterialFila(material: m),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _TotalMat extends StatelessWidget {
-  const _TotalMat({required this.etiqueta, required this.valor, this.color});
-  final String etiqueta;
-  final String valor;
-  final Color? color;
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(etiqueta,
-            style: theme.textTheme.labelSmall
-                ?.copyWith(color: cs.onSurfaceVariant)),
-        const SizedBox(height: 2),
-        Text(valor,
-            style: theme.textTheme.titleSmall
-                ?.copyWith(fontWeight: FontWeight.w700, color: color)),
-      ],
-    );
-  }
-}
-
-class _MaterialFila extends StatelessWidget {
-  const _MaterialFila({required this.material});
-  final MaterialProyecto material;
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    return VitaCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(material.titulo,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w700)),
-              ),
-              Text(
-                material.excedido
-                    ? '+${formatoMoneda(-material.restante)}'
-                    : '${formatoMoneda(material.restante)} libre',
-                style: theme.textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: material.excedido
-                        ? AppColors.danger
-                        : AppColors.success),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: material.fraccion,
-              minHeight: 8,
-              backgroundColor: cs.surfaceContainerHighest,
-              color: material.excedido ? AppColors.danger : AppColors.accent,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${formatoMoneda(material.gastado)} de ${formatoMoneda(material.presupuesto)}',
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: cs.onSurfaceVariant),
-          ),
         ],
       ),
     );

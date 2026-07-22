@@ -52,11 +52,6 @@ final proximoPasoProvider = FutureProvider.family<ProjectTask?, String>(
       ref.watch(projectsRepositoryProvider).obtenerProximoPasoPendiente(id),
 );
 
-/// Total gastado en materiales de un proyecto (gastos etiquetados en Finanzas).
-final gastoMaterialesProvider = FutureProvider.family<double, String>(
-  (ref, id) => ref.watch(projectsRepositoryProvider).gastoMaterialesDe(id),
-);
-
 /// Progreso 0..100 derivado de los PASOS completados. 0 si no hay pasos.
 /// (Para el respaldo con `progresoManual` cuando no hay pasos, usar
 /// `Project.progresoCon(tareas)` desde donde se tenga el Project.)
@@ -138,7 +133,6 @@ class ProyectosAcciones {
     String? area,
     DateTime? fechaObjetivo,
     int? progresoManual,
-    double? presupuestoMateriales,
     bool esPrincipal = false,
   }) async {
     final id = await _repo.crearProyecto(
@@ -148,7 +142,6 @@ class ProyectosAcciones {
       area: area,
       fechaObjetivo: fechaObjetivo,
       progresoManual: progresoManual,
-      presupuestoMateriales: presupuestoMateriales,
       esPrincipal: esPrincipal,
     );
     await _repo.registrarCreado(id, texto: 'Proyecto creado'); // bitácora auto
@@ -163,7 +156,6 @@ class ProyectosAcciones {
     String? objetivo,
     String? area,
     DateTime? fechaObjetivo,
-    double? presupuestoMateriales,
   }) async {
     await _repo.editarProyecto(
       id,
@@ -172,22 +164,9 @@ class ProyectosAcciones {
       objetivo: objetivo,
       area: area,
       fechaObjetivo: fechaObjetivo,
-      presupuestoMateriales: presupuestoMateriales,
     );
     _refrescarCartera();
     _refrescarProyecto(id);
-  }
-
-  /// Registra un gasto de materiales del proyecto (aparece también en Finanzas).
-  Future<void> agregarGastoMateriales(
-    String projectId, {
-    required double monto,
-    String? nota,
-    DateTime? fecha,
-  }) async {
-    await _repo.agregarGastoMateriales(projectId,
-        monto: monto, nota: nota, fecha: fecha);
-    _ref.invalidate(gastoMaterialesProvider(projectId));
   }
 
   /// Pausa y registra 'cambio_estado'.
@@ -233,17 +212,17 @@ class ProyectosAcciones {
   // ───────────────── Pasos / Hitos ─────────────────
 
   Future<String> crearPaso(String projectId, String texto,
-      {DateTime? fechaObjetivo, String? nota}) async {
+      {DateTime? fechaObjetivo, String? nota, double? monto}) async {
     final id = await _repo.crearPaso(projectId, texto,
-        fechaObjetivo: fechaObjetivo, nota: nota);
+        fechaObjetivo: fechaObjetivo, nota: nota, monto: monto);
     _refrescarProyecto(projectId);
     return id;
   }
 
   Future<String> crearHito(String projectId, String texto,
-      {DateTime? fechaObjetivo, String? nota}) async {
+      {DateTime? fechaObjetivo, String? nota, double? monto}) async {
     final id = await _repo.crearHito(projectId, texto,
-        fechaObjetivo: fechaObjetivo, nota: nota);
+        fechaObjetivo: fechaObjetivo, nota: nota, monto: monto);
     _refrescarProyecto(projectId);
     return id;
   }
@@ -254,17 +233,25 @@ class ProyectosAcciones {
     required String tipo,
     DateTime? fechaObjetivo,
     String? nota,
+    double? monto,
+    String? motivoFecha,
   }) async {
     await _repo.editarTarea(tarea.id,
-        texto: texto, tipo: tipo, fechaObjetivo: fechaObjetivo, nota: nota);
+        texto: texto,
+        tipo: tipo,
+        fechaObjetivo: fechaObjetivo,
+        nota: nota,
+        monto: monto);
     // Si la fecha se movió, queda registro en la bitácora (sin culpa: solo el
-    // hecho, para ver lo planificado vs lo real).
+    // hecho —y el motivo si lo dio— para ver lo planificado vs lo real).
     if (!_mismaFecha(tarea.fechaObjetivo, fechaObjetivo)) {
+      final motivo = motivoFecha?.trim();
       await _repo.registrarFechaMovida(
         tarea.projectId,
         taskId: tarea.id,
         texto: 'Fecha de «${tarea.texto}»: '
-            '${_fmtFecha(tarea.fechaObjetivo)} → ${_fmtFecha(fechaObjetivo)}',
+            '${_fmtFecha(tarea.fechaObjetivo)} → ${_fmtFecha(fechaObjetivo)}'
+            '${(motivo != null && motivo.isNotEmpty) ? ' — $motivo' : ''}',
       );
     }
     _refrescarProyecto(tarea.projectId);
