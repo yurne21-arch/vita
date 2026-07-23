@@ -23,12 +23,8 @@ class AjustesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final perfil = ref.watch(profileControllerProvider);
-    final correo = ref
-        .watch(supabaseServiceProvider)
-        .client
-        .auth
-        .currentUser
-        ?.email;
+    final correo =
+        ref.watch(supabaseServiceProvider).client.auth.currentUser?.email;
 
     return Scaffold(
       appBar: AppBar(
@@ -58,7 +54,8 @@ class AjustesScreen extends ConsumerWidget {
                       const SizedBox(height: AppSpacing.md),
                       perfil.when(
                         loading: () => const Padding(
-                          padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                          padding:
+                              EdgeInsets.symmetric(vertical: AppSpacing.sm),
                           child: Center(child: CircularProgressIndicator()),
                         ),
                         error: (e, _) => ErrorEnTarjeta(
@@ -114,7 +111,8 @@ class AjustesScreen extends ConsumerWidget {
                   icon: const Icon(Icons.logout),
                   label: const Text('Cerrar sesión'),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: AppSpacing.md),
                   ),
                 ),
               ],
@@ -142,8 +140,9 @@ class _CalendarioCard extends StatelessWidget {
       ? null
       : '${Env.supabaseUrl}/functions/v1/calendar?token=$token';
 
-  String? get _urlWebcal =>
-      token == null ? null : 'webcal://$_host/functions/v1/calendar?token=$token';
+  String? get _urlWebcal => token == null
+      ? null
+      : 'webcal://$_host/functions/v1/calendar?token=$token';
 
   @override
   Widget build(BuildContext context) {
@@ -196,8 +195,7 @@ class _CalendarioCard extends StatelessWidget {
               onPressed: _urlHttps == null
                   ? null
                   : () async {
-                      await Clipboard.setData(
-                          ClipboardData(text: _urlHttps!));
+                      await Clipboard.setData(ClipboardData(text: _urlHttps!));
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Enlace copiado.')),
@@ -238,7 +236,8 @@ Future<void> _editarNombre(
         controller: controller,
         autofocus: true,
         textCapitalization: TextCapitalization.words,
-        decoration: const InputDecoration(hintText: 'Cómo quieres que te llame'),
+        decoration:
+            const InputDecoration(hintText: 'Cómo quieres que te llame'),
       ),
       actions: [
         TextButton(

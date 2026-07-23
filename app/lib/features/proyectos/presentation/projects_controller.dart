@@ -37,7 +37,8 @@ final proyectosCompletadosProvider = FutureProvider<List<Project>>((ref) {
 /// Tareas (pasos + hitos) de un proyecto, por id.
 final tareasDeProyectoProvider =
     FutureProvider.family<List<ProjectTask>, String>(
-  (ref, id) => ref.watch(projectsRepositoryProvider).listarTareasPorProyecto(id),
+  (ref, id) =>
+      ref.watch(projectsRepositoryProvider).listarTareasPorProyecto(id),
 );
 
 /// Bitácora de un proyecto, por id (más reciente primero).

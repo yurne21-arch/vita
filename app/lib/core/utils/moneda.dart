@@ -1,4 +1,10 @@
+import 'dart:ui';
+
 import 'package:flutter/services.dart';
+
+/// Cifras tabulares (Inter `tnum`): todos los dígitos ocupan el mismo ancho,
+/// para que las columnas de dinero y los números alineen. Úsese en montos.
+const List<FontFeature> cifrasTabulares = [FontFeature.tabularFigures()];
 
 /// Formateo de dinero, sereno y legible. Sin decimales para CLP (el uso real
 /// de VITA); con separador de miles por puntos. Ej.: 1234567 → "$1.234.567".

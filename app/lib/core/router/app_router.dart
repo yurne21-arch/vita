@@ -34,7 +34,8 @@ GoRouter createRouter() {
         branches: [
           StatefulShellBranch(
             routes: [
-              GoRoute(path: '/mi-vida', builder: (_, __) => const MiVidaScreen()),
+              GoRoute(
+                  path: '/mi-vida', builder: (_, __) => const MiVidaScreen()),
             ],
           ),
           StatefulShellBranch(

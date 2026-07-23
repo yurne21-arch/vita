@@ -61,6 +61,19 @@ abstract class AppTheme {
       brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor: scaffold,
+      // Tipografía aprobada (Documento 6): Inter autoalojada, con fallback de
+      // sistema para evitar salto de fuente perceptible.
+      fontFamily: 'Inter',
+      fontFamilyFallback: const [
+        '-apple-system',
+        'Segoe UI',
+        'Roboto',
+        'Helvetica Neue',
+        'sans-serif'
+      ],
+      // Sin ripple Material: el movimiento orienta y confirma, no decora
+      // (MASTER §5). El estado "pressed" lo dan los overlays de cada componente.
+      splashFactory: NoSplash.splashFactory,
     );
 
     return base.copyWith(
@@ -85,7 +98,12 @@ abstract class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(52),
+          // Alto mínimo 52; ancho mínimo 0. OJO: `Size.fromHeight(52)` fijaba el
+          // ancho mínimo en INFINITO, lo que rompía cualquier FilledButton
+          // dentro de un Row (el contenido desaparecía). Los botones de ancho
+          // completo siguen llenándose por su contenedor (Column stretch /
+          // SizedBox), no por este mínimo.
+          minimumSize: const Size(0, 52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppSpacing.radius),
           ),

@@ -34,7 +34,8 @@ Color catColor(String? c) {
   }
 }
 
-const double _kPanelWidth = 270; // panel lateral más angosto (más espacio a la grilla)
+const double _kPanelWidth =
+    270; // panel lateral más angosto (más espacio a la grilla)
 const double _kBpPanel = 900;
 const int _kMaxEventosColumna = 3; // tope estilo Google antes de "+X más"
 
@@ -75,7 +76,8 @@ class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
       case _Vista.hoy:
         return rangoHoy();
       case _Vista.semana:
-        return RangoFechas(_semanaAncla, _semanaAncla.add(const Duration(days: 7)));
+        return RangoFechas(
+            _semanaAncla, _semanaAncla.add(const Duration(days: 7)));
       case _Vista.mes:
         final ini = _primerDiaGrid(_mesAncla);
         return RangoFechas(ini, ini.add(const Duration(days: 42)));
@@ -184,9 +186,11 @@ class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
             ),
             Expanded(
               child: async.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
-                error: (e, _) => _ErrorCarga(),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => _ErrorCarga(
+                  onReintentar: () =>
+                      ref.invalidate(eventosEnRangoProvider(_rangoActivo())),
+                ),
                 data: (eventos) => _cuerpo(eventos, wide),
               ),
             ),
@@ -274,11 +278,8 @@ class _BarraSuperior extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-          wide ? AppSpacing.lg : AppSpacing.md,
-          AppSpacing.md,
-          wide ? AppSpacing.lg : AppSpacing.md,
-          AppSpacing.sm),
+      padding: EdgeInsets.fromLTRB(wide ? AppSpacing.lg : AppSpacing.md,
+          AppSpacing.md, wide ? AppSpacing.lg : AppSpacing.md, AppSpacing.sm),
       child: Row(
         children: [
           _SelectorVista(vista: vista, onChanged: onChanged),
@@ -368,13 +369,20 @@ class _SegItem extends StatelessWidget {
 }
 
 class _ErrorCarga extends StatelessWidget {
+  const _ErrorCarga({required this.onReintentar});
+  final VoidCallback onReintentar;
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Text('No se pudo cargar tu calendario.',
-            style: Theme.of(context).textTheme.bodyMedium),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: ErrorEnTarjeta(
+            mensaje: 'No se pudo cargar tu calendario.',
+            onReintentar: onReintentar,
+          ),
+        ),
       ),
     );
   }
@@ -424,8 +432,8 @@ class _NavCabecera extends StatelessWidget {
           _BotonRedondo(icon: Icons.chevron_left, onTap: onAnterior),
           const SizedBox(width: AppSpacing.sm),
           Text(titulo,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700, letterSpacing: -0.4)),
+              style: theme.textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.4)),
           const SizedBox(width: AppSpacing.sm),
           _BotonRedondo(icon: Icons.chevron_right, onTap: onSiguiente),
           const Spacer(),
@@ -506,8 +514,8 @@ class _VistaMes extends StatelessWidget {
                               eventos: eventos
                                   .where((e) => _mismoDia(
                                       e.inicio,
-                                      primerGrid.add(
-                                          Duration(days: fila * 7 + col))))
+                                      primerGrid
+                                          .add(Duration(days: fila * 7 + col))))
                                   .toList(),
                               onTap: () => onDia(primerGrid
                                   .add(Duration(days: fila * 7 + col))),
@@ -596,13 +604,13 @@ class _Leyenda extends StatelessWidget {
               Container(
                 width: 8,
                 height: 8,
-                decoration: BoxDecoration(
-                    color: catColor(c), shape: BoxShape.circle),
+                decoration:
+                    BoxDecoration(color: catColor(c), shape: BoxShape.circle),
               ),
               const SizedBox(width: 6),
               Text(c,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant)),
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
             ],
           ),
         if (extra > 0)
@@ -648,13 +656,19 @@ class _EncabezadoDias extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surfaceContainer.withValues(alpha: 0.5),
         border: Border(
-            bottom: BorderSide(
-                color: cs.outlineVariant.withValues(alpha: 0.5))),
+            bottom:
+                BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5))),
       ),
       child: Row(
         children: [
           for (final d in const [
-            'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'
+            'LUN',
+            'MAR',
+            'MIÉ',
+            'JUE',
+            'VIE',
+            'SÁB',
+            'DOM'
           ])
             Expanded(
               child: Padding(
@@ -778,8 +792,9 @@ class _EventosCelda extends StatelessWidget {
       builder: (context, c) {
         const perBar = 23.0;
         final cabenPorAlto = (c.maxHeight / perBar).floor();
-        final capacidad =
-            cabenPorAlto < _kMaxEventosColumna ? cabenPorAlto : _kMaxEventosColumna;
+        final capacidad = cabenPorAlto < _kMaxEventosColumna
+            ? cabenPorAlto
+            : _kMaxEventosColumna;
         if (capacidad <= 0) {
           return Align(
             alignment: Alignment.topLeft,
@@ -812,8 +827,7 @@ class _EventosCelda extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
-                        color:
-                            Theme.of(context).colorScheme.onSurfaceVariant)),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant)),
               ),
           ],
         );
@@ -1054,7 +1068,8 @@ class _EventoCard extends StatelessWidget {
     final vpad = compacto ? 7.0 : 9.0; // ~10% más baja en modo compacto
 
     return Padding(
-      padding: EdgeInsets.only(bottom: compacto ? AppSpacing.xs : AppSpacing.sm),
+      padding:
+          EdgeInsets.only(bottom: compacto ? AppSpacing.xs : AppSpacing.sm),
       child: Material(
         color: cs.surfaceContainerHigh.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(14),
@@ -1065,11 +1080,12 @@ class _EventoCard extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               border: Border(
-                left: BorderSide(
-                    color: c, width: importante || critico ? 4 : 3),
+                left:
+                    BorderSide(color: c, width: importante || critico ? 4 : 3),
               ),
             ),
-            padding: EdgeInsets.fromLTRB(AppSpacing.md, vpad, AppSpacing.xs, vpad),
+            padding:
+                EdgeInsets.fromLTRB(AppSpacing.md, vpad, AppSpacing.xs, vpad),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1080,9 +1096,7 @@ class _EventoCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.only(top: 2, right: AppSpacing.sm),
                     child: Icon(
-                      done
-                          ? Icons.check_circle
-                          : Icons.radio_button_unchecked,
+                      done ? Icons.check_circle : Icons.radio_button_unchecked,
                       size: 20,
                       color: done ? AppColors.accent : cs.onSurfaceVariant,
                     ),
@@ -1454,8 +1468,8 @@ class _AgendaDia extends StatelessWidget {
             child: eventos.isEmpty
                 ? _VacioDia()
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.md),
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.md,
+                        AppSpacing.md, AppSpacing.md, AppSpacing.md),
                     itemCount: eventos.length,
                     itemBuilder: (_, i) => _FilaTimeline(
                       evento: eventos[i],
@@ -1548,8 +1562,7 @@ class _FilaTimeline extends StatelessWidget {
                 ),
                 Expanded(
                   child: Container(
-                      width: 2.5,
-                      color: ultimo ? Colors.transparent : rail),
+                      width: 2.5, color: ultimo ? Colors.transparent : rail),
                 ),
               ],
             ),
@@ -1669,11 +1682,13 @@ class _ResumenDia extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           SizedBox(
             width: double.infinity,
-            child: FilledButton.tonalIcon(
+            child: FilledButton.icon(
               onPressed: onNuevo,
+              // Acción primaria: relleno sólido y texto blanco, igual que el
+              // resto de CTAs (antes era tonal pálido, parecía deshabilitado).
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.accent.withValues(alpha: 0.16),
-                foregroundColor: AppColors.accentSoft,
+                backgroundColor: AppColors.accent,
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
@@ -1772,8 +1787,7 @@ class _VistaSemana extends StatelessWidget {
         '${base.day} ${_mesCorto(base.month)} – ${fin.day} ${_mesCorto(fin.month)}';
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-          wide ? AppSpacing.lg : AppSpacing.md, 0,
+      padding: EdgeInsets.fromLTRB(wide ? AppSpacing.lg : AppSpacing.md, 0,
           wide ? AppSpacing.lg : AppSpacing.md, AppSpacing.md),
       child: Column(
         children: [
@@ -2086,16 +2100,19 @@ class _MasIndicador extends StatelessWidget {
       borderRadius: BorderRadius.circular(6),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-        child: centrado ? Center(child: t) : Align(
-            alignment: Alignment.centerLeft,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                t,
-                const SizedBox(width: 4),
-                Icon(Icons.expand_more, size: 15, color: cs.onSurfaceVariant),
-              ],
-            )),
+        child: centrado
+            ? Center(child: t)
+            : Align(
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    t,
+                    const SizedBox(width: 4),
+                    Icon(Icons.expand_more,
+                        size: 15, color: cs.onSurfaceVariant),
+                  ],
+                )),
       ),
     );
   }
@@ -2190,23 +2207,49 @@ String _diaCorto(int weekday) {
 
 String _diaSemana(DateTime d) {
   const dias = [
-    'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'
+    'lunes',
+    'martes',
+    'miércoles',
+    'jueves',
+    'viernes',
+    'sábado',
+    'domingo'
   ];
   return dias[d.weekday - 1];
 }
 
 String _mesNombre(int m) {
   const meses = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre'
   ];
   return meses[m - 1];
 }
 
 String _mesCorto(int m) {
   const meses = [
-    'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-    'jul', 'ago', 'sep', 'oct', 'nov', 'dic'
+    'ene',
+    'feb',
+    'mar',
+    'abr',
+    'may',
+    'jun',
+    'jul',
+    'ago',
+    'sep',
+    'oct',
+    'nov',
+    'dic'
   ];
   return meses[m - 1];
 }

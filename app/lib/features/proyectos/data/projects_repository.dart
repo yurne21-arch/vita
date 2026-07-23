@@ -572,8 +572,7 @@ class ProjectsRepository {
       });
 
   /// Reabre (el trigger limpia `completada_at`).
-  Future<void> reabrirTarea(String id) =>
-      _guard('reabrir la tarea', () async {
+  Future<void> reabrirTarea(String id) => _guard('reabrir la tarea', () async {
         await _c
             .from('project_tasks')
             .update({'completada': false}).eq('id', id);

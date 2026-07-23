@@ -15,7 +15,15 @@ import 'cartola_pdf.dart';
 import 'finanzas_controller.dart';
 import 'finanzas_editores.dart';
 
-enum _Seccion { resumen, movimientos, presupuesto, tarjetas, creditos, metas, deudas }
+enum _Seccion {
+  resumen,
+  movimientos,
+  presupuesto,
+  tarjetas,
+  creditos,
+  metas,
+  deudas
+}
 
 const _labels = {
   _Seccion.resumen: 'Resumen',
@@ -150,9 +158,8 @@ class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
           builder: (context, c) {
             final ancho = c.maxWidth;
             // Aprovecha pantallas anchas sin estirarse al infinito.
-            final maxAncho = ancho >= 1000
-                ? 1120.0
-                : (ancho >= 640 ? 760.0 : ancho);
+            final maxAncho =
+                ancho >= 1000 ? 1120.0 : (ancho >= 640 ? 760.0 : ancho);
             return Center(
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: maxAncho),
@@ -268,6 +275,7 @@ class _ResumenCard extends ConsumerWidget {
           Text(formatoMoneda(r.balance),
               style: theme.textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.w700,
+                fontFeatures: cifrasTabulares,
                 color:
                     balancePos ? theme.colorScheme.onSurface : AppColors.danger,
               )),
@@ -308,8 +316,10 @@ class _MiniStat extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(valor,
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w700, color: color)),
+            style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                fontFeatures: cifrasTabulares,
+                color: color)),
         Text(label,
             style: theme.textTheme.bodySmall
                 ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
@@ -482,7 +492,8 @@ class _Resumen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final anchoDe = ancho >= 900; // dos columnas en pantalla ancha
-    final resumen = ref.watch(resumenMesProvider).valueOrNull ?? ResumenMes.vacio;
+    final resumen =
+        ref.watch(resumenMesProvider).valueOrNull ?? ResumenMes.vacio;
     final pendiente = ref.watch(pendienteMesAnteriorProvider).valueOrNull;
 
     // Top categorías de gasto para el gráfico (las 6 mayores + "Otros").
@@ -538,17 +549,17 @@ class _Resumen extends ConsumerWidget {
 
         // En qué se gastó (dona) + Saldos: lado a lado en pantalla ancha.
         if (anchoDe)
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                    child: _DonutCard(
-                        segmentos: segmentos, total: resumen.gastos)),
-                const SizedBox(width: AppSpacing.md),
-                const Expanded(child: _SaldosCard()),
-              ],
-            ),
+          // Sin IntrinsicHeight: SALDOS vacío no se estira a la altura de la
+          // dona; cada tarjeta toma su altura de contenido.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                  child:
+                      _DonutCard(segmentos: segmentos, total: resumen.gastos)),
+              const SizedBox(width: AppSpacing.md),
+              const Expanded(child: _SaldosCard()),
+            ],
           )
         else ...[
           _DonutCard(segmentos: segmentos, total: resumen.gastos),
@@ -643,18 +654,19 @@ class _Resumen extends ConsumerWidget {
     if (ok != true || !context.mounted) return;
     await accionSegura(context, () async {
       await ref.read(finanzasAccionesProvider).cerrarMes(
-        mes,
-        resumen: {
-          'ingresos': resumen.ingresos,
-          'gastos': resumen.gastos,
-          'balance': resumen.balance,
-          'por_categoria': resumen.porCategoria,
-        },
-        pendiente: texto,
-      );
+            mes,
+            resumen: {
+              'ingresos': resumen.ingresos,
+              'gastos': resumen.gastos,
+              'balance': resumen.balance,
+              'por_categoria': resumen.porCategoria,
+            },
+            pendiente: texto,
+          );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Mes cerrado. Lo pendiente pasa al otro mes.')),
+          const SnackBar(
+              content: Text('Mes cerrado. Lo pendiente pasa al otro mes.')),
         );
       }
     });
@@ -705,7 +717,8 @@ class _SaldosCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final cuentas = ref.watch(cuentasProvider).valueOrNull ?? const <Cuenta>[];
-    final tarjetas = ref.watch(tarjetasProvider).valueOrNull ?? const <Tarjeta>[];
+    final tarjetas =
+        ref.watch(tarjetasProvider).valueOrNull ?? const <Tarjeta>[];
 
     return VitaCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -730,16 +743,15 @@ class _SaldosCard extends ConsumerWidget {
           const SizedBox(height: AppSpacing.xs),
           if (cuentas.isEmpty && tarjetas.isEmpty)
             Text('Aún no registras cuentas ni tarjetas.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant))
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant))
           else ...[
             for (final c in cuentas)
               _SaldoFila(
                 nombre: c.nombre,
                 titular: c.titular,
                 monto: c.saldo,
-                onEditar: () =>
-                    mostrarEditorCuenta(context, ref, existente: c),
+                onEditar: () => mostrarEditorCuenta(context, ref, existente: c),
               ),
             for (final t in tarjetas)
               _SaldoFila(
@@ -797,7 +809,8 @@ class _SaldoFila extends StatelessWidget {
               (negativo ? '-' : '') + formatoMoneda(monto),
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: negativo ? AppColors.danger : theme.colorScheme.onSurface,
+                color:
+                    negativo ? AppColors.danger : theme.colorScheme.onSurface,
               ),
             ),
             const SizedBox(width: 4),
@@ -861,7 +874,8 @@ class _MetasResumen extends ConsumerWidget {
                     child: LinearProgressIndicator(
                       value: m.fraccion,
                       minHeight: 7,
-                      backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                      backgroundColor:
+                          theme.colorScheme.surfaceContainerHighest,
                       color: AppColors.accent,
                     ),
                   ),
@@ -1239,68 +1253,68 @@ class _Tarjetas extends ConsumerWidget {
           cards: [
             for (final t in tarjetas)
               VitaCard(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(t.nombre,
-                                style: theme.textTheme.bodyLarge
-                                    ?.copyWith(fontWeight: FontWeight.w600)),
-                          ),
-                          Text('Cuota ${formatoMoneda(t.cuotaMes)}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant)),
-                          _MenuEditarEliminar(
-                            onEditar: () =>
-                                mostrarEditorTarjeta(context, ref, existente: t),
-                            onEliminar: () => accionSegura(
-                              context,
-                              () => ref
-                                  .read(finanzasAccionesProvider)
-                                  .eliminarTarjeta(t.id),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: LinearProgressIndicator(
-                          value: t.usoFraccion,
-                          minHeight: 8,
-                          backgroundColor:
-                              theme.colorScheme.surfaceContainerHighest,
-                          color: t.usoFraccion > 0.8
-                              ? AppColors.danger
-                              : AppColors.accent,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(t.nombre,
+                              style: theme.textTheme.bodyLarge
+                                  ?.copyWith(fontWeight: FontWeight.w600)),
                         ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'Deuda ${formatoMoneda(t.saldoDeuda)} · '
-                        'Disponible ${formatoMoneda(t.disponible)} de ${formatoMoneda(t.cupo)}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: FilledButton.tonal(
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size(0, 40),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.md),
+                        Text('Cuota ${formatoMoneda(t.cuotaMes)}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant)),
+                        _MenuEditarEliminar(
+                          onEditar: () =>
+                              mostrarEditorTarjeta(context, ref, existente: t),
+                          onEliminar: () => accionSegura(
+                            context,
+                            () => ref
+                                .read(finanzasAccionesProvider)
+                                .eliminarTarjeta(t.id),
                           ),
-                          onPressed: () => _pagarTarjeta(context, ref, t),
-                          child: const Text('Pagar tarjeta'),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: t.usoFraccion,
+                        minHeight: 8,
+                        backgroundColor:
+                            theme.colorScheme.surfaceContainerHighest,
+                        color: t.usoFraccion > 0.8
+                            ? AppColors.danger
+                            : AppColors.accent,
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Deuda ${formatoMoneda(t.saldoDeuda)} · '
+                      'Disponible ${formatoMoneda(t.disponible)} de ${formatoMoneda(t.cupo)}',
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton.tonal(
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 40),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md),
+                        ),
+                        onPressed: () => _pagarTarjeta(context, ref, t),
+                        child: const Text('Pagar tarjeta'),
+                      ),
+                    ),
+                  ],
                 ),
+              ),
           ],
         );
       },
@@ -1353,8 +1367,9 @@ class _Creditos extends ConsumerWidget {
             subtitulo: 'Tus créditos y su avance aparecerán aquí.',
           );
         }
-        final cuotaTotal =
-            creditos.where((c) => !c.saldada).fold<double>(0, (a, c) => a + c.cuotaMensual);
+        final cuotaTotal = creditos
+            .where((c) => !c.saldada)
+            .fold<double>(0, (a, c) => a + c.cuotaMensual);
         return _GridCards(
           extra: Text('Cuotas del mes: ${formatoMoneda(cuotaTotal)}',
               style: theme.textTheme.bodyMedium
@@ -1362,57 +1377,57 @@ class _Creditos extends ConsumerWidget {
           cards: [
             for (final c in creditos)
               VitaCard(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(c.nombre,
-                                style: theme.textTheme.bodyLarge
-                                    ?.copyWith(fontWeight: FontWeight.w600)),
-                          ),
-                          Text('Cuota ${formatoMoneda(c.cuotaMensual)}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant)),
-                          _MenuEditarEliminar(
-                            onEditar: () =>
-                                mostrarEditorCredito(context, ref, existente: c),
-                            onEliminar: () => accionSegura(
-                              context,
-                              () => ref
-                                  .read(finanzasAccionesProvider)
-                                  .eliminarCredito(c.id),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (c.progreso != null) ...[
-                        const SizedBox(height: AppSpacing.xs),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: LinearProgressIndicator(
-                            value: (c.progreso! / 100).clamp(0.0, 1.0),
-                            minHeight: 8,
-                            backgroundColor:
-                                theme.colorScheme.surfaceContainerHighest,
-                            color: AppColors.success,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(c.nombre,
+                              style: theme.textTheme.bodyLarge
+                                  ?.copyWith(fontWeight: FontWeight.w600)),
+                        ),
+                        Text('Cuota ${formatoMoneda(c.cuotaMensual)}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant)),
+                        _MenuEditarEliminar(
+                          onEditar: () =>
+                              mostrarEditorCredito(context, ref, existente: c),
+                          onEliminar: () => accionSegura(
+                            context,
+                            () => ref
+                                .read(finanzasAccionesProvider)
+                                .eliminarCredito(c.id),
                           ),
                         ),
                       ],
+                    ),
+                    if (c.progreso != null) ...[
                       const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'Total ${formatoMoneda(c.montoTotal)}'
-                        '${c.fin != null ? ' · hasta ${c.fin}' : ''}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: (c.progreso! / 100).clamp(0.0, 1.0),
+                          minHeight: 8,
+                          backgroundColor:
+                              theme.colorScheme.surfaceContainerHighest,
+                          color: AppColors.success,
+                        ),
                       ),
-                      const Divider(height: AppSpacing.lg),
-                      _PagosCredito(credito: c),
                     ],
-                  ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Total ${formatoMoneda(c.montoTotal)}'
+                      '${c.fin != null ? ' · hasta ${c.fin}' : ''}',
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                    const Divider(height: AppSpacing.lg),
+                    _PagosCredito(credito: c),
+                  ],
                 ),
+              ),
           ],
         );
       },
@@ -1459,8 +1474,7 @@ class _PagosCredito extends ConsumerWidget {
               // (para botones de ancho completo), que aquí aplastaría el texto.
               style: FilledButton.styleFrom(
                 minimumSize: const Size(0, 40),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
               ),
               onPressed: () => _registrarPago(context, ref, credito),
               child: const Text('Registrar pago'),
@@ -1557,83 +1571,81 @@ class _Metas extends ConsumerWidget {
           cards: [
             for (final m in metas)
               VitaCard(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text('${m.emoji ?? '🎯'}  ',
-                              style: const TextStyle(fontSize: 18)),
-                          Expanded(
-                            child: Text(m.label,
-                                style: theme.textTheme.bodyLarge
-                                    ?.copyWith(fontWeight: FontWeight.w600)),
-                          ),
-                          Text(formatoMoneda(m.metaMonto),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant)),
-                          _MenuEditarEliminar(
-                            onEditar: () =>
-                                mostrarEditorMeta(context, ref, existente: m),
-                            onEliminar: () => accionSegura(
-                              context,
-                              () => ref
-                                  .read(finanzasAccionesProvider)
-                                  .eliminarMeta(m.id),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: LinearProgressIndicator(
-                          value: m.fraccion,
-                          minHeight: 8,
-                          backgroundColor:
-                              theme.colorScheme.surfaceContainerHighest,
-                          color: m.cumplida
-                              ? AppColors.success
-                              : AppColors.accent,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text('${m.emoji ?? '🎯'}  ',
+                            style: const TextStyle(fontSize: 18)),
+                        Expanded(
+                          child: Text(m.label,
+                              style: theme.textTheme.bodyLarge
+                                  ?.copyWith(fontWeight: FontWeight.w600)),
                         ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              m.cumplida
-                                  ? '¡Meta cumplida! 🎉'
-                                  : 'Llevas ${formatoMoneda(m.ahorrado)} · faltan ${formatoMoneda(m.metaMonto - m.ahorrado)}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                  color: m.cumplida
-                                      ? AppColors.success
-                                      : theme.colorScheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w600),
-                            ),
+                        Text(formatoMoneda(m.metaMonto),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant)),
+                        _MenuEditarEliminar(
+                          onEditar: () =>
+                              mostrarEditorMeta(context, ref, existente: m),
+                          onEliminar: () => accionSegura(
+                            context,
+                            () => ref
+                                .read(finanzasAccionesProvider)
+                                .eliminarMeta(m.id),
                           ),
-                          TextButton.icon(
-                            onPressed: () => _abonarMeta(context, ref, m),
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text('Abonar'),
-                          ),
-                        ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: m.fraccion,
+                        minHeight: 8,
+                        backgroundColor:
+                            theme.colorScheme.surfaceContainerHighest,
+                        color:
+                            m.cumplida ? AppColors.success : AppColors.accent,
                       ),
-                      if (proyPorMeta[m.id] != null &&
-                          proyPorMeta[m.id]!.total > 0)
-                        _AvanceProyectosMeta(info: proyPorMeta[m.id]!),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            m.cumplida
+                                ? '¡Meta cumplida! 🎉'
+                                : 'Llevas ${formatoMoneda(m.ahorrado)} · faltan ${formatoMoneda(m.metaMonto - m.ahorrado)}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                                color: m.cumplida
+                                    ? AppColors.success
+                                    : theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => _abonarMeta(context, ref, m),
+                          icon: const Icon(Icons.add, size: 18),
+                          label: const Text('Abonar'),
+                        ),
+                      ],
+                    ),
+                    if (proyPorMeta[m.id] != null &&
+                        proyPorMeta[m.id]!.total > 0)
+                      _AvanceProyectosMeta(info: proyPorMeta[m.id]!),
+                  ],
                 ),
+              ),
           ],
         );
       },
     );
   }
 
-  Future<void> _abonarMeta(
-      BuildContext context, WidgetRef ref, Meta m) async {
+  Future<void> _abonarMeta(BuildContext context, WidgetRef ref, Meta m) async {
     final r = await pedirMontoYFecha(context,
         titulo: 'Abonar a ${m.label}', etiquetaMonto: 'Cuánto ahorraste');
     if (r == null || !context.mounted) return;
@@ -1696,7 +1708,8 @@ class _Deudas extends ConsumerWidget {
                 subtitulo: 'Anota una deuda suelta con + (yo debo / me deben).',
               );
             }
-            return Column(children: [for (final d in deudas) _DeudaRow(deuda: d)]);
+            return Column(
+                children: [for (final d in deudas) _DeudaRow(deuda: d)]);
           },
         ),
       ],
@@ -1725,7 +1738,8 @@ Future<void> _compartirGastos(BuildContext context, WidgetRef ref) async {
     buf.writeln('\nTOTAL: ${formatoMoneda(b.total)}');
     buf.writeln('Cada uno: ${formatoMoneda(b.mitad)}');
     if (!b.equilibrado) {
-      final quienDebe = b.juanLeDebeAYurby ? 'Juan le debe a Yurby' : 'Yurby le debe a Juan';
+      final quienDebe =
+          b.juanLeDebeAYurby ? 'Juan le debe a Yurby' : 'Yurby le debe a Juan';
       buf.writeln('→ $quienDebe ${formatoMoneda(b.montoAjuste)}');
     } else {
       buf.writeln('→ Están a mano');
@@ -1749,7 +1763,6 @@ Future<void> _compartirTexto(BuildContext context, String texto) async {
   }
 }
 
-
 /// Historial de cuadres (cuando quedaron a mano).
 class _HistorialSaldados extends ConsumerWidget {
   const _HistorialSaldados();
@@ -1764,8 +1777,8 @@ class _HistorialSaldados extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Historial de cuadres',
-            style:
-                theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+            style: theme.textTheme.labelLarge
+                ?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: AppSpacing.sm),
         for (final s in saldados)
           Padding(
@@ -1870,11 +1883,14 @@ class _DeudaRow extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    d.yoDebo ? 'Le debo a ${d.persona}' : '${d.persona} me debe',
+                    d.yoDebo
+                        ? 'Le debo a ${d.persona}'
+                        : '${d.persona} me debe',
                     style: theme.textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                       decoration: d.saldada ? TextDecoration.lineThrough : null,
-                      color: d.saldada ? theme.colorScheme.onSurfaceVariant : null,
+                      color:
+                          d.saldada ? theme.colorScheme.onSurfaceVariant : null,
                     ),
                   ),
                   if (d.descripcion != null)
@@ -2044,8 +2060,7 @@ class _AvanceProyectosMeta extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.flag_outlined,
-                  size: 14, color: cs.onSurfaceVariant),
+              Icon(Icons.flag_outlined, size: 14, color: cs.onSurfaceVariant),
               const SizedBox(width: 6),
               Text(
                 '${info.completados} de ${info.total} '

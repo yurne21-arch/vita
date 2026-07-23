@@ -25,8 +25,7 @@ String _mensajeAuth(Object error) {
   if (t.contains('password should be at least')) {
     return 'La contraseña necesita al menos 6 caracteres.';
   }
-  if (t.contains('unable to validate email') ||
-      t.contains('invalid email')) {
+  if (t.contains('unable to validate email') || t.contains('invalid email')) {
     return 'Ese correo no parece válido.';
   }
   if (t.contains('email not confirmed')) {
@@ -90,8 +89,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (next.hasError && !next.isLoading) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
-          ..showSnackBar(
-              SnackBar(content: Text(_mensajeAuth(next.error!))));
+          ..showSnackBar(SnackBar(content: Text(_mensajeAuth(next.error!))));
       }
     });
 

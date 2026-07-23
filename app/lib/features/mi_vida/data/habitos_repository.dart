@@ -47,9 +47,19 @@ class HabitosRepository {
 
   static const _iniciales = [
     {'nombre': 'Leer mis metas', 'emoji': '🎯', 'hora': 'Mañana', 'orden': 1},
-    {'nombre': 'Citrato de magnesio', 'emoji': '💊', 'hora': '6:00 PM', 'orden': 2},
+    {
+      'nombre': 'Citrato de magnesio',
+      'emoji': '💊',
+      'hora': '6:00 PM',
+      'orden': 2
+    },
     {'nombre': 'Leer 10–15 min', 'emoji': '📖', 'hora': '9:00 PM', 'orden': 3},
-    {'nombre': 'Teléfono apagado', 'emoji': '📵', 'hora': '9:00 PM', 'orden': 4},
+    {
+      'nombre': 'Teléfono apagado',
+      'emoji': '📵',
+      'hora': '9:00 PM',
+      'orden': 4
+    },
   ];
 
   String _userId() {
@@ -148,8 +158,7 @@ class HabitosRepository {
       });
 
   /// Alterna hecho/no-hecho para HOY sin duplicar (1 fila por hábito/fecha).
-  Future<void> alternar(String habitoId, bool estadoActual) =>
-      _guard(() async {
+  Future<void> alternar(String habitoId, bool estadoActual) => _guard(() async {
         final userId = _userId();
         await _c.from('habitos_log').upsert(
           {
@@ -174,7 +183,8 @@ class HabitosRepository {
         await _c.from('habitos').upsert({
           'user_id': userId,
           'nombre': limpio,
-          'emoji': (emoji == null || emoji.trim().isEmpty) ? null : emoji.trim(),
+          'emoji':
+              (emoji == null || emoji.trim().isEmpty) ? null : emoji.trim(),
           'hora': (hora == null || hora.trim().isEmpty) ? null : hora.trim(),
           'activo': true,
         }, onConflict: 'user_id,nombre');
@@ -189,7 +199,8 @@ class HabitosRepository {
         }
         await _c.from('habitos').update({
           'nombre': limpio,
-          'emoji': (emoji == null || emoji.trim().isEmpty) ? null : emoji.trim(),
+          'emoji':
+              (emoji == null || emoji.trim().isEmpty) ? null : emoji.trim(),
           'hora': (hora == null || hora.trim().isEmpty) ? null : hora.trim(),
         }).eq('id', id);
       });

@@ -97,8 +97,7 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
         final actualizado = Project(
           id: e.id,
           titulo: titulo,
-          descripcion:
-              _porque.text.trim().isEmpty ? null : _porque.text.trim(),
+          descripcion: _porque.text.trim().isEmpty ? null : _porque.text.trim(),
           objetivo:
               _objetivo.text.trim().isEmpty ? null : _objetivo.text.trim(),
           area: _area,
@@ -200,12 +199,8 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
                   children: [
-                    Icon(
-                        _masOpciones
-                            ? Icons.expand_less
-                            : Icons.expand_more,
-                        size: 20,
-                        color: AppColors.accentSoft),
+                    Icon(_masOpciones ? Icons.expand_less : Icons.expand_more,
+                        size: 20, color: AppColors.accentSoft),
                     const SizedBox(width: 6),
                     Text('Más opciones (opcional)',
                         style: theme.textTheme.labelLarge?.copyWith(
@@ -678,8 +673,7 @@ class _SelectorMeta extends ConsumerWidget {
         helperText: 'Al completar el proyecto, avanza esta meta',
       ),
       items: [
-        const DropdownMenuItem<String?>(
-            value: null, child: Text('Sin meta')),
+        const DropdownMenuItem<String?>(value: null, child: Text('Sin meta')),
         for (final m in metas)
           DropdownMenuItem<String?>(
             value: m.id,
@@ -690,8 +684,8 @@ class _SelectorMeta extends ConsumerWidget {
       onChanged: onCambiar,
       // Si no hay metas creadas, guía a crearlas en Finanzas.
       disabledHint: Text('Crea una meta en Finanzas primero',
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: cs.onSurfaceVariant)),
+          style:
+              theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
     );
   }
 }
@@ -719,8 +713,8 @@ class _SelectorFecha extends StatelessWidget {
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: 14),
+        padding:
+            const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: cs.outlineVariant),

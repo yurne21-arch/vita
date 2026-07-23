@@ -99,8 +99,7 @@ final cuentasProvider = FutureProvider<List<Cuenta>>((ref) {
 });
 
 /// Resumen de pagos por crédito (cuántas cuotas y total), para todos.
-final resumenPagosProvider =
-    FutureProvider<Map<String, ResumenCredito>>((ref) {
+final resumenPagosProvider = FutureProvider<Map<String, ResumenCredito>>((ref) {
   ref.watch(usuarioActualProvider);
   ref.watch(creditosProvider);
   return ref.watch(finanzasRepositoryProvider).resumenPagosPorCredito();

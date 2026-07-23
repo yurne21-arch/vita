@@ -16,21 +16,17 @@ class ProfileRepositoryImpl implements ProfileRepository {
     final client = _supabase.client;
 
     // 1. Lee el perfil existente (respeta el display_name ya guardado).
-    final existing = await client
-        .from('profiles')
-        .select()
-        .eq('id', user.id)
-        .maybeSingle();
+    final existing =
+        await client.from('profiles').select().eq('id', user.id).maybeSingle();
 
     Map<String, dynamic> row;
     if (existing != null) {
       row = existing; // ya existe -> NO se sobrescribe el nombre
     } else {
       // 2. Solo si no existe, lo crea con un nombre inicial.
-      final fallbackName =
-          (user.userMetadata?['display_name'] as String?) ??
-              user.email?.split('@').first ??
-              'VITA';
+      final fallbackName = (user.userMetadata?['display_name'] as String?) ??
+          user.email?.split('@').first ??
+          'VITA';
       row = await client
           .from('profiles')
           .insert({'id': user.id, 'display_name': fallbackName})

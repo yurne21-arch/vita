@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/errores.dart';
+import '../../../core/widgets/eyebrow.dart';
 import '../data/projects_repository.dart';
 import 'projects_controller.dart';
 import 'proyecto_detalle_screen.dart';
@@ -66,19 +68,33 @@ class ProyectosScreen extends ConsumerWidget {
             final bp = bpDe(c.maxWidth);
             final pad = padLateral(bp);
             final cols = colsCartera(c.maxWidth);
+            // Ancho ACOTADO (no shrink-wrap): con Center+ConstrainedBox el
+            // ancho quedaba suelto y los Expanded del hero colapsaban (el texto
+            // del próximo paso salía vertical). Un SizedBox de ancho fijo lo
+            // resuelve de raíz.
+            final ancho = c.maxWidth < kMaxLienzo ? c.maxWidth : kMaxLienzo;
             return SingleChildScrollView(
               child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: kMaxLienzo),
+                child: SizedBox(
+                  width: ancho,
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                        pad, AppSpacing.lg, pad, AppSpacing.xxl),
+                    // Aire extra abajo en móvil para que el FAB no tape la
+                    // última tarjeta.
+                    padding: EdgeInsets.fromLTRB(pad, AppSpacing.lg, pad,
+                        mostrarBotonArriba ? AppSpacing.xxl : 96),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         principal.when(
                           loading: () => const _CargandoPanel(),
-                          error: (_, __) => const _ErrorPanel(),
+                          error: (_, __) => _ErrorPanel(
+                            onReintentar: () {
+                              ref.invalidate(proyectoPrincipalProvider);
+                              ref.invalidate(proyectosActivosProvider);
+                              ref.invalidate(proyectosPausadosProvider);
+                              ref.invalidate(proyectosCompletadosProvider);
+                            },
+                          ),
                           data: (p) => p == null
                               ? _HeroVacio(
                                   onCrear: () =>
@@ -89,21 +105,9 @@ class ProyectosScreen extends ConsumerWidget {
                                   onAbrir: () => _abrirDetalle(context, p),
                                 ),
                         ),
-                        const SizedBox(height: AppSpacing.lg),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: FilledButton.icon(
-                            onPressed: () =>
-                                mostrarEditorProyecto(context, ref),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.accent,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 18, vertical: 13),
-                            ),
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text('Nuevo proyecto'),
-                          ),
-                        ),
+                        // La CTA "Nuevo proyecto" vive UNA sola vez por
+                        // pantalla: botón en la barra superior (escritorio) o
+                        // FAB (móvil). Sin botón inline duplicado.
                         const SizedBox(height: AppSpacing.xl),
                         _SeccionCartera(
                           titulo: 'Activos',
@@ -113,7 +117,8 @@ class ProyectosScreen extends ConsumerWidget {
                           filtro: (p) => true,
                           ocultarSiVacio: false,
                           vacio: _VacioActivos(
-                              onCrear: () => mostrarEditorProyecto(context, ref)),
+                              onCrear: () =>
+                                  mostrarEditorProyecto(context, ref)),
                           onAbrir: (p) => _abrirDetalle(context, p),
                         ),
                         const SizedBox(height: AppSpacing.xl),
@@ -162,10 +167,13 @@ class _HeroPrincipal extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final tareas =
-        ref.watch(tareasDeProyectoProvider(proyecto.id)).valueOrNull ??
-            const <ProjectTask>[];
-    final proximo = ref.watch(proximoPasoProvider(proyecto.id)).valueOrNull;
+    final tareasAsync = ref.watch(tareasDeProyectoProvider(proyecto.id));
+    final proximoAsync = ref.watch(proximoPasoProvider(proyecto.id));
+    final tareas = tareasAsync.valueOrNull ?? const <ProjectTask>[];
+    final proximo = proximoAsync.valueOrNull;
+    // Mientras cargan pasos/próximo paso, NO tratamos "aún no llegó" como
+    // "no hay pasos": eso pintaba una caja vacía y un mensaje equivocado.
+    final cargando = tareasAsync.isLoading || proximoAsync.isLoading;
     final progreso = proyecto.progresoCon(tareas);
 
     final encabezado = Row(
@@ -180,7 +188,9 @@ class _HeroPrincipal extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         AnilloProgreso(
-            progreso: progreso, tamano: desktop ? 96 : 72, grosor: desktop ? 9 : 7),
+            progreso: progreso,
+            tamano: desktop ? 96 : 72,
+            grosor: desktop ? 9 : 7),
         SizedBox(width: desktop ? AppSpacing.xl : AppSpacing.md),
         Expanded(
           child: Column(
@@ -209,26 +219,65 @@ class _HeroPrincipal extends ConsumerWidget {
       ],
     );
 
-    final barra = BarraProximoPaso(
-      proximoTexto: proximo?.texto,
-      tienePasos: proyecto.tienePasos(tareas),
-      activo: proyecto.activo,
-      onAvanzar: () => avanzarProyecto(context, ref,
-          projectId: proyecto.id, proximo: proximo),
-      onAgregarPaso: () => mostrarEditorTarea(context, ref,
-          projectId: proyecto.id, tipoInicial: 'paso'),
-    );
+    final barra = cargando
+        ? const _BarraPasoCargando()
+        : BarraProximoPaso(
+            proximoTexto: proximo?.texto,
+            tienePasos: proyecto.tienePasos(tareas),
+            activo: proyecto.activo,
+            onAvanzar: () => avanzarProyecto(context, ref,
+                projectId: proyecto.id, proximo: proximo),
+            onAgregarPaso: () => mostrarEditorTarea(context, ref,
+                projectId: proyecto.id, tipoInicial: 'paso'),
+          );
 
     return _PanelHero(
       onTap: onAbrir,
+      // stretch: la barra de "próximo paso" (con Expanded) necesita ancho
+      // acotado; con start quedaba sin ancho y el texto salía vertical.
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           encabezado,
           const SizedBox(height: AppSpacing.md),
           identidad,
           const SizedBox(height: AppSpacing.md),
           barra,
+        ],
+      ),
+    );
+  }
+}
+
+/// Placeholder compacto mientras cargan pasos/próximo paso. Evita pintar una
+/// caja grande vacía o un mensaje equivocado ("Agrega tu primer paso") cuando
+/// el dato aún no llegó.
+class _BarraPasoCargando extends StatelessWidget {
+  const _BarraPasoCargando();
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+                strokeWidth: 2, color: cs.onSurfaceVariant),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Text('Preparando tu próximo paso…',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: cs.onSurfaceVariant)),
         ],
       ),
     );
@@ -260,8 +309,8 @@ class _HeroVacio extends StatelessWidget {
                   color: AppColors.accent.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child:
-                    const Icon(Icons.flag_outlined, color: AppColors.accentSoft),
+                child: const Icon(Icons.flag_outlined,
+                    color: AppColors.accentSoft),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -433,8 +482,7 @@ class _VacioActivos extends StatelessWidget {
             onPressed: onCrear,
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.accent,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
             ),
             icon: const Icon(Icons.add, size: 18),
             label: const Text('Nuevo proyecto'),
@@ -476,8 +524,7 @@ class _TarjetaProyecto extends ConsumerWidget {
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            border:
-                Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -498,8 +545,8 @@ class _TarjetaProyecto extends ConsumerWidget {
                               child: Text(proyecto.titulo,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.titleSmall?.copyWith(
-                                      fontWeight: FontWeight.w700)),
+                                  style: theme.textTheme.titleSmall
+                                      ?.copyWith(fontWeight: FontWeight.w700)),
                             ),
                           ],
                         ),
@@ -514,7 +561,8 @@ class _TarjetaProyecto extends ConsumerWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: AppColors.accent.withValues(alpha: 0.16),
+                                  color:
+                                      AppColors.accent.withValues(alpha: 0.16),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Row(
@@ -577,8 +625,8 @@ class _TarjetaProyecto extends ConsumerWidget {
               if (proximo != null) ...[
                 const SizedBox(height: AppSpacing.sm),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
                     color: cs.surfaceContainerHigh.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(10),
@@ -693,23 +741,21 @@ class _PanelHero extends StatelessWidget {
         ),
       ],
     );
-    final contenido = Padding(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: child,
-    );
-    if (onTap == null) {
-      return Container(decoration: deco, child: contenido);
-    }
-    return Material(
-      color: Colors.transparent,
-      child: Ink(
-        decoration: deco,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(22),
-          child: contenido,
-        ),
+    final panel = Container(
+      decoration: deco,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: child,
       ),
+    );
+    if (onTap == null) return panel;
+    // GestureDetector (no Ink/InkWell): el patrón Ink+InkWell con hijos que
+    // tienen su propia decoración obscurecía el contenido de la barra de
+    // "próximo paso" (aparecía una caja vacía). Mi Vida ya usa este patrón.
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: panel,
     );
   }
 }
@@ -728,12 +774,15 @@ class _CargandoPanel extends StatelessWidget {
 }
 
 class _ErrorPanel extends StatelessWidget {
-  const _ErrorPanel();
+  const _ErrorPanel({required this.onReintentar});
+  final VoidCallback onReintentar;
   @override
   Widget build(BuildContext context) {
     return _PanelHero(
-      child: Text('No se pudo cargar tus proyectos.',
-          style: Theme.of(context).textTheme.bodyMedium),
+      child: ErrorEnTarjeta(
+        mensaje: 'No se pudo cargar tus proyectos.',
+        onReintentar: onReintentar,
+      ),
     );
   }
 }

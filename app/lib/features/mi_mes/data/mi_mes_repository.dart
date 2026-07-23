@@ -172,8 +172,9 @@ class MiMesRepository {
     double? pesoInicio;
     double? pesoFin;
     if (peso.isNotEmpty) {
-      final ordenados = [...peso]
-        ..sort((a, b) => (a['fecha'] as String).compareTo(b['fecha'] as String));
+      final ordenados = [
+        ...peso
+      ]..sort((a, b) => (a['fecha'] as String).compareTo(b['fecha'] as String));
       pesoInicio = (ordenados.first['valor'] as num).toDouble();
       pesoFin = (ordenados.last['valor'] as num).toDouble();
     }
@@ -182,10 +183,8 @@ class MiMesRepository {
       diasRegistrados: dias.length,
       energiaProm: _prom(energia.map((r) => r['valor'] as num).toList()),
       animoProm: _prom(animo.map((r) => r['valor'] as num).toList()),
-      suenoHorasProm: _prom(sueno
-          .map((r) => r['valor'] as num?)
-          .whereType<num>()
-          .toList()),
+      suenoHorasProm:
+          _prom(sueno.map((r) => r['valor'] as num?).whereType<num>().toList()),
       pesoInicio: pesoInicio,
       pesoFin: pesoFin,
     );
@@ -285,8 +284,7 @@ class MiMesRepository {
         .gte('inicio', desde.toUtc().toIso8601String())
         .lt('inicio', hasta.toUtc().toIso8601String());
     final lista = rows as List;
-    final realizados =
-        lista.where((r) => r['estado'] == 'realizado').length;
+    final realizados = lista.where((r) => r['estado'] == 'realizado').length;
     return ResumenAgendaMes(realizados: realizados, total: lista.length);
   }
 

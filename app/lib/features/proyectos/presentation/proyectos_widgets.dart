@@ -81,8 +81,7 @@ class AnilloProgreso extends StatelessWidget {
                 fontSize: tamano * (progreso == 0 ? 0.3 : 0.26),
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.5,
-                color:
-                    progreso == 0 ? cs.onSurfaceVariant : cs.onSurface,
+                color: progreso == 0 ? cs.onSurfaceVariant : cs.onSurface,
               ),
             ),
         ],
@@ -197,20 +196,7 @@ class EtiquetaArea extends StatelessWidget {
   }
 }
 
-/// Pequeño "eyebrow" en mayúsculas (mismo lenguaje que Calendario/Mi Vida).
-class Eyebrow extends StatelessWidget {
-  const Eyebrow(this.texto, {super.key});
-  final String texto;
-  @override
-  Widget build(BuildContext context) {
-    return Text(texto.toUpperCase(),
-        style: const TextStyle(
-            fontSize: 11,
-            letterSpacing: 1,
-            fontWeight: FontWeight.w700,
-            color: AppColors.accentSoft));
-  }
-}
+// El "eyebrow" ahora es un componente central: core/widgets/eyebrow.dart.
 
 // ╭──────────────────────────────────────────────────────────────╮
 // │ Responsive — breakpoints reales para todo el módulo            │
@@ -224,8 +210,7 @@ VitaBp bpDe(double ancho) => ancho >= 1000
     : (ancho >= 700 ? VitaBp.tablet : VitaBp.mobile);
 
 /// Columnas de la cartera de proyectos según ancho.
-int colsCartera(double ancho) =>
-    ancho >= 1000 ? 3 : (ancho >= 700 ? 2 : 1);
+int colsCartera(double ancho) => ancho >= 1000 ? 3 : (ancho >= 700 ? 2 : 1);
 
 /// Padding horizontal del contenido según breakpoint.
 double padLateral(VitaBp bp) => switch (bp) {
@@ -259,8 +244,7 @@ class RejillaFluida extends StatelessWidget {
       builder: (context, c) {
         final cols = columnas < 1 ? 1 : columnas;
         final ancho = c.maxWidth;
-        final celda =
-            cols == 1 ? ancho : (ancho - espacio * (cols - 1)) / cols;
+        final celda = cols == 1 ? ancho : (ancho - espacio * (cols - 1)) / cols;
         return Wrap(
           spacing: espacio,
           runSpacing: espacio,
@@ -331,8 +315,7 @@ class BarraProximoPaso extends StatelessWidget {
           onPressed: onAvanzar,
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.accent,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           ),
           child: const Text('Avanzar'),
         );
@@ -341,8 +324,7 @@ class BarraProximoPaso extends StatelessWidget {
           onPressed: onAgregarPaso,
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.accent,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           ),
           icon: const Icon(Icons.add, size: 18),
           label: const Text('Paso'),
@@ -376,29 +358,32 @@ class BarraProximoPaso extends StatelessWidget {
                 size: 16, color: AppColors.accent),
           ),
           const SizedBox(width: AppSpacing.sm),
+          // Text.rich (un solo widget) en vez de Expanded(Column): un Column
+          // dentro de Expanded, bajo la altura no acotada del scroll, colapsaba
+          // y no pintaba. Un Text con dos líneas de estilos distintos lo evita.
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('PRÓXIMO PASO',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        letterSpacing: 0.6,
-                        fontWeight: FontWeight.w700)),
-                const SizedBox(height: 3),
-                Text(
-                  texto,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+            child: Text.rich(
+              TextSpan(children: [
+                TextSpan(
+                  text: 'PRÓXIMO PASO\n',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    letterSpacing: 0.6,
+                    fontWeight: FontWeight.w700,
+                    height: 1.6,
+                  ),
+                ),
+                TextSpan(
+                  text: texto,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.w600,
+                    height: 1.3,
                     color: hay ? cs.onSurface : cs.onSurfaceVariant,
                   ),
                 ),
-              ],
+              ]),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           if (boton != null) ...[

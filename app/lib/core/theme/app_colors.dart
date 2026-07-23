@@ -11,8 +11,10 @@ abstract class AppColors {
   static const Color accentSoft = Color(0xFF7FA790); // decorativo / iconos
 
   // Modo claro — crema mantequilla cálido + verde salvia (acogedor, personal).
-  static const Color lightBg = Color(0xFFFBF4E4); // crema cálido con toque amarillo
-  static const Color lightPanel = Color(0xFFFFFDF7); // tarjetas: crema muy claro
+  static const Color lightBg =
+      Color(0xFFFBF4E4); // crema cálido con toque amarillo
+  static const Color lightPanel =
+      Color(0xFFFFFDF7); // tarjetas: crema muy claro
   static const Color lightSurface = Color(0xFFFFFFFF); // inputs / chips
   static const Color lightInk = Color(0xFF2B2620); // texto principal (cálido)
   static const Color lightMuted = Color(0xFF756D5C); // texto secundario
@@ -26,7 +28,8 @@ abstract class AppColors {
   static const Color darkHairline = Color(0xFF2E2A38);
 
   // Estados (apagados, legibles sobre fondo claro)
-  static const Color success = Color(0xFF3E8E5A); // verde confirmación (distinto del acento)
+  static const Color success =
+      Color(0xFF3E8E5A); // verde confirmación (distinto del acento)
   static const Color warning = Color(0xFFB7860B);
   static const Color danger = Color(0xFFB5563F);
   static const Color info = Color(0xFF4A6B8A);

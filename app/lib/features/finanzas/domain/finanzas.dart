@@ -253,8 +253,7 @@ class ResumenCredito {
   const ResumenCredito({required this.cuotas, required this.totalPagado});
   final int cuotas;
   final double totalPagado;
-  static const ResumenCredito vacio =
-      ResumenCredito(cuotas: 0, totalPagado: 0);
+  static const ResumenCredito vacio = ResumenCredito(cuotas: 0, totalPagado: 0);
 }
 
 /// Balance del reparto compartido (Tricount): cuánto puso cada quien de los

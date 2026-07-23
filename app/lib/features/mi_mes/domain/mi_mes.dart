@@ -128,8 +128,8 @@ class ResumenFinanzasMes {
 
   bool get vacio => ingresos == 0 && gastos == 0;
 
-  static const vacia =
-      ResumenFinanzasMes(ingresos: 0, gastos: 0, cerrado: false, porCategoria: {});
+  static const vacia = ResumenFinanzasMes(
+      ingresos: 0, gastos: 0, cerrado: false, porCategoria: {});
 }
 
 // ───────────────── Agenda ─────────────────

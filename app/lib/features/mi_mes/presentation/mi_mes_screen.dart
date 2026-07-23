@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/moneda.dart';
 import '../../../core/widgets/errores.dart';
+import '../../../core/widgets/eyebrow.dart';
 import '../../../core/widgets/vita_card.dart';
 import '../domain/mi_mes.dart';
 import 'mi_mes_controller.dart';
@@ -160,7 +161,7 @@ class _Contenido extends StatelessWidget {
         if (balance.vacio)
           const _EspejoVacio()
         else ...[
-          const _Eyebrow('EL ESPEJO DEL MES'),
+          const Eyebrow('EL ESPEJO DEL MES'),
           const SizedBox(height: AppSpacing.sm),
           if (dosColumnas)
             _Rejilla(cards: cards)
@@ -171,7 +172,7 @@ class _Contenido extends StatelessWidget {
             ],
         ],
         const SizedBox(height: AppSpacing.lg),
-        const _Eyebrow('TU REFLEXIÓN'),
+        const Eyebrow('TU REFLEXIÓN'),
         const SizedBox(height: AppSpacing.sm),
         _ReflexionCard(key: ValueKey(balance.mes)),
       ],
@@ -272,8 +273,7 @@ class _CardProyectos extends StatelessWidget {
                     ? '1 hito logrado'
                     : '${r.hitosLogrados} hitos logrados'),
           if (r.pendientes > 0)
-            _LineaDato(
-                texto: '${r.pendientes} por hacer', tenue: true),
+            _LineaDato(texto: '${r.pendientes} por hacer', tenue: true),
           if (r.avances.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
             for (final a in r.avances.take(4))
@@ -462,7 +462,8 @@ class _CardAgenda extends StatelessWidget {
                   ? '1 evento realizado'
                   : '${r.realizados} eventos realizados'),
           _LineaDato(
-              texto: r.total == 1 ? '1 en la agenda' : '${r.total} en la agenda',
+              texto:
+                  r.total == 1 ? '1 en la agenda' : '${r.total} en la agenda',
               tenue: true),
         ],
       ),
@@ -483,8 +484,7 @@ class _LineaDato extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 3),
       child: Text(texto,
           style: theme.textTheme.bodyMedium?.copyWith(
-              height: 1.35,
-              color: tenue ? cs.onSurfaceVariant : cs.onSurface)),
+              height: 1.35, color: tenue ? cs.onSurfaceVariant : cs.onSurface)),
     );
   }
 }
@@ -555,7 +555,8 @@ class _ReflexionCardState extends ConsumerState<_ReflexionCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Esto lo escribes tú. La app te muestra los hechos; el balance '
+          Text(
+              'Esto lo escribes tú. La app te muestra los hechos; el balance '
               'lo pones tú.',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: cs.onSurfaceVariant, height: 1.35)),
@@ -681,16 +682,4 @@ class _EspejoVacio extends StatelessWidget {
   }
 }
 
-class _Eyebrow extends StatelessWidget {
-  const _Eyebrow(this.texto);
-  final String texto;
-  @override
-  Widget build(BuildContext context) {
-    return Text(texto,
-        style: const TextStyle(
-            fontSize: 11,
-            letterSpacing: 1,
-            fontWeight: FontWeight.w700,
-            color: AppColors.accentSoft));
-  }
-}
+// El eyebrow ahora vive en core/widgets/eyebrow.dart.

@@ -5,6 +5,7 @@ import '../../../core/content/versiculos.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/errores.dart';
+import '../../../core/widgets/eyebrow.dart';
 import '../../../core/widgets/vita_card.dart';
 import '../../profile/presentation/profile_controller.dart';
 import '../../salud/data/estado_repository.dart';
@@ -89,15 +90,15 @@ class _DesktopLayout extends StatelessWidget {
             const SizedBox(height: _kGap),
             const _EstadoGeneral(), // compacta, ancho completo
             const SizedBox(height: _kGap),
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: const [
-                  Expanded(child: _Agenda()),
-                  SizedBox(width: _kGap),
-                  Expanded(child: _ProyectoPrincipal()),
-                ],
-              ),
+            // Cada tarjeta a su altura de contenido: así "TU DÍA" vacío no se
+            // estira para igualar a "PROYECTO PRINCIPAL".
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Expanded(child: _Agenda()),
+                SizedBox(width: _kGap),
+                Expanded(child: _ProyectoPrincipal()),
+              ],
             ),
             const SizedBox(height: _kGap),
             const _Habitos(),
@@ -126,15 +127,13 @@ class _TabletLayout extends StatelessWidget {
         const SizedBox(height: _kGap),
         const _EstadoGeneral(),
         const SizedBox(height: _kGap),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: const [
-              Expanded(child: _Agenda()),
-              SizedBox(width: _kGap),
-              Expanded(child: _ProyectoPrincipal()),
-            ],
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Expanded(child: _Agenda()),
+            SizedBox(width: _kGap),
+            Expanded(child: _ProyectoPrincipal()),
+          ],
         ),
         const SizedBox(height: _kGap),
         const _Habitos(),
@@ -228,7 +227,7 @@ class _Versiculo extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const _Eyebrow('VERSÍCULO DEL DÍA'),
+          const Eyebrow('VERSÍCULO DEL DÍA'),
           const SizedBox(height: AppSpacing.md),
           Text(
             '"${v.texto}"',
@@ -275,7 +274,7 @@ class _Prioridades extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _Eyebrow('HOY IMPORTA'),
+          const Eyebrow('HOY IMPORTA'),
           const SizedBox(height: AppSpacing.sm),
           Text(
             'Tus tres prioridades del día.',
@@ -310,8 +309,8 @@ class _Prioridades extends ConsumerWidget {
                       .read(prioridadesControllerProvider.notifier)
                       .alternar(prioridades[i]),
                 ),
-                onEditar: () => _dialogoPrioridad(context, ref,
-                    existente: prioridades[i]),
+                onEditar: () =>
+                    _dialogoPrioridad(context, ref, existente: prioridades[i]),
                 onEliminar: () => accionSegura(
                   context,
                   () => ref
@@ -604,7 +603,7 @@ class _EstadoGeneral extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: const [
-                _Eyebrow('CÓMO ESTÁS HOY'),
+                Eyebrow('CÓMO ESTÁS HOY'),
                 Icon(Icons.add, size: 18, color: AppColors.accent),
               ],
             ),
@@ -621,12 +620,14 @@ class _EstadoGeneral extends ConsumerWidget {
                       label: 'Peso',
                       value: _fmtPesoCard(
                           estado?.pesoUltimo, estado?.pesoTendencia)),
-                  _Metric(label: 'Energía', value: _fmt15(estado?.energia)),
+                  _Metric(
+                      label: 'Energía',
+                      value: _energiaPalabra(estado?.energia)),
                   _Metric(
                       label: 'Sueño',
                       value: _fmtSuenoCard(
                           estado?.suenoCalidad, estado?.suenoHoras)),
-                  _Metric(label: 'Ánimo', value: _fmt15(estado?.animo)),
+                  _Metric(label: 'Ánimo', value: _animoPalabra(estado?.animo)),
                 ],
               ),
           ],
@@ -637,13 +638,28 @@ class _EstadoGeneral extends ConsumerWidget {
 }
 
 String _numEs(double v) {
-  final s = (v == v.roundToDouble())
-      ? v.toInt().toString()
-      : v.toStringAsFixed(1);
+  final s =
+      (v == v.roundToDouble()) ? v.toInt().toString() : v.toStringAsFixed(1);
   return s.replaceAll('.', ',');
 }
 
-String _fmt15(int? v) => v == null ? '—' : '$v/5';
+// La vista cotidiana habla en lenguaje humano, no en puntuación "x de 5".
+// El número (1–5) se conserva en el modelo, históricos y el registro.
+String _energiaPalabra(int? v) {
+  if (v == null) return '—';
+  if (v <= 2) return 'Baja';
+  if (v == 3) return 'Estable';
+  if (v == 4) return 'Buena';
+  return 'Alta';
+}
+
+String _animoPalabra(int? v) {
+  if (v == null) return '—';
+  if (v <= 2) return 'Sensible';
+  if (v == 3) return 'Estable';
+  if (v == 4) return 'Bueno';
+  return 'Alto';
+}
 
 String _fmtPesoCard(double? p, double? t) {
   if (p == null) return '—';
@@ -692,7 +708,7 @@ class _Agenda extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const _Eyebrow('TU DÍA'),
+              const Eyebrow('TU DÍA'),
               IconButton(
                 onPressed: () => mostrarEditorEvento(context, ref,
                     fechaSugerida:
@@ -725,8 +741,7 @@ class _Agenda extends ConsumerWidget {
             for (final e in eventosHoy)
               _EventoHoyRow(
                 evento: e,
-                onTap: () =>
-                    mostrarEditorEvento(context, ref, existente: e),
+                onTap: () => mostrarEditorEvento(context, ref, existente: e),
                 onMenu: (op) {
                   final acc = ref.read(agendaAccionesProvider);
                   accionSegura(context, () async {
@@ -859,7 +874,7 @@ class _ProyectoPrincipal extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _Eyebrow('PROYECTO PRINCIPAL'),
+            const Eyebrow('PROYECTO PRINCIPAL'),
             const SizedBox(height: AppSpacing.md),
             ErrorEnTarjeta(
               mensaje: mensajeDeError(async.error!),
@@ -876,7 +891,7 @@ class _ProyectoPrincipal extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Eyebrow('PROYECTO PRINCIPAL'),
+            Eyebrow('PROYECTO PRINCIPAL'),
             SizedBox(height: AppSpacing.md),
             Center(
               child: Padding(
@@ -895,7 +910,7 @@ class _ProyectoPrincipal extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _Eyebrow('PROYECTO PRINCIPAL'),
+            const Eyebrow('PROYECTO PRINCIPAL'),
             const SizedBox(height: AppSpacing.sm),
             const _EmptyHint(
               icon: Icons.flag_outlined,
@@ -944,18 +959,16 @@ class _ProyectoPrincipal extends ConsumerWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-              builder: (_) => ProyectoDetalleScreen(proyecto: p)),
+          MaterialPageRoute(builder: (_) => ProyectoDetalleScreen(proyecto: p)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const _Eyebrow('PROYECTO PRINCIPAL'),
+                const Eyebrow('PROYECTO PRINCIPAL'),
                 const Spacer(),
-                Icon(Icons.chevron_right,
-                    size: 18, color: cs.onSurfaceVariant),
+                Icon(Icons.chevron_right, size: 18, color: cs.onSurfaceVariant),
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -1087,7 +1100,7 @@ class _Habitos extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const _Eyebrow('HÁBITOS'),
+              const Eyebrow('HÁBITOS'),
               IconButton(
                 tooltip: 'Administrar hábitos',
                 visualDensity: VisualDensity.compact,
@@ -1148,8 +1161,8 @@ Future<void> _administrarHabitos(BuildContext context, WidgetRef ref) {
     builder: (_) => Consumer(
       builder: (context, ref, _) {
         final theme = Theme.of(context);
-        final habitos =
-            ref.watch(habitosControllerProvider).valueOrNull ?? const <Habito>[];
+        final habitos = ref.watch(habitosControllerProvider).valueOrNull ??
+            const <Habito>[];
         return Padding(
           padding: EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg,
               AppSpacing.lg + MediaQuery.of(context).viewInsets.bottom),
@@ -1174,7 +1187,8 @@ Future<void> _administrarHabitos(BuildContext context, WidgetRef ref) {
                       IconButton(
                         tooltip: 'Editar',
                         icon: const Icon(Icons.edit_outlined, size: 20),
-                        onPressed: () => _dialogoHabito(context, ref, existente: h),
+                        onPressed: () =>
+                            _dialogoHabito(context, ref, existente: h),
                       ),
                       IconButton(
                         tooltip: 'Quitar',
@@ -1244,8 +1258,8 @@ Future<void> _dialogoHabito(BuildContext context, WidgetRef ref,
           const SizedBox(height: AppSpacing.sm),
           TextField(
             controller: hora,
-            decoration:
-                const InputDecoration(labelText: 'Hora (opcional, ej. 9:00 PM)'),
+            decoration: const InputDecoration(
+                labelText: 'Hora (opcional, ej. 9:00 PM)'),
           ),
         ],
       ),
@@ -1282,24 +1296,7 @@ Future<void> _dialogoHabito(BuildContext context, WidgetRef ref,
 
 // ============================ PIEZAS ============================
 
-class _Eyebrow extends StatelessWidget {
-  const _Eyebrow(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Text(
-      text,
-      style: theme.textTheme.labelSmall?.copyWith(
-        color: AppColors.accent,
-        letterSpacing: 1.2,
-        fontWeight: FontWeight.w600,
-        fontSize: 11,
-      ),
-    );
-  }
-}
+// El eyebrow ahora vive en core/widgets/eyebrow.dart.
 
 class _Metric extends StatelessWidget {
   const _Metric({required this.label, required this.value});
@@ -1338,8 +1335,6 @@ class _Metric extends StatelessWidget {
     );
   }
 }
-
-
 
 /// Estado vacío. Sin `action`: un texto que parece enlace pero no lo es enseña
 /// a la usuaria que tocar la pantalla no sirve de nada.
@@ -1426,18 +1421,33 @@ class _HabitoRow extends StatelessWidget {
 
 String _fechaLarga(DateTime d) {
   const dias = [
-    'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'
+    'lunes',
+    'martes',
+    'miércoles',
+    'jueves',
+    'viernes',
+    'sábado',
+    'domingo'
   ];
   const meses = [
-    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre'
   ];
   final dia = dias[d.weekday - 1];
   final mes = meses[d.month - 1];
   final capit = dia[0].toUpperCase() + dia.substring(1);
   return '$capit ${d.day} de $mes';
 }
-
 
 // ============================ REGISTRO ESTADO ============================
 
@@ -1450,8 +1460,7 @@ class _RegistrarEstadoSheet extends ConsumerStatefulWidget {
       _RegistrarEstadoSheetState();
 }
 
-class _RegistrarEstadoSheetState
-    extends ConsumerState<_RegistrarEstadoSheet> {
+class _RegistrarEstadoSheetState extends ConsumerState<_RegistrarEstadoSheet> {
   int? _energia;
   int? _animo;
   int? _sueno; // 1 mal, 2 regular, 3 bien
@@ -1531,7 +1540,6 @@ class _RegistrarEstadoSheetState
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
             const SizedBox(height: AppSpacing.lg),
-
             _CampoLabel('Energía del día'),
             const SizedBox(height: AppSpacing.sm),
             _Escala(
@@ -1539,7 +1547,6 @@ class _RegistrarEstadoSheetState
               onChanged: (v) => setState(() => _energia = v),
             ),
             const SizedBox(height: AppSpacing.lg),
-
             _CampoLabel('Ánimo del día'),
             const SizedBox(height: AppSpacing.sm),
             _Escala(
@@ -1547,7 +1554,6 @@ class _RegistrarEstadoSheetState
               onChanged: (v) => setState(() => _animo = v),
             ),
             const SizedBox(height: AppSpacing.lg),
-
             _CampoLabel('Sueño'),
             const SizedBox(height: AppSpacing.sm),
             _SuenoSelector(
@@ -1565,7 +1571,6 @@ class _RegistrarEstadoSheetState
                 border: OutlineInputBorder(),
               ),
             ),
-
             if (_mostrarPeso) ...[
               const SizedBox(height: AppSpacing.lg),
               _CampoLabel('Pesaje semanal · opcional'),
@@ -1591,7 +1596,6 @@ class _RegistrarEstadoSheetState
                 ),
               ),
             ],
-
             const SizedBox(height: AppSpacing.lg),
             SizedBox(
               width: double.infinity,
@@ -1621,8 +1625,8 @@ class _CampoLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Text(text,
-        style: theme.textTheme.labelLarge
-            ?.copyWith(fontWeight: FontWeight.w600));
+        style:
+            theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600));
   }
 }
 
@@ -1690,8 +1694,8 @@ class _SuenoSelector extends StatelessWidget {
           if (i > 0) const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: GestureDetector(
-              onTap: () => onChanged(
-                  value == _opciones[i].$1 ? null : _opciones[i].$1),
+              onTap: () =>
+                  onChanged(value == _opciones[i].$1 ? null : _opciones[i].$1),
               child: Container(
                 height: 44,
                 alignment: Alignment.center,

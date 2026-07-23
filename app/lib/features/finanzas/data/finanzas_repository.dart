@@ -272,7 +272,8 @@ class FinanzasRepository {
       _guard(() async {
         final userId = _userId();
         if (montoMensual < 0) {
-          throw const FinanzasException('El presupuesto no puede ser negativo.');
+          throw const FinanzasException(
+              'El presupuesto no puede ser negativo.');
         }
         await _c.from('finance_budgets').upsert({
           'user_id': userId,
@@ -291,7 +292,8 @@ class FinanzasRepository {
         final userId = _userId();
         final rows = await _c
             .from('finance_debts')
-            .select('id, direccion, persona, monto, descripcion, saldada, fecha')
+            .select(
+                'id, direccion, persona, monto, descripcion, saldada, fecha')
             .eq('user_id', userId)
             .order('saldada')
             .order('fecha', ascending: false);
@@ -491,7 +493,8 @@ class FinanzasRepository {
         final datos = {
           'user_id': userId,
           'label': label.trim(),
-          'emoji': (emoji == null || emoji.trim().isEmpty) ? null : emoji.trim(),
+          'emoji':
+              (emoji == null || emoji.trim().isEmpty) ? null : emoji.trim(),
           'meta_monto': metaMonto,
           'ahorrado': ahorrado,
           'cumplida': metaMonto > 0 && ahorrado >= metaMonto,
@@ -850,10 +853,9 @@ class FinanzasRepository {
           'anno': mes.year,
           'mes': mes.month,
           'resumen': resumen,
-          'pendiente':
-              (pendiente == null || pendiente.trim().isEmpty)
-                  ? null
-                  : pendiente.trim(),
+          'pendiente': (pendiente == null || pendiente.trim().isEmpty)
+              ? null
+              : pendiente.trim(),
         }, onConflict: 'user_id,anno,mes');
       });
 

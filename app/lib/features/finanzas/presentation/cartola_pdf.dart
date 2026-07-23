@@ -32,9 +32,7 @@ Future<void> compartirCartolaPdf(Saldado s, List<Movimiento> gastos) async {
       build: (context) => [
         pw.Text('Cartola — Gastos compartidos',
             style: pw.TextStyle(
-                fontSize: 20,
-                fontWeight: pw.FontWeight.bold,
-                color: acento)),
+                fontSize: 20, fontWeight: pw.FontWeight.bold, color: acento)),
         pw.SizedBox(height: 4),
         pw.Text(rango, style: const pw.TextStyle(fontSize: 12)),
         pw.SizedBox(height: 16),
@@ -110,7 +108,8 @@ pw.Widget _fila(String label, String valor, {bool bold = false}) => pw.Padding(
           pw.Text(valor,
               style: pw.TextStyle(
                   fontSize: 11,
-                  fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal)),
+                  fontWeight:
+                      bold ? pw.FontWeight.bold : pw.FontWeight.normal)),
         ],
       ),
     );

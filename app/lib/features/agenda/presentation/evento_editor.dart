@@ -91,10 +91,9 @@ class _EventoEditorState extends ConsumerState<_EventoEditor> {
       // resumen del día y la usuaria tendría que rellenarlo siempre a mano.
       _horaFin = TimeOfDay(hour: (ahora.hour + 1) % 24, minute: ahora.minute);
     }
-    _categoria =
-        (e?.categoria != null && kCategorias.contains(e!.categoria))
-            ? e.categoria
-            : null;
+    _categoria = (e?.categoria != null && kCategorias.contains(e!.categoria))
+        ? e.categoria
+        : null;
     _importancia = e?.importancia ?? 'normal';
     if (_esEdicion) _cargarRecordatorio();
   }
@@ -413,11 +412,27 @@ String _horaTexto(TimeOfDay t) {
 
 String _fechaLargaEditor(DateTime d) {
   const dias = [
-    'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'
+    'lunes',
+    'martes',
+    'miércoles',
+    'jueves',
+    'viernes',
+    'sábado',
+    'domingo'
   ];
   const meses = [
-    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre'
   ];
   final dia = dias[d.weekday - 1];
   final mes = meses[d.month - 1];

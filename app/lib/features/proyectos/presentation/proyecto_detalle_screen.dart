@@ -18,8 +18,7 @@ class ProyectoDetalleScreen extends ConsumerStatefulWidget {
       _ProyectoDetalleScreenState();
 }
 
-class _ProyectoDetalleScreenState
-    extends ConsumerState<ProyectoDetalleScreen> {
+class _ProyectoDetalleScreenState extends ConsumerState<ProyectoDetalleScreen> {
   late Project _p;
 
   @override
@@ -133,8 +132,7 @@ class _ProyectoDetalleScreenState
                 const PopupMenuItem(
                     value: 'completar', child: Text('Completar')),
               if (!_p.archivado)
-                const PopupMenuItem(
-                    value: 'archivar', child: Text('Archivar')),
+                const PopupMenuItem(value: 'archivar', child: Text('Archivar')),
               const PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
             ],
           ),
@@ -175,7 +173,8 @@ class _ProyectoDetalleScreenState
                             activo: _p.activo,
                             onAvanzar: () => avanzarProyecto(context, ref,
                                 projectId: _p.id, proximo: proximo),
-                            onAgregarPaso: () => mostrarEditorTarea(context, ref,
+                            onAgregarPaso: () => mostrarEditorTarea(
+                                context, ref,
                                 projectId: _p.id, tipoInicial: 'paso'),
                           ),
                         ],
@@ -430,8 +429,7 @@ class _SeccionTareas extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final tareas = tareasAsync.valueOrNull ?? const <ProjectTask>[];
-    final presupuesto = tareas.fold<double>(
-        0, (a, t) => a + (t.monto ?? 0));
+    final presupuesto = tareas.fold<double>(0, (a, t) => a + (t.monto ?? 0));
     final gastado = tareas
         .where((t) => t.completada)
         .fold<double>(0, (a, t) => a + (t.monto ?? 0));
@@ -553,7 +551,8 @@ class _VacioPasos extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Divide tu objetivo en pasos concretos. Los hitos marcan los '
+          Text(
+              'Divide tu objetivo en pasos concretos. Los hitos marcan los '
               'momentos importantes.',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: cs.onSurfaceVariant, height: 1.4)),
@@ -661,8 +660,8 @@ class _TareaRow extends StatelessWidget {
                       final hoy = DateTime.now();
                       final f = tarea.fechaObjetivo!;
                       final vencida = !hecho &&
-                          DateTime(f.year, f.month, f.day).isBefore(
-                              DateTime(hoy.year, hoy.month, hoy.day));
+                          DateTime(f.year, f.month, f.day)
+                              .isBefore(DateTime(hoy.year, hoy.month, hoy.day));
                       final colorFecha =
                           vencida ? AppColors.danger : cs.onSurfaceVariant;
                       return Padding(
@@ -680,8 +679,7 @@ class _TareaRow extends StatelessWidget {
                               '${f.day}/${f.month}/${f.year}${vencida ? ' · venció' : ''}',
                               style: theme.textTheme.labelSmall?.copyWith(
                                   color: colorFecha,
-                                  fontWeight:
-                                      vencida ? FontWeight.w700 : null),
+                                  fontWeight: vencida ? FontWeight.w700 : null),
                             ),
                             if (tarea.fechaMovida) ...[
                               const SizedBox(width: 6),
@@ -794,7 +792,8 @@ class _ChipMeta extends ConsumerWidget {
           children: [
             const Icon(Icons.flag, size: 14, color: AppColors.accent),
             const SizedBox(width: 6),
-            Text('Meta: ${meta.emoji != null ? '${meta.emoji} ' : ''}${meta.label}',
+            Text(
+                'Meta: ${meta.emoji != null ? '${meta.emoji} ' : ''}${meta.label}',
                 style: theme.textTheme.labelMedium?.copyWith(
                     color: AppColors.accent, fontWeight: FontWeight.w700)),
           ],
@@ -818,8 +817,7 @@ class _BannerVencidos extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.warning.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(14),
-        border:
-            Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
       ),
       child: Row(
         children: [
@@ -1102,8 +1100,18 @@ String _fechaRel(DateTime d) {
   if (diff.inDays == 1) return 'ayer';
   if (diff.inDays < 7) return 'hace ${diff.inDays} días';
   const meses = [
-    'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-    'jul', 'ago', 'sep', 'oct', 'nov', 'dic'
+    'ene',
+    'feb',
+    'mar',
+    'abr',
+    'may',
+    'jun',
+    'jul',
+    'ago',
+    'sep',
+    'oct',
+    'nov',
+    'dic'
   ];
   return '${d.day} ${meses[d.month - 1]}';
 }

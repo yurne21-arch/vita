@@ -153,8 +153,8 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
     }
   }
 
-  void _aviso(String m) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(m)));
+  void _aviso(String m) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   Future<void> _elegirFecha() async {
     final sel = await showDatePicker(
@@ -237,7 +237,8 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
               onChanged: (v, quienSugerido, compartidoSugerido) => setState(() {
                 _medio = v;
                 if (quienSugerido != null) _quien = quienSugerido;
-                if (compartidoSugerido != null) _compartido = compartidoSugerido;
+                if (compartidoSugerido != null)
+                  _compartido = compartidoSugerido;
               }),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -329,11 +330,9 @@ class _SelectorMedio extends ConsumerWidget {
       items: [
         const DropdownMenuItem(value: 'efectivo', child: Text('Efectivo')),
         for (final c in cuentas)
-          DropdownMenuItem(
-              value: 'cuenta:${c.id}', child: Text(c.nombre)),
+          DropdownMenuItem(value: 'cuenta:${c.id}', child: Text(c.nombre)),
         for (final t in tarjetas)
-          DropdownMenuItem(
-              value: 'tarjeta:${t.id}', child: Text(t.nombre)),
+          DropdownMenuItem(value: 'tarjeta:${t.id}', child: Text(t.nombre)),
       ],
       onChanged: (v) {
         if (v == null) return;
@@ -414,8 +413,8 @@ class _DeudaEditorState extends ConsumerState<_DeudaEditor> {
     _direccion = e?.direccion ?? 'debo';
     _fecha = e?.fecha ?? DateTime.now();
     _persona = TextEditingController(text: e?.persona ?? '');
-    _monto =
-        TextEditingController(text: e != null ? milesConPuntos(e.monto.round()) : '');
+    _monto = TextEditingController(
+        text: e != null ? milesConPuntos(e.monto.round()) : '');
     _desc = TextEditingController(text: e?.descripcion ?? '');
   }
 
@@ -466,8 +465,8 @@ class _DeudaEditorState extends ConsumerState<_DeudaEditor> {
     }
   }
 
-  void _aviso(String m) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(m)));
+  void _aviso(String m) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   @override
   Widget build(BuildContext context) {
@@ -495,7 +494,8 @@ class _DeudaEditorState extends ConsumerState<_DeudaEditor> {
               controller: _persona,
               textCapitalization: TextCapitalization.words,
               decoration: InputDecoration(
-                labelText: _direccion == 'debo' ? 'A quién le debo' : 'Quién me debe',
+                labelText:
+                    _direccion == 'debo' ? 'A quién le debo' : 'Quién me debe',
               ),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -503,8 +503,8 @@ class _DeudaEditorState extends ConsumerState<_DeudaEditor> {
               controller: _monto,
               keyboardType: TextInputType.number,
               inputFormatters: [MilesInputFormatter()],
-              decoration: const InputDecoration(
-                  labelText: 'Monto', prefixText: '\$ '),
+              decoration:
+                  const InputDecoration(labelText: 'Monto', prefixText: '\$ '),
             ),
             const SizedBox(height: AppSpacing.md),
             TextField(
@@ -605,8 +605,8 @@ class _PresupuestoEditorState extends ConsumerState<_PresupuestoEditor> {
     }
   }
 
-  void _aviso(String m) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(m)));
+  void _aviso(String m) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   @override
   Widget build(BuildContext context) {
@@ -868,7 +868,8 @@ class _CreditoEditorState extends ConsumerState<_CreditoEditor> {
         const SizedBox(height: AppSpacing.md),
         _campoTexto(_fin, 'Hasta (ej. Abr 2030)'),
         const SizedBox(height: AppSpacing.md),
-        Text('Avance: ${_progreso.round()}%', style: theme.textTheme.labelLarge),
+        Text('Avance: ${_progreso.round()}%',
+            style: theme.textTheme.labelLarge),
         Slider(
           value: _progreso,
           max: 100,
@@ -1148,9 +1149,9 @@ Future<({String cuentaId, double monto, DateTime fecha})?> pedirPagoTarjeta(
     _snack(context, 'Primero crea una cuenta (en Resumen → Saldos).');
     return null;
   }
-  final monto = TextEditingController(text: tarjeta.cuotaMes > 0
-      ? milesConPuntos(tarjeta.cuotaMes.round())
-      : '');
+  final monto = TextEditingController(
+      text:
+          tarjeta.cuotaMes > 0 ? milesConPuntos(tarjeta.cuotaMes.round()) : '');
   String cuentaId = cuentas.first.id;
   var fecha = DateTime.now();
   final r = await showDialog<bool>(
@@ -1217,7 +1218,8 @@ Future<({String cuentaId, double monto, DateTime fecha})?> pedirPagoTarjeta(
 
 // ── Piezas compartidas de los editores ──────────────────────────
 
-String _num(double? v) => (v == null || v == 0) ? '' : milesConPuntos(v.round());
+String _num(double? v) =>
+    (v == null || v == 0) ? '' : milesConPuntos(v.round());
 double _monto(TextEditingController c) =>
     double.tryParse(c.text.trim().replaceAll('.', '')) ?? 0;
 

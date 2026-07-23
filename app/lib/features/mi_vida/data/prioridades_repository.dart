@@ -26,7 +26,8 @@ class Prioridad {
   final int orden;
   final bool completada;
 
-  Prioridad copyWith({String? texto, int? orden, bool? completada}) => Prioridad(
+  Prioridad copyWith({String? texto, int? orden, bool? completada}) =>
+      Prioridad(
         id: id,
         texto: texto ?? this.texto,
         orden: orden ?? this.orden,
@@ -137,8 +138,7 @@ class PrioridadesRepository {
   Future<void> alternarCompletada(String id, bool actual) => _guard(() async {
         await _c
             .from('daily_priorities')
-            .update({'completada': !actual})
-            .eq('id', id);
+            .update({'completada': !actual}).eq('id', id);
       });
 
   Future<void> eliminar(String id) => _guard(() async {
