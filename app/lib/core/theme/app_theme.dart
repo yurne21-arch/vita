@@ -126,12 +126,23 @@ abstract class AppTheme {
           vertical: AppSpacing.md,
         ),
       ),
+      // El estilo del NavigationBar (sin píldora Material, acento activo,
+      // etiquetas adaptables) vive en core/widgets/app_shell.dart, que es la
+      // única barra y ya envuelve el NavigationBar en su propio tema.
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: scaffold,
         elevation: 0,
         height: 64,
-        indicatorColor: scheme.primary.withAlpha(36),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: scheme.inverseSurface.withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        textStyle: TextStyle(color: scheme.onInverseSurface, fontSize: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        waitDuration: const Duration(milliseconds: 400),
       ),
       dividerTheme: DividerThemeData(color: hairline, thickness: 1, space: 1),
       extensions: [AppSemanticColors(muted: muted, hairline: hairline)],

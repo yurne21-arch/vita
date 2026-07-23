@@ -338,20 +338,58 @@ class _SelectorSeccion extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 38,
+      height: 40,
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
           for (final s in _Seccion.values)
             Padding(
               padding: const EdgeInsets.only(right: AppSpacing.sm),
-              child: ChoiceChip(
-                label: Text(_labels[s]!),
+              child: _ChipSeccion(
+                label: _labels[s]!,
                 selected: seccion == s,
-                onSelected: (_) => onChanged(s),
+                onTap: () => onChanged(s),
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Chip de sección propio (sin `ChoiceChip` Material ni su checkmark).
+class _ChipSeccion extends StatelessWidget {
+  const _ChipSeccion(
+      {required this.label, required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.accent : cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          border: selected
+              ? null
+              : Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
+        ),
+        child: Text(
+          label,
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: selected ? Colors.white : cs.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }
@@ -984,8 +1022,10 @@ class _MovimientoRow extends ConsumerWidget {
             ),
             const SizedBox(width: AppSpacing.sm),
             Text('${m.esSalida ? '-' : '+'}${formatoMoneda(m.monto)}',
-                style: theme.textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w700, color: color)),
+                style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: cifrasTabulares,
+                    color: color)),
             PopupMenuButton<String>(
               icon: Icon(Icons.more_vert,
                   size: 18, color: theme.colorScheme.onSurfaceVariant),
@@ -1177,6 +1217,7 @@ class _PresupuestoRow extends ConsumerWidget {
                       ? AppColors.danger
                       : theme.colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
+                  fontFeatures: cifrasTabulares,
                 ),
               ),
               PopupMenuButton<String>(

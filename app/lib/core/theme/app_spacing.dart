@@ -9,6 +9,9 @@ abstract class AppSpacing {
   static const double xl = 32;
   static const double xxl = 48;
 
-  static const double radius = 16;
+  // Escala de radios (usar estos en vez de números sueltos).
+  static const double radiusSm = 8;
+  static const double radiusMd = 12;
+  static const double radius = 16; // = radiusLgBase / por compatibilidad
   static const double radiusLg = 24;
 }

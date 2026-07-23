@@ -1010,6 +1010,7 @@ class _ContenidoDia extends StatelessWidget {
 }
 
 class _VacioDia extends StatelessWidget {
+  const _VacioDia();
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -1466,7 +1467,7 @@ class _AgendaDia extends StatelessWidget {
           ),
           Expanded(
             child: eventos.isEmpty
-                ? _VacioDia()
+                ? const _VacioDia()
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(AppSpacing.md,
                         AppSpacing.md, AppSpacing.md, AppSpacing.md),

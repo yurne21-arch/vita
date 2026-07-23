@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../theme/app_colors.dart';
+
 class AppShell extends StatelessWidget {
   const AppShell({required this.navigationShell, super.key});
 
@@ -8,21 +10,33 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final muted = cs.onSurfaceVariant;
     // En pantallas muy angostas (≤360) las 6 etiquetas se parten a mitad de
-    // palabra ("Proyecto s"). Reducimos el tamaño de la etiqueta para que
-    // quepan en una sola línea, sin renombrar módulos ni ocultar etiquetas.
+    // palabra ("Proyecto s"): bajamos el tamaño para que quepan en una línea.
     final ancho = MediaQuery.sizeOf(context).width;
-    final estiloEtiqueta = ancho <= 360
-        ? const TextStyle(
-            fontSize: 9, fontWeight: FontWeight.w500, height: 1.05)
-        : null;
+    final tamEtiqueta = ancho <= 360 ? 9.0 : 12.0;
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: NavigationBarTheme(
+        // Estilo propio, sin la "píldora" Material: el estado activo se
+        // comunica con el ícono relleno y el acento.
         data: NavigationBarThemeData(
-          labelTextStyle: estiloEtiqueta == null
-              ? null
-              : WidgetStatePropertyAll(estiloEtiqueta),
+          indicatorColor: Colors.transparent,
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            final activo = states.contains(WidgetState.selected);
+            return TextStyle(
+              fontSize: tamEtiqueta,
+              height: 1.05,
+              fontWeight: activo ? FontWeight.w700 : FontWeight.w500,
+              color: activo ? AppColors.accent : muted,
+            );
+          }),
+          iconTheme: WidgetStateProperty.resolveWith((states) {
+            final activo = states.contains(WidgetState.selected);
+            return IconThemeData(
+                size: 24, color: activo ? AppColors.accent : muted);
+          }),
         ),
         child: NavigationBar(
           selectedIndex: navigationShell.currentIndex,
