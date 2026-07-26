@@ -73,6 +73,11 @@ class AppShell extends StatelessWidget {
               label: 'Finanzas',
             ),
             NavigationDestination(
+              icon: Icon(Icons.restaurant_outlined),
+              selectedIcon: Icon(Icons.restaurant),
+              label: 'Comida',
+            ),
+            NavigationDestination(
               icon: Icon(Icons.settings_outlined),
               selectedIcon: Icon(Icons.settings),
               label: 'Ajustes',

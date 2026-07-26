@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/ajustes/presentation/ajustes_screen.dart';
+import '../../features/alimentacion/presentation/alimentacion_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/mi_vida/presentation/mi_vida_screen.dart';
 import '../../features/mi_mes/presentation/mi_mes_screen.dart';
@@ -64,6 +65,14 @@ GoRouter createRouter() {
               GoRoute(
                 path: '/finanzas',
                 builder: (_, __) => const FinanzasScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/alimentacion',
+                builder: (_, __) => const AlimentacionScreen(),
               ),
             ],
           ),

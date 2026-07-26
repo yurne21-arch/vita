@@ -154,7 +154,8 @@ class PerfilNutricional {
         objetivo: objetivo ?? this.objetivo,
         actividad: actividad ?? this.actividad,
         ritmoKgSemana: ritmoKgSemana ?? this.ritmoKgSemana,
-        mantenimientoEstimado: mantenimientoEstimado ?? this.mantenimientoEstimado,
+        mantenimientoEstimado:
+            mantenimientoEstimado ?? this.mantenimientoEstimado,
         deficitAplicado: deficitAplicado ?? this.deficitAplicado,
         kcalObjetivo: kcalObjetivo ?? this.kcalObjetivo,
         protObjetivoG: protObjetivoG ?? this.protObjetivoG,
@@ -167,7 +168,8 @@ class PerfilNutricional {
         provisional: provisional ?? this.provisional,
       );
 
-  factory PerfilNutricional.fromMap(Map<String, dynamic> m) => PerfilNutricional(
+  factory PerfilNutricional.fromMap(Map<String, dynamic> m) =>
+      PerfilNutricional(
         id: m['id'] as String,
         nombre: m['nombre'] as String,
         sexo: m['sexo'] as String?,
@@ -177,7 +179,8 @@ class PerfilNutricional {
         objetivo: (m['objetivo'] as String?) ?? Objetivos.deficit,
         actividad: (m['actividad'] as String?) ?? 'sedentario',
         ritmoKgSemana: (m['ritmo_kg_semana'] as num?)?.toDouble(),
-        mantenimientoEstimado: (m['mantenimiento_estimado'] as num?)?.toDouble(),
+        mantenimientoEstimado:
+            (m['mantenimiento_estimado'] as num?)?.toDouble(),
         deficitAplicado: (m['deficit_aplicado'] as num?)?.toDouble(),
         kcalObjetivo: (m['kcal_objetivo'] as num?)?.toDouble(),
         protObjetivoG: (m['prot_objetivo_g'] as num?)?.toDouble(),
@@ -210,7 +213,8 @@ class Alimento {
 
   final String id;
   final String nombre;
-  final String categoria; // proteina|carbohidrato|verdura|fruta|lacteo|fresco|despensa|grasa|otro
+  final String
+      categoria; // proteina|carbohidrato|verdura|fruta|lacteo|fresco|despensa|grasa|otro
   final Macros macros100; // por 100 g / 100 ml
   final String unidad; // 'g' | 'ml' | 'unidad'
   final double? gramosPorUnidad; // 1 huevo ≈ 55 g, 1 arepa ≈ 150 g
@@ -287,7 +291,8 @@ class Preparacion {
         mealPrep: (m['meal_prep'] as bool?) ?? false,
         tiempoMin: (m['tiempo_min'] as num?)?.toInt(),
         etiquetas:
-            (m['etiquetas'] as List?)?.map((e) => e as String).toList() ?? const [],
+            (m['etiquetas'] as List?)?.map((e) => e as String).toList() ??
+                const [],
         notas: m['notas'] as String?,
         aprobado: (m['aprobado'] as bool?) ?? true,
       );
@@ -329,7 +334,8 @@ class Ensamble {
         momento: m['momento'] as String,
         frecuencia: (m['frecuencia'] as String?) ?? Frecuencias.frecuente,
         etiquetas:
-            (m['etiquetas'] as List?)?.map((e) => e as String).toList() ?? const [],
+            (m['etiquetas'] as List?)?.map((e) => e as String).toList() ??
+                const [],
         estado: (m['estado'] as String?) ?? 'ok',
         alternativaDe: m['alternativa_de'] as String?,
         notas: m['notas'] as String?,
@@ -360,7 +366,8 @@ class ComponenteEnsamble {
 
   bool get esPreparacion => preparationId != null;
 
-  factory ComponenteEnsamble.fromMap(Map<String, dynamic> m) => ComponenteEnsamble(
+  factory ComponenteEnsamble.fromMap(Map<String, dynamic> m) =>
+      ComponenteEnsamble(
         id: m['id'] as String,
         assemblyId: m['assembly_id'] as String,
         preparationId: m['preparation_id'] as String?,
@@ -390,7 +397,8 @@ class Afinidad {
   final String persona;
   final String? assemblyId;
   final String? preparationId;
-  final String? rating; // me_encanta|me_gusta|me_da_igual|solo_ocasional|no_me_gusta|nunca_sugerir
+  final String?
+      rating; // me_encanta|me_gusta|me_da_igual|solo_ocasional|no_me_gusta|nunca_sugerir
   final double afinidad;
   final int vecesSugerido;
   final int vecesAceptado;
