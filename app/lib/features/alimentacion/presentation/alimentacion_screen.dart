@@ -6,6 +6,8 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/errores.dart';
 import '../../../core/widgets/eyebrow.dart';
 import '../../../core/widgets/vita_card.dart';
+import '../domain/alimentacion.dart';
+import '../domain/cocina_familiar.dart';
 import '../domain/motor.dart';
 import 'alimentacion_controller.dart';
 
@@ -23,7 +25,7 @@ class AlimentacionScreen extends ConsumerWidget {
     );
 
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         backgroundColor: cs.surface,
         appBar: AppBar(
@@ -37,6 +39,7 @@ class AlimentacionScreen extends ConsumerWidget {
               Tab(text: 'Hoy'),
               Tab(text: 'Menú de la semana'),
               Tab(text: 'Hoy cocinas'),
+              Tab(text: 'Familia'),
               Tab(text: 'Compras'),
             ],
           ),
@@ -55,11 +58,24 @@ class AlimentacionScreen extends ConsumerWidget {
             ),
             data: (p) {
               final biblioteca = ref.watch(bibliotecaProvider);
+              final nino = planNino(p, biblioteca);
+              final perfilesLista = perfiles.asData?.value ?? const [];
               return TabBarView(
                 children: [
-                  _TabHoy(plan: p, biblioteca: biblioteca, miNombre: miNombre),
+                  _TabHoy(
+                    plan: p,
+                    biblioteca: biblioteca,
+                    miNombre: miNombre,
+                    nino: nino,
+                  ),
                   _TabSemana(plan: p),
                   _TabCocina(plan: p),
+                  _TabFamilia(
+                    plan: p,
+                    perfiles: perfilesLista,
+                    nino: nino,
+                    miNombre: miNombre,
+                  ),
                   _TabCompras(plan: p),
                 ],
               );
@@ -106,14 +122,18 @@ class _TabHoy extends StatelessWidget {
     required this.plan,
     required this.biblioteca,
     required this.miNombre,
+    required this.nino,
   });
   final PlanSemana plan;
   final Biblioteca biblioteca;
   final String miNombre;
+  final List<ComidaNino> nino;
 
   @override
   Widget build(BuildContext context) {
     final hoy = plan.diaDe(DateTime.now()) ?? plan.dias.first;
+    final idxHoy = plan.dias.indexOf(hoy);
+    final ninoHoy = (idxHoy >= 0 && idxHoy < nino.length) ? nino[idxHoy] : null;
     final t = Theme.of(context).textTheme;
     final hora = DateTime.now().hour;
     final saludo = hora < 12
@@ -138,6 +158,11 @@ class _TabHoy extends StatelessWidget {
       const SizedBox(height: AppSpacing.sm),
       for (final comida in hoy.comidas) ...[
         _TarjetaComida(comida: comida, biblioteca: biblioteca, yo: miNombre),
+        const SizedBox(height: AppSpacing.md),
+      ],
+      if (ninoHoy != null) ...[
+        const SizedBox(height: AppSpacing.xs),
+        _TarjetaNinoHoy(comida: ninoHoy),
         const SizedBox(height: AppSpacing.md),
       ],
       const _NotaProvisional(),
@@ -678,6 +703,182 @@ class _TabComprasState extends State<_TabCompras> {
       return '${(it.cantidad / 1000).toStringAsFixed(1)} kg';
     }
     return '${it.cantidad.round()} ${it.unidad}';
+  }
+}
+
+// Tarjeta breve del niño en Hoy: qué darle y cómo servirlo.
+class _TarjetaNinoHoy extends StatelessWidget {
+  const _TarjetaNinoHoy({required this.comida});
+  final ComidaNino comida;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return VitaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('👦', style: TextStyle(fontSize: 20)),
+              const SizedBox(width: AppSpacing.sm),
+              Text('Para Juan Miguel',
+                  style: t.labelMedium
+                      ?.copyWith(color: AppColors.accent, letterSpacing: 0.3)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text('${comida.emoji} ${comida.nombre}', style: t.titleMedium),
+          const SizedBox(height: 2),
+          Text(comida.presentacion.first,
+              style: t.bodySmall?.copyWith(color: muted)),
+        ],
+      ),
+    );
+  }
+}
+
+// ── FAMILIA (Cocina Familiar): la casa come de la misma olla ────────────────
+
+class _TabFamilia extends StatelessWidget {
+  const _TabFamilia({
+    required this.plan,
+    required this.perfiles,
+    required this.nino,
+    required this.miNombre,
+  });
+  final PlanSemana plan;
+  final List<PerfilNutricional> perfiles;
+  final List<ComidaNino> nino;
+  final String miNombre;
+
+  static const _objetivos = {
+    'deficit': 'Bajar de peso',
+    'mantencion': 'Mantención',
+    'ganancia': 'Ganar peso',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+
+    return _Pagina(children: [
+      Text('Cocinas una vez para toda la casa', style: t.headlineSmall),
+      const SizedBox(height: AppSpacing.xs),
+      Text('La misma olla, la porción de cada quien.',
+          style: t.bodyMedium?.copyWith(color: muted)),
+      const SizedBox(height: AppSpacing.lg),
+
+      // Los tres comensales, con su regla.
+      VitaCard(
+        child: Column(
+          children: [
+            for (final p in perfiles)
+              _filaComensal(
+                context,
+                emoji: p.nombre == miNombre ? '👩' : '👨',
+                nombre: p.nombre == miNombre ? 'Tú' : p.nombre,
+                regla: _objetivos[p.objetivo] ?? p.objetivo,
+              ),
+            _filaComensal(
+              context,
+              emoji: '👦',
+              nombre: perfilJuanMiguel.nombre,
+              regla:
+                  '${perfilJuanMiguel.edad} años · que coma y crezca contento',
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: AppSpacing.lg),
+
+      // Alimentación infantil: su semana, con presentación (no gramos).
+      Row(
+        children: [
+          const Text('👦', style: TextStyle(fontSize: 18)),
+          const SizedBox(width: AppSpacing.sm),
+          Text('Para Juan Miguel', style: t.titleMedium),
+        ],
+      ),
+      const SizedBox(height: AppSpacing.xs),
+      Text(perfilJuanMiguel.nota, style: t.bodySmall?.copyWith(color: muted)),
+      const SizedBox(height: AppSpacing.md),
+      for (var i = 0; i < plan.dias.length && i < nino.length; i++) ...[
+        _TarjetaNinoDia(dia: plan.dias[i].nombre, comida: nino[i]),
+        const SizedBox(height: AppSpacing.sm),
+      ],
+    ]);
+  }
+
+  Widget _filaComensal(BuildContext context,
+      {required String emoji, required String nombre, required String regla}) {
+    final t = Theme.of(context).textTheme;
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 20)),
+          const SizedBox(width: AppSpacing.sm),
+          Text(nombre,
+              style: t.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
+          const Spacer(),
+          Flexible(
+            child: Text(regla,
+                textAlign: TextAlign.right,
+                style: t.bodySmall?.copyWith(color: muted)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TarjetaNinoDia extends StatelessWidget {
+  const _TarjetaNinoDia({required this.dia, required this.comida});
+  final String dia;
+  final ComidaNino comida;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return VitaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(dia.toUpperCase(),
+                  style: t.labelSmall
+                      ?.copyWith(color: AppColors.accent, letterSpacing: 1)),
+              const Spacer(),
+              if (comida.usaProduccion)
+                Text('aprovecha lo cocinado',
+                    style: t.labelSmall?.copyWith(color: muted)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text('${comida.emoji} ${comida.nombre}', style: t.titleMedium),
+          const SizedBox(height: AppSpacing.sm),
+          for (final paso in comida.presentacion)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('· ', style: t.bodyMedium?.copyWith(color: muted)),
+                  Expanded(
+                      child: Text(paso,
+                          style: t.bodyMedium?.copyWith(color: muted))),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 
