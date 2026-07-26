@@ -65,6 +65,8 @@ Ensamble _e(
   String nombre,
   String momento,
   List<(String, String, String)> comps, {
+  String? descripcion,
+  String? emoji,
   String frecuencia = Frecuencias.frecuente,
   String? alternativaDe,
   List<String> etiquetas = const [],
@@ -85,6 +87,8 @@ Ensamble _e(
     id: id,
     nombre: nombre,
     momento: momento,
+    descripcion: descripcion,
+    emoji: emoji,
     frecuencia: frecuencia,
     alternativaDe: alternativaDe,
     etiquetas: etiquetas,
@@ -153,8 +157,16 @@ Biblioteca bibliotecaAprobada() {
     _a('frutilla', 'Frutillas', 'fruta',
         kcal: 33, prot: 0.7, carb: 8, fibra: 2),
     _a('uva', 'Uvas', 'fruta', kcal: 69, prot: 0.7, carb: 18, fibra: 0.9),
-    // Grasa
+    _a('maracuya', 'Maracuyá', 'fruta',
+        kcal: 97, prot: 2.2, carb: 23, fibra: 10),
+    // Grasa / especiales de fin de semana
     _a('aceite', 'Aceite', 'grasa', kcal: 884, grasa: 100),
+    _a('mantequilla', 'Mantequilla', 'grasa', kcal: 717, prot: 0.9, grasa: 81),
+    _a('limon', 'Limón', 'fresco', kcal: 29, prot: 1.1, carb: 9, fibra: 2.8),
+    _a('almendras', 'Almendras', 'grasa',
+        kcal: 579, prot: 21, carb: 22, grasa: 50, fibra: 12),
+    _a('esparragos', 'Espárragos', 'verdura',
+        kcal: 20, prot: 2.2, carb: 3.9, fibra: 2.1),
   ];
 
   final preparaciones = <Preparacion>[
@@ -179,6 +191,11 @@ Biblioteca bibliotecaAprobada() {
         tipo: 'terminacion', derivaDe: 'pollo_cocido', mealPrep: true),
     // Carne
     _p('carne_plancha', 'Carne a la plancha', 'carne', tiempoMin: 15),
+    _p('carne_horno', 'Carne al horno', 'carne',
+        tiempoMin: 60, frecuencia: Frecuencias.soloFinde),
+    // Pescado (fin de semana)
+    _p('salmon_horno', 'Salmón al horno', 'salmon',
+        tiempoMin: 25, frecuencia: Frecuencias.soloFinde),
     _p('bolonesa', 'Boloñesa', 'molida',
         congelable: true,
         mealPrep: true,
@@ -198,51 +215,74 @@ Biblioteca bibliotecaAprobada() {
   ];
 
   final ensambles = <Ensamble>[
-    // Desayunos (salados)
+    // ── Desayunos (nombres de menú, salados) ──
     _e(
         'des_arepa_pollo',
-        'Arepa con pollo desmenuzado',
+        'Arepa rellena de pollo',
         Momentos.desayuno,
         [
           ('food', 'arepa', 'base'),
           ('prep', 'pollo_desmenuzado', 'proteina'),
         ],
+        descripcion: 'pollo desmenuzado y jugoso',
+        emoji: '🫓',
         frecuencia: Frecuencias.favoritaFrecuente),
     _e(
         'des_perico',
-        'Perico con arepa',
+        'Perico venezolano',
         Momentos.desayuno,
         [
           ('prep', 'huevo_perico', 'proteina'),
           ('food', 'arepa', 'base'),
         ],
+        descripcion: 'huevo con tomate y cebolla, con arepa',
+        emoji: '🍳',
         frecuencia: Frecuencias.ocasional),
-    _e('des_arepa_queso', 'Arepa con queso', Momentos.desayuno, [
-      ('food', 'arepa', 'base'),
-      ('food', 'queso', 'lacteo'),
-    ]),
+    _e(
+        'des_arepa_queso',
+        'Arepa con queso derretido',
+        Momentos.desayuno,
+        [
+          ('food', 'arepa', 'base'),
+          ('food', 'queso', 'lacteo'),
+        ],
+        descripcion: 'sencilla y reconfortante',
+        emoji: '🧀'),
     _e(
         'des_huevo_palta',
-        'Huevo a la plancha, palta y arepa',
+        'Huevo con palta y arepa',
         Momentos.desayuno,
         [
           ('prep', 'huevo_plancha', 'proteina'),
           ('food', 'palta', 'fresco'),
           ('food', 'arepa', 'base'),
         ],
+        descripcion: 'cremoso, salado, para empezar el día',
+        emoji: '🥑',
         frecuencia: Frecuencias.ocasional),
-    _e('des_tostada_palta', 'Tostada de palta, tomate y quesillo',
-        Momentos.desayuno, [
-      ('food', 'pan', 'base'),
-      ('food', 'palta', 'fresco'),
-      ('food', 'tomate', 'fresco'),
-      ('food', 'quesillo', 'lacteo'),
-    ]),
-    _e('des_arepa_jamonqueso', 'Arepa con jamón y queso', Momentos.desayuno, [
-      ('food', 'arepa', 'base'),
-      ('food', 'jamon', 'proteina'),
-      ('food', 'queso', 'lacteo'),
-    ]),
+    _e(
+        'des_tostada_palta',
+        'Tostada de palta',
+        Momentos.desayuno,
+        [
+          ('food', 'pan', 'base'),
+          ('food', 'palta', 'fresco'),
+          ('food', 'tomate', 'fresco'),
+          ('food', 'quesillo', 'lacteo'),
+        ],
+        descripcion: 'con tomate y quesillo fresco',
+        emoji: '🥑'),
+    _e(
+        'des_arepa_jamonqueso',
+        'Arepa de jamón y queso',
+        Momentos.desayuno,
+        [
+          ('food', 'arepa', 'base'),
+          ('food', 'jamon', 'proteina'),
+          ('food', 'queso', 'lacteo'),
+        ],
+        descripcion: 'el clásico que nunca falla',
+        emoji: '🥪'),
     _e(
         'des_paquecas_queso',
         'Paquecas con queso',
@@ -251,12 +291,14 @@ Biblioteca bibliotecaAprobada() {
           ('food', 'paquecas', 'base'),
           ('food', 'queso', 'lacteo'),
         ],
+        descripcion: 'esponjosas, para consentirte',
+        emoji: '🥞',
         frecuencia: Frecuencias.ocasional),
 
-    // Almuerzos (Lun–Vie)
+    // ── Almuerzos entre semana (Lun–Vie) ──
     _e(
         'alm_pollo_arroz',
-        'Pollo a la plancha con arroz y ensalada',
+        'Pollo mediterráneo',
         Momentos.almuerzo,
         [
           ('prep', 'pollo_plancha', 'proteina'),
@@ -268,97 +310,155 @@ Biblioteca bibliotecaAprobada() {
           ('food', 'palta', 'fresco'),
           ('food', 'aceite', 'aliño'),
         ],
+        descripcion: 'con arroz al ajo y ensalada fresca',
+        emoji: '🍗',
         frecuencia: Frecuencias.favoritaFrecuente),
-    _e('alm_carne_arroz', 'Carne a la plancha con arroz y ensalada',
-        Momentos.almuerzo, [
-      ('prep', 'carne_plancha', 'proteina'),
-      ('prep', 'arroz', 'base'),
-      ('food', 'tomate', 'fresco'),
-      ('food', 'pepino', 'verdura'),
-      ('food', 'palta', 'fresco'),
-      ('food', 'aceite', 'aliño'),
-    ]),
-    _e('alm_pasta_atun', 'Pasta con atún y tomate', Momentos.almuerzo, [
-      ('prep', 'atun_mezcla', 'proteina'),
-      ('prep', 'pasta_cocida', 'base'),
-      ('food', 'tomate', 'fresco'),
-    ]),
-    _e('alm_pollo_salteado', 'Pollo salteado con verduras y arroz',
-        Momentos.almuerzo, [
-      ('prep', 'pollo_salteado', 'proteina'),
-      ('prep', 'arroz', 'base'),
-      ('food', 'pimenton', 'verdura'),
-      ('food', 'zanahoria', 'verdura'),
-      ('food', 'brocoli', 'verdura'),
-    ]),
-    _e('alm_bolonesa', 'Boloñesa con pasta', Momentos.almuerzo, [
-      ('prep', 'bolonesa', 'proteina'),
-      ('prep', 'pasta_cocida', 'base'),
-      ('food', 'tomate', 'fresco'),
-    ]),
+    _e(
+        'alm_carne_arroz',
+        'Carne a la plancha',
+        Momentos.almuerzo,
+        [
+          ('prep', 'carne_plancha', 'proteina'),
+          ('prep', 'arroz', 'base'),
+          ('food', 'tomate', 'fresco'),
+          ('food', 'pepino', 'verdura'),
+          ('food', 'palta', 'fresco'),
+          ('food', 'aceite', 'aliño'),
+        ],
+        descripcion: 'con arroz blanco y ensalada de la casa',
+        emoji: '🥩'),
+    _e(
+        'alm_pasta_atun',
+        'Pasta marinera de atún',
+        Momentos.almuerzo,
+        [
+          ('prep', 'atun_mezcla', 'proteina'),
+          ('prep', 'pasta_cocida', 'base'),
+          ('food', 'tomate', 'fresco'),
+        ],
+        descripcion: 'con tomate natural',
+        emoji: '🍝'),
+    _e(
+        'alm_pollo_salteado',
+        'Pollo salteado oriental',
+        Momentos.almuerzo,
+        [
+          ('prep', 'pollo_salteado', 'proteina'),
+          ('prep', 'arroz', 'base'),
+          ('food', 'pimenton', 'verdura'),
+          ('food', 'zanahoria', 'verdura'),
+          ('food', 'brocoli', 'verdura'),
+        ],
+        descripcion: 'con verduras crocantes y arroz',
+        emoji: '🥢'),
+    _e(
+        'alm_bolonesa',
+        'Pasta boloñesa',
+        Momentos.almuerzo,
+        [
+          ('prep', 'bolonesa', 'proteina'),
+          ('prep', 'pasta_cocida', 'base'),
+          ('food', 'tomate', 'fresco'),
+        ],
+        descripcion: 'salsa de carne lenta con tomate',
+        emoji: '🍝'),
 
-    // Meriendas (solo lista aprobada)
-    _e('mer_platano_leche', 'Plátano con leche', Momentos.merienda, [
-      ('food', 'platano', 'fruta'),
-      ('food', 'leche', 'lacteo'),
-    ]),
-    _e('mer_manzana', 'Manzana', Momentos.merienda, [
-      ('food', 'manzana', 'fruta'),
-    ]),
-    _e('mer_uva', 'Uvas', Momentos.merienda, [
-      ('food', 'uva', 'fruta'),
-    ]),
-    _e('mer_platano', 'Plátano', Momentos.merienda, [
-      ('food', 'platano', 'fruta'),
-    ]),
+    // ── Meriendas (solo lista aprobada) ──
+    _e(
+        'mer_platano_leche',
+        'Plátano con leche',
+        Momentos.merienda,
+        [
+          ('food', 'platano', 'fruta'),
+          ('food', 'leche', 'lacteo'),
+        ],
+        emoji: '🥛'),
+    _e(
+        'mer_manzana',
+        'Manzana fresca',
+        Momentos.merienda,
+        [
+          ('food', 'manzana', 'fruta'),
+        ],
+        emoji: '🍎'),
+    _e(
+        'mer_uva',
+        'Uvas',
+        Momentos.merienda,
+        [
+          ('food', 'uva', 'fruta'),
+        ],
+        emoji: '🍇'),
+    _e(
+        'mer_platano',
+        'Plátano',
+        Momentos.merienda,
+        [
+          ('food', 'platano', 'fruta'),
+        ],
+        emoji: '🍌'),
     _e(
         'mer_batido_frutilla',
-        'Batido de leche con frutillas',
+        'Batido de frutillas',
         Momentos.merienda,
         [
           ('food', 'leche', 'lacteo'),
           ('food', 'frutilla', 'fruta'),
         ],
+        descripcion: 'leche y frutillas, cremoso',
+        emoji: '🥤',
         frecuencia: Frecuencias.ocasional,
         etiquetas: ['batido']),
 
-    // Fin de semana (concreto) + sus alternativas
+    // ── Fin de semana: comida bonita casera (no comida rápida) ──
     _e(
-        'fin_fajitas',
-        'Fajitas de pollo con vegetales',
+        'fin_salmon',
+        'Salmón al horno',
         Momentos.finde,
         [
-          ('prep', 'pollo_plancha', 'proteina'),
-          ('food', 'pan', 'base'),
-          ('food', 'pimenton', 'verdura'),
-          ('food', 'cebolla', 'verdura'),
+          ('prep', 'salmon_horno', 'proteina'),
+          ('food', 'papa', 'base'),
+          ('food', 'mantequilla', 'aliño'),
+          ('food', 'limon', 'aliño'),
+          ('food', 'esparragos', 'verdura'),
+          ('food', 'maracuya', 'fruta'),
         ],
+        descripcion:
+            'con mantequilla de ajo, papas baby, espárragos y jugo de maracuyá',
+        emoji: '🐟',
         frecuencia: Frecuencias.soloFinde),
     _e(
-        'fin_pollo_horno',
-        'Pollo al horno con papas',
+        'fin_pollo_relleno',
+        'Pollo relleno',
         Momentos.finde,
         [
           ('prep', 'pollo_plancha', 'proteina'),
           ('prep', 'arroz', 'base'),
-          ('food', 'papa', 'base'),
+          ('food', 'almendras', 'aliño'),
+          ('food', 'tomate', 'fresco'),
+          ('food', 'lechuga', 'verdura'),
         ],
+        descripcion: 'con arroz de almendras y ensalada tropical',
+        emoji: '🍗',
         frecuencia: Frecuencias.soloFinde,
-        alternativaDe: 'fin_fajitas'),
+        alternativaDe: 'fin_salmon'),
     _e(
-        'fin_pizza',
-        'Pizza casera de pollo y vegetales',
+        'fin_carne_horno',
+        'Carne al horno',
         Momentos.finde,
         [
-          ('food', 'pan', 'base'),
-          ('prep', 'pollo_desmenuzado', 'proteina'),
+          ('prep', 'carne_horno', 'proteina'),
+          ('food', 'papa', 'base'),
           ('food', 'queso', 'lacteo'),
+          ('food', 'lechuga', 'verdura'),
           ('food', 'tomate', 'fresco'),
         ],
+        descripcion: 'con papas gratinadas y ensalada César',
+        emoji: '🥩',
         frecuencia: Frecuencias.soloFinde),
     _e(
         'fin_parrilla',
-        'Parrilla con ensalada y papa',
+        'Parrilla del domingo',
         Momentos.finde,
         [
           ('prep', 'carne_plancha', 'proteina'),
@@ -366,8 +466,10 @@ Biblioteca bibliotecaAprobada() {
           ('food', 'tomate', 'fresco'),
           ('food', 'lechuga', 'verdura'),
         ],
+        descripcion: 'carnes a la parrilla, papas y ensalada',
+        emoji: '🔥',
         frecuencia: Frecuencias.soloFinde,
-        alternativaDe: 'fin_pizza'),
+        alternativaDe: 'fin_carne_horno'),
   ];
 
   return Biblioteca(

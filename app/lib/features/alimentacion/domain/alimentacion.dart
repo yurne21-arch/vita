@@ -304,6 +304,8 @@ class Ensamble {
     required this.id,
     required this.nombre,
     required this.momento,
+    this.descripcion,
+    this.emoji,
     this.frecuencia = Frecuencias.frecuente,
     this.etiquetas = const [],
     this.estado = 'ok',
@@ -316,6 +318,8 @@ class Ensamble {
   final String id;
   final String nombre;
   final String momento; // desayuno|almuerzo|merienda|finde
+  final String? descripcion; // acompañamiento apetitoso ("con arroz al ajo…")
+  final String? emoji; // ícono de la comida ("🍗")
   final String frecuencia;
   final List<String> etiquetas;
   final String estado; // ok|ajustar|quitar
