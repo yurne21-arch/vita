@@ -250,8 +250,6 @@ class _Hoy extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                     letterSpacing: -.4)),
           ),
-          const SizedBox(width: 16),
-          _FilledBtn('Hecho', primary: true, onTap: () {}),
         ]),
         const SizedBox(height: 26),
         if (almuerzo != null) ...[
@@ -300,7 +298,7 @@ class _Hoy extends StatelessWidget {
         _tip(tip),
         const SizedBox(height: 26),
         InkWell(
-          onTap: () {},
+          onTap: () => DefaultTabController.of(context).animateTo(3),
           child: Padding(
             padding: const EdgeInsets.only(top: 22),
             child: Row(children: [
@@ -772,14 +770,14 @@ class _PhaseTileState extends State<_PhaseTile> {
 
 // ── COMPRAS: ¿qué compro primero? ───────────────────────────────────────────
 
-class _Compras extends StatefulWidget {
+class _Compras extends ConsumerStatefulWidget {
   const _Compras({required this.plan});
   final PlanSemana plan;
   @override
-  State<_Compras> createState() => _ComprasState();
+  ConsumerState<_Compras> createState() => _ComprasState();
 }
 
-class _ComprasState extends State<_Compras> {
+class _ComprasState extends ConsumerState<_Compras> {
   // estado por ítem: 0 falta · 1 en carro · 2 comprado
   final _estado = <String, int>{};
   // Día elegido para la compra (lo cambia la usuaria).
@@ -830,8 +828,10 @@ class _ComprasState extends State<_Compras> {
                 fontWeight: FontWeight.w700,
                 letterSpacing: -.5)),
         const SizedBox(height: 5),
-        Text('Compra quincenal · 3 – 16 de agosto · para tu familia',
+        Text('Registra tus compras y se guardan en Finanzas.',
             style: TextStyle(color: _t.muted, fontSize: 14.5)),
+        const SizedBox(height: 20),
+        _misCompras(),
         const SizedBox(height: 22),
         _band(),
         const SizedBox(height: 22),
@@ -860,6 +860,179 @@ class _ComprasState extends State<_Compras> {
           ]),
         ),
       ]),
+    );
+  }
+
+  String _plata(double? n) =>
+      '\$${(n ?? 0).round().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]}.')}';
+
+  Widget _misCompras() {
+    final compras = ref.watch(comprasProvider);
+    return VitaCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          _kicker('Tus compras'),
+          const Spacer(),
+          TextButton.icon(
+            onPressed: _agregarCompra,
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Agregar compra'),
+          ),
+        ]),
+        compras.when(
+          loading: () => const Padding(
+              padding: EdgeInsets.all(12),
+              child: Center(child: CircularProgressIndicator())),
+          error: (e, _) => Text(mensajeDeError(e),
+              style: TextStyle(color: _t.muted, fontSize: 13)),
+          data: (list) => list.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 6, bottom: 4),
+                  child: Text(
+                      'Aún no registras compras. Puedes registrar varias (uno o varios supermercados, en distintos días); cada una se guarda en Finanzas como Alimentación.',
+                      style: TextStyle(color: _t.muted, fontSize: 13.5)),
+                )
+              : Column(
+                  children: [
+                    for (final c in list)
+                      Container(
+                        decoration: BoxDecoration(
+                            border:
+                                Border(top: BorderSide(color: _t.hairSoft))),
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        child: Row(children: [
+                          Icon(Icons.storefront_outlined,
+                              size: 18, color: _t.accent),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                      c.supermercado?.isNotEmpty == true
+                                          ? c.supermercado!
+                                          : 'Compra',
+                                      style: TextStyle(
+                                          color: _t.ink,
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w600)),
+                                  Text(
+                                      '${c.fecha.day}/${c.fecha.month}/${c.fecha.year}',
+                                      style: TextStyle(
+                                          color: _t.muted, fontSize: 12.5)),
+                                ]),
+                          ),
+                          Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(_plata(c.monto),
+                                    style: TextStyle(
+                                        color: _t.ink,
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w700)),
+                                if (c.comprada)
+                                  Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.check,
+                                            size: 12, color: _t.success),
+                                        const SizedBox(width: 3),
+                                        Text('En Finanzas',
+                                            style: TextStyle(
+                                                color: _t.success,
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w600)),
+                                      ]),
+                              ]),
+                        ]),
+                      ),
+                  ],
+                ),
+        ),
+      ]),
+    );
+  }
+
+  Future<void> _agregarCompra() async {
+    final superCtrl = TextEditingController();
+    final montoCtrl = TextEditingController();
+    var fecha = DateTime.now();
+    final repo = ref.read(alimentacionRepositoryProvider);
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: const Text('Registrar compra'),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(
+                controller: superCtrl,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(labelText: 'Supermercado')),
+            const SizedBox(height: 12),
+            TextField(
+                controller: montoCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                    labelText: 'Monto', prefixText: '\$ ')),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(
+                  child:
+                      Text('Día: ${fecha.day}/${fecha.month}/${fecha.year}')),
+              TextButton(
+                onPressed: () async {
+                  final d = await showDatePicker(
+                    context: ctx,
+                    initialDate: fecha,
+                    firstDate: DateTime(fecha.year - 1),
+                    lastDate: DateTime(fecha.year + 1),
+                  );
+                  if (d != null) setD(() => fecha = d);
+                },
+                child: const Text('Cambiar'),
+              ),
+            ]),
+          ]),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancelar')),
+            FilledButton(
+              onPressed: () async {
+                final monto = double.tryParse(
+                    montoCtrl.text.replaceAll(RegExp(r'[^0-9]'), ''));
+                if (monto == null || monto <= 0) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                      content: Text('Ingresa el monto de la compra.')));
+                  return;
+                }
+                try {
+                  final c = await repo.crearCompra(
+                    supermercado: superCtrl.text.trim().isEmpty
+                        ? null
+                        : superCtrl.text.trim(),
+                    fecha: fecha,
+                    monto: monto,
+                  );
+                  await repo.registrarEnFinanzas(c);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  ref.invalidate(comprasProvider);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Compra registrada en Finanzas')));
+                  }
+                } catch (e) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                        SnackBar(content: Text(mensajeDeError(e))));
+                  }
+                }
+              },
+              child: const Text('Registrar'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1104,19 +1277,6 @@ class _ComprasState extends State<_Compras> {
 }
 
 // ── botones (del sistema de diseño compartido) ──────────────────────────────
-
-class _FilledBtn extends StatelessWidget {
-  const _FilledBtn(this.label, {this.primary = false, required this.onTap});
-  final String label;
-  final bool primary;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) {
-    return primary
-        ? FilledButton(onPressed: onTap, child: Text(label))
-        : OutlinedButton(onPressed: onTap, child: Text(label));
-  }
-}
 
 class _GhostBtn extends StatelessWidget {
   const _GhostBtn(this.label, {required this.onTap});

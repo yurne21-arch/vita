@@ -40,3 +40,10 @@ final planSemanaProvider = FutureProvider<PlanSemana>((ref) async {
     inicioSemana: inicio,
   );
 });
+
+/// Las compras registradas de la usuaria (viajes al súper, con su gasto en
+/// Finanzas). Se puede registrar cuantas se quiera (varios supermercados).
+final comprasProvider = FutureProvider<List<Compra>>((ref) async {
+  ref.watch(usuarioActualProvider);
+  return ref.read(alimentacionRepositoryProvider).compras();
+});
