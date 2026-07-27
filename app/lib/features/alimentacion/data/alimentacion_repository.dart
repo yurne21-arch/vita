@@ -113,4 +113,140 @@ class AlimentacionRepository {
           'peso_kg': pesoKg,
         }, onConflict: 'user_id, persona, fecha');
       });
+
+  // ── Compras (con trazabilidad a Finanzas) ────────────────────
+
+  Future<List<Compra>> compras() => _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('nutrition_compras')
+            .select()
+            .eq('user_id', userId)
+            .order('fecha', ascending: false);
+        return (rows as List)
+            .map((m) => Compra.fromMap(m as Map<String, dynamic>))
+            .toList();
+      });
+
+  Future<Compra> crearCompra({
+    String tipo = 'quincenal',
+    String? supermercado,
+    required DateTime fecha,
+    DateTime? periodoInicio,
+    DateTime? periodoFin,
+    double? monto,
+    double? presupuesto,
+  }) =>
+      _guard(() async {
+        final userId = _userId();
+        final row = await _c
+            .from('nutrition_compras')
+            .insert({
+              'user_id': userId,
+              'tipo': tipo,
+              'supermercado': supermercado,
+              'fecha': _fecha(fecha),
+              'periodo_inicio':
+                  periodoInicio == null ? null : _fecha(periodoInicio),
+              'periodo_fin': periodoFin == null ? null : _fecha(periodoFin),
+              'monto': monto,
+              'presupuesto': presupuesto,
+            })
+            .select()
+            .single();
+        return Compra.fromMap(row);
+      });
+
+  Future<void> actualizarCompra(Compra c) => _guard(() async {
+        final userId = _userId();
+        await _c
+            .from('nutrition_compras')
+            .update({
+              'supermercado': c.supermercado,
+              'fecha': _fecha(c.fecha),
+              'monto': c.monto,
+              'presupuesto': c.presupuesto,
+              'nota': c.nota,
+            })
+            .eq('id', c.id)
+            .eq('user_id', userId);
+      });
+
+  /// Registra la compra en Finanzas como gasto de Alimentación (de aquí en
+  /// adelante) y guarda el vínculo `finance_tx_id`. Requiere monto > 0.
+  /// Comunicación entre módulos a nivel de datos: escribe la tabla de Finanzas,
+  /// sin importar su código (los features no se importan entre sí).
+  Future<Compra> registrarEnFinanzas(Compra c) => _guard(() async {
+        final userId = _userId();
+        final monto = c.monto ?? 0;
+        if (monto <= 0) {
+          throw const AlimentacionException(
+              'Ingresa el monto de la compra antes de registrarla.');
+        }
+        final tx = await _c
+            .from('finance_transactions')
+            .insert({
+              'user_id': userId,
+              'tipo': 'gasto',
+              'monto': monto,
+              'categoria': 'Alimentación',
+              'ambito': 'casa',
+              'nota': (c.supermercado == null || c.supermercado!.isEmpty)
+                  ? 'Compra de alimentación'
+                  : 'Compra · ${c.supermercado}',
+              'fecha': _fecha(c.fecha),
+            })
+            .select('id')
+            .single();
+        final txId = tx['id'] as String;
+        await _c
+            .from('nutrition_compras')
+            .update({'estado': 'comprada', 'finance_tx_id': txId})
+            .eq('id', c.id)
+            .eq('user_id', userId);
+        return Compra(
+          id: c.id,
+          tipo: c.tipo,
+          supermercado: c.supermercado,
+          fecha: c.fecha,
+          periodoInicio: c.periodoInicio,
+          periodoFin: c.periodoFin,
+          monto: c.monto,
+          estado: 'comprada',
+          financeTxId: txId,
+          presupuesto: c.presupuesto,
+          nota: c.nota,
+        );
+      });
+
+  Future<List<CompraItem>> itemsDeCompra(String compraId) => _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('nutrition_compra_items')
+            .select()
+            .eq('user_id', userId)
+            .eq('compra_id', compraId)
+            .order('created_at');
+        return (rows as List)
+            .map((m) => CompraItem.fromMap(m as Map<String, dynamic>))
+            .toList();
+      });
+
+  Future<void> guardarItemCompra(CompraItem it) => _guard(() async {
+        final userId = _userId();
+        await _c.from('nutrition_compra_items').upsert({
+          'id': it.id,
+          'user_id': userId,
+          'compra_id': it.compraId,
+          'food_id': it.foodId,
+          'nombre': it.nombre,
+          'categoria': it.categoria,
+          'cantidad': it.cantidad,
+          'unidad': it.unidad,
+          'precio': it.precio,
+          'estado': it.estado,
+          'ya_tengo': it.yaTengo,
+          'sustituto': it.sustituto,
+        });
+      });
 }

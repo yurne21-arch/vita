@@ -486,3 +486,96 @@ class RegistroPeso {
         nota: m['nota'] as String?,
       );
 }
+
+/// Una compra: un viaje al supermercado en una fecha, con su monto. Su gasto se
+/// registra en Finanzas (`financeTxId`) para dejar el rastro entre módulos.
+class Compra {
+  const Compra({
+    required this.id,
+    this.tipo = 'quincenal',
+    this.supermercado,
+    required this.fecha,
+    this.periodoInicio,
+    this.periodoFin,
+    this.monto,
+    this.estado = 'planificada',
+    this.financeTxId,
+    this.presupuesto,
+    this.nota,
+  });
+
+  final String id;
+  final String tipo; // quincenal | reposicion
+  final String? supermercado;
+  final DateTime fecha;
+  final DateTime? periodoInicio;
+  final DateTime? periodoFin;
+  final double? monto; // total, editable
+  final String estado; // planificada | comprada
+  final String? financeTxId; // gasto asociado en Finanzas
+  final double? presupuesto;
+  final String? nota;
+
+  bool get comprada => estado == 'comprada';
+
+  factory Compra.fromMap(Map<String, dynamic> m) => Compra(
+        id: m['id'] as String,
+        tipo: (m['tipo'] as String?) ?? 'quincenal',
+        supermercado: m['supermercado'] as String?,
+        fecha: DateTime.parse(m['fecha'] as String),
+        periodoInicio: m['periodo_inicio'] == null
+            ? null
+            : DateTime.parse(m['periodo_inicio'] as String),
+        periodoFin: m['periodo_fin'] == null
+            ? null
+            : DateTime.parse(m['periodo_fin'] as String),
+        monto: (m['monto'] as num?)?.toDouble(),
+        estado: (m['estado'] as String?) ?? 'planificada',
+        financeTxId: m['finance_tx_id'] as String?,
+        presupuesto: (m['presupuesto'] as num?)?.toDouble(),
+        nota: m['nota'] as String?,
+      );
+}
+
+/// Un ítem de una compra, con su precio y estado (falta / en carro / comprado).
+class CompraItem {
+  const CompraItem({
+    required this.id,
+    required this.compraId,
+    this.foodId,
+    required this.nombre,
+    this.categoria,
+    this.cantidad,
+    this.unidad,
+    this.precio,
+    this.estado = 'falta',
+    this.yaTengo = false,
+    this.sustituto,
+  });
+
+  final String id;
+  final String compraId;
+  final String? foodId;
+  final String nombre;
+  final String? categoria;
+  final double? cantidad;
+  final String? unidad; // unidad humana: kg · u · litro · paquete
+  final double? precio;
+  final String estado; // falta | en_carro | comprado
+  final bool yaTengo;
+  final String? sustituto;
+
+  factory CompraItem.fromMap(Map<String, dynamic> m) => CompraItem(
+        id: m['id'] as String,
+        compraId: m['compra_id'] as String,
+        foodId: m['food_id'] as String?,
+        nombre: m['nombre'] as String,
+        categoria: m['categoria'] as String?,
+        cantidad: (m['cantidad'] as num?)?.toDouble(),
+        unidad: m['unidad'] as String?,
+        precio: (m['precio'] as num?)?.toDouble(),
+        estado: (m['estado'] as String?) ?? 'falta',
+        yaTengo: (m['ya_tengo'] as bool?) ?? false,
+        sustituto: m['sustituto'] as String?,
+      );
+}
