@@ -29,6 +29,7 @@ class MiMesScreen extends ConsumerWidget {
       backgroundColor: cs.surface,
       appBar: AppBar(
         title: const Text('Mi Mes'),
+        titleSpacing: AppSpacing.lg,
         backgroundColor: cs.surface,
         scrolledUnderElevation: 0,
       ),

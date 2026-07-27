@@ -54,7 +54,7 @@ class AlimentacionScreen extends ConsumerWidget {
           backgroundColor: cs.surface,
           scrolledUnderElevation: 0,
           titleSpacing: 24,
-          title: const Text('Alimentación'),
+          title: const Text('Comida'),
           bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,

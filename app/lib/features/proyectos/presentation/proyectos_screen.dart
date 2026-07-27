@@ -36,6 +36,7 @@ class ProyectosScreen extends ConsumerWidget {
       backgroundColor: bg,
       appBar: AppBar(
         title: const Text('Proyectos'),
+        titleSpacing: AppSpacing.lg,
         backgroundColor: bg,
         scrolledUnderElevation: 0,
         actions: [
@@ -342,7 +343,7 @@ class _HeroVacio extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
               ),
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('Crear proyecto'),
+              label: const Text('Nuevo proyecto'),
             ),
           ),
         ],

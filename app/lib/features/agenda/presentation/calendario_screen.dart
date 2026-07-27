@@ -165,6 +165,7 @@ class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
       backgroundColor: bg,
       appBar: AppBar(
         title: const Text('Calendario'),
+        titleSpacing: AppSpacing.lg,
         backgroundColor: bg,
         scrolledUnderElevation: 0,
       ),
@@ -974,7 +975,7 @@ class _ContenidoDia extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12)),
               ),
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('Agregar evento'),
+              label: const Text('Nuevo evento'),
             ),
           ),
         ),

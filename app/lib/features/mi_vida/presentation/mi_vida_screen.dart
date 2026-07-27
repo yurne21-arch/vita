@@ -713,7 +713,7 @@ class _Agenda extends ConsumerWidget {
                 onPressed: () => mostrarEditorEvento(context, ref,
                     fechaSugerida:
                         DateTime(ahora.year, ahora.month, ahora.day)),
-                tooltip: 'Agendar evento',
+                tooltip: 'Nuevo evento',
                 visualDensity: VisualDensity.compact,
                 icon: const Icon(Icons.add, size: 18, color: AppColors.accent),
               ),
