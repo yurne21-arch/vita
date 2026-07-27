@@ -23,6 +23,8 @@ import '../../proyectos/presentation/projects_controller.dart';
 import '../../proyectos/presentation/proyecto_detalle_screen.dart';
 import '../../proyectos/presentation/proyecto_editores.dart';
 import '../../proyectos/presentation/proyectos_widgets.dart';
+import '../../alimentacion/domain/alimentacion.dart';
+import '../../alimentacion/presentation/alimentacion_controller.dart';
 
 const EdgeInsets _kCardPad = EdgeInsets.fromLTRB(20, 18, 20, 18);
 const double _kGap = 12;
@@ -108,6 +110,8 @@ class _DesktopLayout extends StatelessWidget {
                   flex: 5,
                   child: Column(
                     children: [
+                      _ComidaHoy(),
+                      SizedBox(height: _kGap),
                       _ProyectoPrincipal(),
                       SizedBox(height: _kGap),
                       _Habitos(),
@@ -142,6 +146,8 @@ class _TabletLayout extends StatelessWidget {
         SizedBox(height: _kGap),
         _Agenda(),
         SizedBox(height: _kGap),
+        _ComidaHoy(),
+        SizedBox(height: _kGap),
         _ProyectoPrincipal(),
         SizedBox(height: _kGap),
         _Habitos(),
@@ -169,6 +175,8 @@ class _MobileLayout extends StatelessWidget {
         _Prioridades(),
         SizedBox(height: _kGap),
         _Agenda(),
+        SizedBox(height: _kGap),
+        _ComidaHoy(),
         SizedBox(height: _kGap),
         _ProyectoPrincipal(),
         SizedBox(height: _kGap),
@@ -1157,6 +1165,219 @@ class _Habitos extends ConsumerWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Bloque "Tu comida de hoy" en Mi Vida: desayuno, almuerzo y merienda del día
+/// según el plan (con el cambio que la usuaria haya hecho en Comida → Menú), y
+/// deja marcar comí / no comí aquí mismo. Es la MISMA capa de estados
+/// (nutrition_meal_state) que usa Menú, así que lo que marca aquí se ve allá y
+/// viceversa: congruencia y trazabilidad entre módulos.
+class _ComidaHoy extends ConsumerWidget {
+  const _ComidaHoy();
+
+  static const _nombreMomento = {
+    'desayuno': 'Desayuno',
+    'almuerzo': 'Almuerzo',
+    'merienda': 'Merienda',
+    'finde': 'Especial',
+  };
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final planAsync = ref.watch(planSemanaProvider);
+    final estados = ref.watch(estadosComidaProvider).valueOrNull ??
+        const <String, EstadoComida>{};
+    final biblioteca = ref.watch(bibliotecaProvider);
+
+    return VitaCard(
+      padding: _kCardPad,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Eyebrow('TU COMIDA DE HOY'),
+              IconButton(
+                tooltip: 'Ver Comida',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.restaurant_menu,
+                    size: 18, color: AppColors.accent),
+                onPressed: () => context.go('/alimentacion'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          planAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => ErrorEnTarjeta(
+              mensaje: mensajeDeError(e),
+              onReintentar: () => ref.invalidate(planSemanaProvider),
+            ),
+            data: (plan) {
+              final hoy = plan.diaDe(DateTime.now());
+              if (hoy == null || hoy.comidas.isEmpty) {
+                return const _EmptyHint(
+                  icon: Icons.restaurant_outlined,
+                  title: 'Hoy no hay comidas en el plan.',
+                  subtitle: 'Abre Comida para ajustarlo.',
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final c in hoy.comidas)
+                    _ComidaHoyFila(
+                      fecha: hoy.fecha,
+                      momento: c.momento,
+                      titulo: _nombreMomento[c.momento] ?? c.momento,
+                      ensamble: biblioteca.ensamble(estados[
+                                  EstadoComida.claveDe(hoy.fecha, c.momento)]
+                              ?.assemblyId) ??
+                          c.ensamble,
+                      estado:
+                          estados[EstadoComida.claveDe(hoy.fecha, c.momento)]
+                                  ?.estado ??
+                              'planeado',
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Una fila del bloque de comida del día: la comida (con su emoji) y el toggle
+/// comí / no comí. Guarda el estado y refresca; conserva el cambio de comida
+/// (assemblyId) que la usuaria haya hecho en Menú.
+class _ComidaHoyFila extends ConsumerWidget {
+  const _ComidaHoyFila({
+    required this.fecha,
+    required this.momento,
+    required this.titulo,
+    required this.ensamble,
+    required this.estado,
+  });
+
+  final DateTime fecha;
+  final String momento;
+  final String titulo;
+  final Ensamble ensamble;
+  final String estado;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final comido = estado == 'comido';
+    final noComido = estado == 'no_comido';
+
+    Future<void> marcar(String nuevo) => accionSegura(context, () async {
+          await ref.read(alimentacionRepositoryProvider).guardarEstadoComida(
+                fecha: fecha,
+                momento: momento,
+                assemblyId: ensamble.id,
+                estado: estado == nuevo ? 'planeado' : nuevo,
+              );
+          ref.invalidate(estadosComidaProvider);
+        });
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Row(
+        children: [
+          if (ensamble.emoji != null) ...[
+            Text(ensamble.emoji!, style: const TextStyle(fontSize: 18)),
+            const SizedBox(width: AppSpacing.sm),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  titulo.toUpperCase(),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: AppColors.lightMuted,
+                    letterSpacing: 0.4,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  ensamble.nombre,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: noComido ? AppColors.lightMuted : AppColors.lightInk,
+                    decoration: noComido ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          _MiniToggle(
+            label: 'Comí',
+            activo: comido,
+            color: AppColors.success,
+            onTap: () => marcar('comido'),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          _MiniToggle(
+            label: 'No',
+            activo: noComido,
+            color: AppColors.lightMuted,
+            onTap: () => marcar('no_comido'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Chip pequeño de dos estados (marcado / sin marcar) para comí / no comí.
+class _MiniToggle extends StatelessWidget {
+  const _MiniToggle({
+    required this.label,
+    required this.activo,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool activo;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: activo ? color : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: activo ? color : AppColors.lightHairline,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: activo ? Colors.white : AppColors.lightMuted,
+          ),
+        ),
       ),
     );
   }
