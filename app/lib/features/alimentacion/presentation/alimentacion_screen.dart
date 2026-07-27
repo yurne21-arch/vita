@@ -782,6 +782,10 @@ class _ComprasState extends ConsumerState<_Compras> {
   final _estado = <String, int>{};
   // Día elegido para la compra (lo cambia la usuaria).
   String _diaElegido = 'Mié 29';
+  // Categoría filtrada en la lista (null = todas).
+  String? _filtroCat;
+
+  int _st(ItemCompra it) => _estado['${it.categoria}/${it.nombre}'] ?? 0;
 
   static const _cat = {
     'proteina': (Icons.restaurant, 'Carnes y proteínas'),
@@ -837,12 +841,13 @@ class _ComprasState extends ConsumerState<_Compras> {
         const SizedBox(height: 22),
         _despensa(),
         const SizedBox(height: 20),
-        _route(),
+        _filtros(grupos.keys.toList()),
         const SizedBox(height: 16),
         _legend(),
         const SizedBox(height: 20),
         for (final e in grupos.entries)
-          _grupo(e.key, e.value.icon, e.value.items),
+          if (_filtroCat == null || _filtroCat == e.key)
+            _grupo(e.key, e.value.icon, e.value.items),
         const SizedBox(height: 24),
         Container(
           width: double.infinity,
@@ -1135,38 +1140,33 @@ class _ComprasState extends ConsumerState<_Compras> {
         ]),
       );
 
-  Widget _route() {
-    Widget r(String s, {bool on = false, bool done = false}) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-              color: on ? _t.accent : _t.panel,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: on ? _t.accent : _t.hairSoft)),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            if (done) ...[
-              Icon(Icons.check, size: 15, color: _t.success),
-              const SizedBox(width: 8)
-            ],
-            Text(s,
+  Widget _filtros(List<String> cats) {
+    Widget chip(String label, String? cat) {
+      final sel = _filtroCat == cat;
+      return Padding(
+        padding: const EdgeInsets.only(right: 8, bottom: 8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: () => setState(() => _filtroCat = cat),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+                color: sel ? _t.accent : _t.panel,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: sel ? _t.accent : _t.hairSoft)),
+            child: Text(label,
                 style: TextStyle(
-                    color: on
-                        ? const Color(0xFF141219)
-                        : (done ? _t.success : _t.muted),
+                    color: sel ? Colors.white : _t.ink2,
                     fontSize: 13,
                     fontWeight: FontWeight.w600)),
-          ]),
-        );
-    Widget arw() => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Icon(Icons.chevron_right, size: 15, color: _t.muted));
-    return Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
-      r('Carnes', done: true),
-      arw(),
-      r('Verduras', on: true),
-      arw(),
-      r('Lácteos'),
-      arw(),
-      r('Despensa'),
+          ),
+        ),
+      );
+    }
+
+    return Wrap(children: [
+      chip('Todo', null),
+      for (final c in cats) chip(c, c),
     ]);
   }
 
@@ -1207,9 +1207,14 @@ class _ComprasState extends ConsumerState<_Compras> {
         const SizedBox(height: 4),
         LayoutBuilder(builder: (context, c) {
           final cols = c.maxWidth >= 900 ? 3 : (c.maxWidth >= 560 ? 2 : 1);
+          // Pendientes arriba, comprados abajo (sin reordenar entre sí).
+          final ordenados = [
+            ...items.where((it) => _st(it) != 2),
+            ...items.where((it) => _st(it) == 2),
+          ];
           return Wrap(
             children: [
-              for (final it in items)
+              for (final it in ordenados)
                 SizedBox(width: c.maxWidth / cols - 16, child: _item(it)),
             ],
           );
