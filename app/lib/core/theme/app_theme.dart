@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 import 'app_spacing.dart';
 
-/// Construye los temas claro y oscuro de VITA.
-/// Minimalismo premium: superficies limpias, pocas líneas, acento verde oliva.
+/// Construye los temas claro y oscuro de VITA (Design System v2).
+/// Base cálida luminosa, superficies limpias delimitadas por hairline, marca jade.
 abstract class AppTheme {
   const AppTheme._();
 
@@ -28,6 +28,7 @@ abstract class AppTheme {
         scaffold: AppColors.lightBg,
         muted: AppColors.lightMuted,
         hairline: AppColors.lightHairline,
+        sunken: AppColors.lightSunken,
       );
 
   static ThemeData dark() => _base(
@@ -47,6 +48,7 @@ abstract class AppTheme {
         scaffold: AppColors.darkBg,
         muted: AppColors.darkMuted,
         hairline: AppColors.darkHairline,
+        sunken: AppColors.darkSurface,
       );
 
   static ThemeData _base({
@@ -55,6 +57,7 @@ abstract class AppTheme {
     required Color scaffold,
     required Color muted,
     required Color hairline,
+    required Color sunken,
   }) {
     final base = ThemeData(
       useMaterial3: true,
@@ -94,6 +97,9 @@ abstract class AppTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSpacing.radius),
+          // Cards delimitadas por hairline (elevación 0): visibles sobre la base
+          // marfil casi blanca sin recurrir a sombras.
+          side: BorderSide(color: hairline),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -112,7 +118,7 @@ abstract class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surfaceContainerHighest,
+        fillColor: sunken,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSpacing.radius),
           borderSide: BorderSide.none,
