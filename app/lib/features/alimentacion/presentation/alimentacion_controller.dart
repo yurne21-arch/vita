@@ -59,3 +59,10 @@ final estadosComidaProvider =
       await ref.read(alimentacionRepositoryProvider).estadosComida(inicio, fin);
   return {for (final e in list) e.clave: e};
 });
+
+/// La sesión de cocción de la semana actual (si ya cocinó y cuándo).
+final cocinaSesionProvider = FutureProvider<CocinaSesion?>((ref) async {
+  ref.watch(usuarioActualProvider);
+  final inicio = lunesDe(DateTime.now());
+  return ref.read(alimentacionRepositoryProvider).cocinaSesion(inicio);
+});

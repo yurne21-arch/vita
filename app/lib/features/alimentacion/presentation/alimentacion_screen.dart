@@ -5,7 +5,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/errores.dart';
 import '../../../core/widgets/vita_card.dart';
 import '../domain/alimentacion.dart';
-import '../domain/cocina_familiar.dart';
 import '../domain/motor.dart';
 import 'alimentacion_controller.dart';
 
@@ -87,7 +86,6 @@ class AlimentacionScreen extends ConsumerWidget {
             ),
             data: (p) {
               final biblioteca = ref.watch(bibliotecaProvider);
-              final nino = planNino(p, biblioteca);
               final personas = perfiles.asData?.value.length ?? 2;
               return TabBarView(
                 children: [
@@ -97,7 +95,7 @@ class AlimentacionScreen extends ConsumerWidget {
                       nombre: nombre,
                       personas: personas + 1),
                   _Menu(plan: p, biblioteca: biblioteca),
-                  _Cocina(plan: p, nino: nino),
+                  _Cocina(plan: p),
                   _Compras(plan: p),
                 ],
               );
@@ -701,50 +699,82 @@ class _ComidaTileState extends ConsumerState<_ComidaTile> {
 
 // ── COCINA: ¿cómo dejo lista la semana? ─────────────────────────────────────
 
-class _Cocina extends StatefulWidget {
-  const _Cocina({required this.plan, required this.nino});
+/// COCINA DE LA SEMANA — una guía real de meal prep, no una decoración.
+/// Los pasos salen del plan de verdad: las producciones base que calculó el
+/// motor (qué cocer y cuánto), cómo porcionar y cómo conservar (con fechas).
+/// Al final se marca cuándo se cocinó, y eso queda guardado.
+class _Cocina extends ConsumerWidget {
+  const _Cocina({required this.plan});
   final PlanSemana plan;
-  final List<ComidaNino> nino;
 
   @override
-  State<_Cocina> createState() => _CocinaState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sesion = ref.watch(cocinaSesionProvider).valueOrNull;
+    final cocinada = sesion?.cocinada ?? false;
 
-class _CocinaState extends State<_Cocina> {
-  bool _lista = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final plan = widget.plan;
-    final refri = plan.conservacion.where((c) => c.estado == 'refri').length;
-    final cong = plan.conservacion.where((c) => c.estado == 'congelado').length;
+    // Métricas reales del plan.
+    final tiempoTotal =
+        plan.producciones.fold<int>(0, (s, p) => s + (p.base.tiempoMin ?? 0));
     final recipientes = plan.dias
         .take(5)
         .expand((d) => d.comidas)
         .expand((c) => c.porciones)
         .length;
+    final refri = plan.conservacion.where((c) => c.estado == 'refri').toList();
+    final cong =
+        plan.conservacion.where((c) => c.estado == 'congelado').toList();
 
-    final fases = <_Fase>[
-      _Fase(Icons.local_fire_department_outlined, 'Cocinar proteínas', '25 min',
-          ['Pollo al horno · 25 min', 'Carne para boloñesa'],
-          done: true),
-      _Fase(Icons.ramen_dining_outlined, 'Preparar bases', 'arroz · salsa', [
-        'Arroz 18 min · en paralelo',
-        'Separa la porción del niño antes de la salsa'
-      ]),
-      _Fase(Icons.grass, 'Cortar verduras', '',
-          ['Ensaladas de la semana · lo que dura']),
-      _Fase(Icons.inventory_2_outlined, 'Armar recipientes', '$recipientes',
-          ['Porcionar y etiquetar · persona y día']),
-      _Fase(Icons.ac_unit, 'Guardar', '$refri · $cong',
-          ['$refri al refri · $cong al congelador con fecha']),
-    ];
+    final pasos = _pasosDe(recipientes, refri, cong);
+
+    Future<void> marcar(DateTime cuando) async {
+      try {
+        await ref
+            .read(alimentacionRepositoryProvider)
+            .marcarCocinada(plan.inicio, cocinadaAt: cuando);
+        ref.invalidate(cocinaSesionProvider);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Cocina marcada · ${_fechaDia(cuando)}')));
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('$e')));
+        }
+      }
+    }
+
+    Future<void> elegirFecha() async {
+      final hoy = DateTime.now();
+      final elegida = await showDatePicker(
+        context: context,
+        initialDate: sesion?.cocinadaAt ?? hoy,
+        firstDate: plan.inicio.subtract(const Duration(days: 2)),
+        lastDate: hoy,
+        helpText: '¿Qué día cocinaste?',
+      );
+      if (elegida != null) await marcar(elegida);
+    }
+
+    Future<void> deshacer() async {
+      try {
+        await ref
+            .read(alimentacionRepositoryProvider)
+            .desmarcarCocinada(plan.inicio);
+        ref.invalidate(cocinaSesionProvider);
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('$e')));
+        }
+      }
+    }
 
     return _Page(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(
-            child: Text('Esto es lo que cocinas esta semana',
+            child: Text('Cocina de la semana',
                 style: TextStyle(
                     color: _t.ink,
                     fontSize: 24,
@@ -752,69 +782,120 @@ class _CocinaState extends State<_Cocina> {
                     letterSpacing: -.5)),
           ),
           const SizedBox(width: 12),
-          _lista
+          cocinada
               ? _pill('Cocinada', Icons.check, _t.success)
               : _pill('Por cocinar', null, _t.warning),
         ]),
         const SizedBox(height: 8),
         _tip(
-            'Una sola sesión y comes toda la semana. Ahorras **2 horas** reutilizando el pollo.'),
+            '**Cocinas una vez y comes toda la semana.** Sigue los pasos en orden; al final marca qué día cocinaste.'),
         const SizedBox(height: 22),
         Row(children: [
-          _tile('1 h 25', 'activo'),
+          _tile(_duracion(tiempoTotal), 'en la cocina'),
           const SizedBox(width: 32),
           _tile('$recipientes', 'recipientes'),
           const SizedBox(width: 32),
-          _tile('$refri · $cong', 'refri · congelador'),
+          _tile('${refri.length} · ${cong.length}', 'refri · congelador'),
         ]),
-        const SizedBox(height: 20),
-        Row(children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: _lista ? 1.0 : 1 / fases.length,
-                minHeight: 7,
-                backgroundColor: _t.muted.withValues(alpha: .18),
-                valueColor: AlwaysStoppedAnimation(_t.accent),
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Text(_lista ? 'Cocinada' : '1 de ${fases.length}',
-              style: TextStyle(
-                  color: _t.muted, fontSize: 13, fontWeight: FontWeight.w600)),
-        ]),
-        const SizedBox(height: 8),
-        for (final f in fases) _PhaseTile(fase: f),
         const SizedBox(height: 24),
-        if (!_lista)
+        _kicker('Los pasos'),
+        const SizedBox(height: 4),
+        for (var i = 0; i < pasos.length; i++)
+          _PasoTile(numero: i + 1, paso: pasos[i], hecho: cocinada),
+        const SizedBox(height: 24),
+        if (!cocinada) ...[
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: () => setState(() => _lista = true),
-              child: const Text('Marcar semana como cocinada'),
+              onPressed: () => marcar(DateTime.now()),
+              child: const Text('Marqué que cociné hoy'),
             ),
-          )
-        else
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton(
+              onPressed: elegirFecha,
+              child: const Text('Cociné otro día'),
+            ),
+          ),
+        ] else
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 26),
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
             decoration: BoxDecoration(
                 color: _t.accentWash, borderRadius: BorderRadius.circular(22)),
-            child: Column(children: [
-              Text('Semana lista.',
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Cocinaste el ${_fechaDia(sesion!.cocinadaAt!)}.',
                   style: TextStyle(
                       color: _t.ink,
-                      fontSize: 18,
+                      fontSize: 17,
                       fontWeight: FontWeight.w600)),
-              const SizedBox(height: 3),
-              Text('Ahora solo disfruta. Nos vemos el domingo.',
+              const SizedBox(height: 2),
+              Text('Ya está todo listo. Disfruta la semana.',
                   style: TextStyle(color: _t.muted, fontSize: 14)),
+              const SizedBox(height: 8),
+              Row(children: [
+                TextButton(
+                    onPressed: elegirFecha, child: const Text('Cambiar fecha')),
+                TextButton(onPressed: deshacer, child: const Text('Deshacer')),
+              ]),
             ]),
           ),
       ]),
     );
+  }
+
+  /// Construye los pasos reales: primero cada producción base (qué cocer y
+  /// cuánto), luego porcionar, luego guardar con sus fechas de conservación.
+  List<_Paso> _pasosDe(
+      int recipientes, List<Conservacion> refri, List<Conservacion> cong) {
+    final pasos = <_Paso>[];
+
+    for (final p in plan.producciones) {
+      final lineas = <String>[
+        'Cuece ${_g(p.crudoG)} en crudo (rinde ~${_g(p.cocidoG)} cocido).',
+        if (p.terminaciones.isNotEmpty)
+          'Con esto salen: ${p.terminaciones.join(', ')}.',
+        if (p.base.congelable) 'Se puede congelar una parte.',
+        if (p.base.notas != null && p.base.notas!.isNotEmpty) p.base.notas!,
+      ];
+      pasos.add(_Paso(
+        icon: Icons.local_fire_department_outlined,
+        titulo: p.base.nombre,
+        meta: p.base.tiempoMin != null ? '${p.base.tiempoMin} min' : '',
+        lineas: lineas,
+      ));
+    }
+
+    if (recipientes > 0) {
+      pasos.add(_Paso(
+        icon: Icons.inventory_2_outlined,
+        titulo: 'Porciona en recipientes',
+        meta: '$recipientes',
+        lineas: const [
+          'Reparte en los recipientes y etiqueta cada uno con la persona y el día.',
+          'Deja aparte lo que come Juan Miguel: sus porciones son distintas.',
+        ],
+      ));
+    }
+
+    final guardar = <String>[
+      for (final c in refri)
+        '${c.preparacion} → refrigerador. Consúmelo antes del ${_fechaDia(c.fechaMaxConsumo)}.',
+      for (final c in cong)
+        '${c.preparacion} → congelador.${c.fechaDescongelar != null ? ' Baja al refri el ${_fechaDia(c.fechaDescongelar!)}.' : ''}',
+    ];
+    if (guardar.isNotEmpty) {
+      pasos.add(_Paso(
+        icon: Icons.ac_unit,
+        titulo: 'Guarda y conserva',
+        meta: '${refri.length} · ${cong.length}',
+        lineas: guardar,
+      ));
+    }
+
+    return pasos;
   }
 
   Widget _tile(String n, String t) => Column(
@@ -832,33 +913,37 @@ class _CocinaState extends State<_Cocina> {
       );
 }
 
-class _Fase {
-  _Fase(this.icon, this.name, this.meta, this.subs, {this.done = false});
+/// Un paso concreto de la sesión de cocción.
+class _Paso {
+  _Paso(
+      {required this.icon,
+      required this.titulo,
+      required this.meta,
+      required this.lineas});
   final IconData icon;
-  final String name;
+  final String titulo;
   final String meta;
-  final List<String> subs;
-  final bool done;
+  final List<String> lineas;
 }
 
-class _PhaseTile extends StatefulWidget {
-  const _PhaseTile({required this.fase});
-  final _Fase fase;
+class _PasoTile extends StatefulWidget {
+  const _PasoTile(
+      {required this.numero, required this.paso, required this.hecho});
+  final int numero;
+  final _Paso paso;
+  final bool hecho;
+
   @override
-  State<_PhaseTile> createState() => _PhaseTileState();
+  State<_PasoTile> createState() => _PasoTileState();
 }
 
-class _PhaseTileState extends State<_PhaseTile> {
+class _PasoTileState extends State<_PasoTile> {
   bool _open = false;
-  @override
-  void initState() {
-    super.initState();
-    _open = widget.fase.done;
-  }
 
   @override
   Widget build(BuildContext context) {
-    final f = widget.fase;
+    final p = widget.paso;
+    final hecho = widget.hecho;
     return Container(
       decoration:
           BoxDecoration(border: Border(bottom: BorderSide(color: _t.hair))),
@@ -871,22 +956,28 @@ class _PhaseTileState extends State<_PhaseTile> {
               Container(
                 width: 40,
                 height: 40,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                    color: f.done ? _t.accent : _t.accentWash,
+                    color: hecho ? _t.success : _t.accentWash,
                     borderRadius: BorderRadius.circular(13)),
-                child: Icon(f.icon,
-                    size: 18,
-                    color: f.done ? const Color(0xFF141219) : _t.accent),
+                child: hecho
+                    ? const Icon(Icons.check, size: 18, color: Colors.white)
+                    : Text('${widget.numero}',
+                        style: TextStyle(
+                            color: _t.accentDeep,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700)),
               ),
               const SizedBox(width: 16),
-              Text(f.name,
-                  style: TextStyle(
-                      color: _t.ink,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600)),
-              const Spacer(),
-              if (f.meta.isNotEmpty)
-                Text(f.meta, style: TextStyle(color: _t.muted, fontSize: 13)),
+              Expanded(
+                child: Text(p.titulo,
+                    style: TextStyle(
+                        color: _t.ink,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600)),
+              ),
+              if (p.meta.isNotEmpty)
+                Text(p.meta, style: TextStyle(color: _t.muted, fontSize: 13)),
               const SizedBox(width: 12),
               AnimatedRotation(
                 turns: _open ? .25 : 0,
@@ -902,20 +993,23 @@ class _PhaseTileState extends State<_PhaseTile> {
             padding: const EdgeInsets.fromLTRB(60, 0, 4, 18),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              for (final s in f.subs)
+              for (final s in p.lineas)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(f.done ? Icons.check : Icons.circle,
-                            size: f.done ? 15 : 6,
-                            color: f.done ? _t.success : _t.muted),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Icon(Icons.circle, size: 6, color: _t.muted),
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                             child: Text(s,
-                                style:
-                                    TextStyle(color: _t.ink2, fontSize: 14))),
+                                style: TextStyle(
+                                    color: _t.ink2,
+                                    fontSize: 14,
+                                    height: 1.4))),
                       ]),
                 ),
             ]),
@@ -928,6 +1022,24 @@ class _PhaseTileState extends State<_PhaseTile> {
     );
   }
 }
+
+// Formato de gramos (entero) y de fecha corta en español, locales del módulo.
+String _g(double gramos) => '${gramos.round()} g';
+
+String _duracion(int minutos) {
+  if (minutos <= 0) return '—';
+  if (minutos < 60) return '$minutos min';
+  final h = minutos ~/ 60;
+  final m = minutos % 60;
+  return m == 0 ? '$h h' : '$h h $m';
+}
+
+const _mesesCorto = [
+  'ene', 'feb', 'mar', 'abr', 'may', 'jun', //
+  'jul', 'ago', 'sep', 'oct', 'nov', 'dic'
+];
+
+String _fechaDia(DateTime d) => '${d.day} ${_mesesCorto[d.month - 1]}';
 
 // ── COMPRAS: ¿qué compro primero? ───────────────────────────────────────────
 

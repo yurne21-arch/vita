@@ -282,4 +282,43 @@ class AlimentacionRepository {
           'estado': estado,
         }, onConflict: 'user_id, fecha, momento');
       });
+
+  // ── Cocina de la semana (meal prep) ──────────────────────────
+
+  /// La sesión de cocción de la semana que empieza en [semanaInicio], o null si
+  /// aún no existe registro.
+  Future<CocinaSesion?> cocinaSesion(DateTime semanaInicio) => _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('nutrition_cocina_sesion')
+            .select()
+            .eq('user_id', userId)
+            .eq('semana_inicio', _fecha(semanaInicio))
+            .limit(1);
+        final list = rows as List;
+        if (list.isEmpty) return null;
+        return CocinaSesion.fromMap(list.first as Map<String, dynamic>);
+      });
+
+  /// Marca la semana como cocinada en [cocinadaAt] (por defecto, ahora).
+  Future<void> marcarCocinada(DateTime semanaInicio, {DateTime? cocinadaAt}) =>
+      _guard(() async {
+        final userId = _userId();
+        await _c.from('nutrition_cocina_sesion').upsert({
+          'user_id': userId,
+          'semana_inicio': _fecha(semanaInicio),
+          'cocinada_at':
+              (cocinadaAt ?? DateTime.now()).toUtc().toIso8601String(),
+        }, onConflict: 'user_id, semana_inicio');
+      });
+
+  /// Deshace la marca de cocción de la semana (vuelve a pendiente).
+  Future<void> desmarcarCocinada(DateTime semanaInicio) => _guard(() async {
+        final userId = _userId();
+        await _c.from('nutrition_cocina_sesion').upsert({
+          'user_id': userId,
+          'semana_inicio': _fecha(semanaInicio),
+          'cocinada_at': null,
+        }, onConflict: 'user_id, semana_inicio');
+      });
 }

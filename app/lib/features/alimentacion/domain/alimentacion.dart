@@ -613,3 +613,27 @@ class EstadoComida {
         estado: (m['estado'] as String?) ?? 'planeado',
       );
 }
+
+/// La sesión de cocción (meal prep) de una semana: si ya se cocinó y cuándo.
+class CocinaSesion {
+  const CocinaSesion({
+    required this.semanaInicio,
+    this.cocinadaAt,
+    this.nota,
+  });
+
+  final DateTime semanaInicio; // lunes de la semana
+  final DateTime? cocinadaAt; // null = pendiente
+
+  final String? nota;
+
+  bool get cocinada => cocinadaAt != null;
+
+  factory CocinaSesion.fromMap(Map<String, dynamic> m) => CocinaSesion(
+        semanaInicio: DateTime.parse(m['semana_inicio'] as String),
+        cocinadaAt: m['cocinada_at'] == null
+            ? null
+            : DateTime.parse(m['cocinada_at'] as String).toLocal(),
+        nota: m['nota'] as String?,
+      );
+}
