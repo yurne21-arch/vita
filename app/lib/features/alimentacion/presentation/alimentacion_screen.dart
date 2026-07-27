@@ -1,31 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/errores.dart';
+import '../../../core/widgets/vita_card.dart';
 import '../domain/cocina_familiar.dart';
 import '../domain/motor.dart';
 import 'alimentacion_controller.dart';
 
-/// Paleta propia del módulo (oscuro premium aprobado). Aislada del tema global
-/// hasta la migración de identidad (VITA_MASTER §4). Un solo lugar que cambiar.
+/// Tokens del módulo, derivados del sistema de diseño compartido (identidad
+/// clara de VITA). Un solo lugar que ajustar si migra el tema global.
 class _Tok {
   const _Tok();
-  final Color bg = const Color(0xFF141219);
-  final Color bg2 = const Color(0xFF1A1821);
-  final Color panel = const Color(0xFF1E1B26);
-  final Color surface = const Color(0xFF252230);
-  final Color ink = const Color(0xFFEEEBF2);
-  final Color ink2 = const Color(0xFFBFBACB);
-  final Color muted = const Color(0xFF8D889B);
-  final Color hair = const Color(0xFF2C2836);
-  final Color hairSoft = const Color(0xFF232029);
-  final Color accent = const Color(0xFF86AE95);
-  final Color accentDeep = const Color(0xFFA9C9B5);
-  final Color accentSoft = const Color(0xFF5F8672);
-  final Color accentWash = const Color(0xFF1C2620);
-  final Color success = const Color(0xFF69B98A);
-  final Color warning = const Color(0xFFD8A93B);
-  final Color info = const Color(0xFF83A3C2);
-  final Color amber = const Color(0xFFD6A344);
+  final Color bg = AppColors.lightBg;
+  final Color bg2 = AppColors.lightPanel;
+  final Color panel = AppColors.lightPanel;
+  final Color surface = AppColors.lightSurface;
+  final Color ink = AppColors.lightInk;
+  final Color ink2 = const Color(0xFF5F574A);
+  final Color muted = AppColors.lightMuted;
+  final Color hair = AppColors.lightHairline;
+  final Color hairSoft = const Color(0xFFF0E8D6);
+  final Color accent = AppColors.accent;
+  final Color accentDeep = AppColors.accentDeep;
+  final Color accentSoft = AppColors.accentSoft;
+  final Color accentWash = const Color(0xFFEEF3ED);
+  final Color success = AppColors.success;
+  final Color warning = AppColors.warning;
+  final Color info = AppColors.info;
+  final Color amber = AppColors.warning;
 }
 
 const _t = _Tok();
@@ -42,129 +45,62 @@ class AlimentacionScreen extends ConsumerWidget {
       orElse: () => 'Yurby',
     );
 
+    final cs = Theme.of(context).colorScheme;
     return DefaultTabController(
       length: 4,
       child: Scaffold(
-        backgroundColor: _t.bg,
+        backgroundColor: cs.surface,
+        appBar: AppBar(
+          backgroundColor: cs.surface,
+          scrolledUnderElevation: 0,
+          titleSpacing: 24,
+          title: const Text('Alimentación'),
+          bottom: TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            labelColor: cs.onSurface,
+            unselectedLabelColor: cs.onSurfaceVariant,
+            indicatorColor: _t.accent,
+            indicatorSize: TabBarIndicatorSize.label,
+            dividerColor: _t.hair,
+            tabs: const [
+              Tab(text: 'Hoy'),
+              Tab(text: 'Menú'),
+              Tab(text: 'Cocina de la semana'),
+              Tab(text: 'Compras'),
+            ],
+          ),
+        ),
         body: SafeArea(
-          bottom: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const _Header(),
-              const _Tabs(),
-              Expanded(
-                child: plan.when(
-                  loading: () => Center(
-                      child: CircularProgressIndicator(color: _t.accent)),
-                  error: (e, _) => _ErrorView(
-                      onRetry: () => ref.invalidate(planSemanaProvider)),
-                  data: (p) {
-                    final biblioteca = ref.watch(bibliotecaProvider);
-                    final nino = planNino(p, biblioteca);
-                    final personas = perfiles.asData?.value.length ?? 2;
-                    return TabBarView(
-                      children: [
-                        _Hoy(
-                            plan: p,
-                            biblioteca: biblioteca,
-                            nombre: nombre,
-                            personas: personas + 1),
-                        _Menu(plan: p, biblioteca: biblioteca),
-                        _Cocina(plan: p, nino: nino),
-                        _Compras(plan: p),
-                      ],
-                    );
-                  },
+          top: false,
+          child: plan.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Padding(
+              padding: const EdgeInsets.all(24),
+              child: VitaCard(
+                child: ErrorEnTarjeta(
+                  mensaje: '$e',
+                  onReintentar: () => ref.invalidate(planSemanaProvider),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Chrome ──────────────────────────────────────────────────────────────────
-
-class _Header extends StatelessWidget {
-  const _Header();
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1180),
-          child: Row(
-            children: [
-              Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                    color: _t.accent, borderRadius: BorderRadius.circular(9)),
-                child:
-                    const Icon(Icons.eco, size: 15, color: Color(0xFF141219)),
-              ),
-              const SizedBox(width: 10),
-              Text('VITA · Alimentación',
-                  style: TextStyle(
-                      color: _t.ink,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600)),
-              const Spacer(),
-              Icon(Icons.shopping_cart_outlined, size: 15, color: _t.muted),
-              const SizedBox(width: 7),
-              Text.rich(TextSpan(
-                  style: TextStyle(color: _t.muted, fontSize: 13),
-                  children: [
-                    const TextSpan(text: 'Compra '),
-                    TextSpan(
-                        text: 'en 3 días',
-                        style: TextStyle(
-                            color: _t.ink, fontWeight: FontWeight.w600)),
-                  ])),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Tabs extends StatelessWidget {
-  const _Tabs();
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 18),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1180),
-          child: Container(
-            decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: _t.hair))),
-            child: TabBar(
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              labelColor: _t.ink,
-              unselectedLabelColor: _t.muted,
-              indicatorColor: _t.accent,
-              indicatorSize: TabBarIndicatorSize.label,
-              dividerColor: _t.hair,
-              labelStyle:
-                  const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
-              unselectedLabelStyle:
-                  const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w500),
-              tabs: const [
-                Tab(text: 'Hoy'),
-                Tab(text: 'Menú'),
-                Tab(text: 'Cocina de la semana'),
-                Tab(text: 'Compras'),
-              ],
             ),
+            data: (p) {
+              final biblioteca = ref.watch(bibliotecaProvider);
+              final nino = planNino(p, biblioteca);
+              final personas = perfiles.asData?.value.length ?? 2;
+              return TabBarView(
+                children: [
+                  _Hoy(
+                      plan: p,
+                      biblioteca: biblioteca,
+                      nombre: nombre,
+                      personas: personas + 1),
+                  _Menu(plan: p, biblioteca: biblioteca),
+                  _Cocina(plan: p, nino: nino),
+                  _Compras(plan: p),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -1228,7 +1164,7 @@ class _ComprasState extends State<_Compras> {
   }
 }
 
-// ── botones y estados ───────────────────────────────────────────────────────
+// ── botones (del sistema de diseño compartido) ──────────────────────────────
 
 class _FilledBtn extends StatelessWidget {
   const _FilledBtn(this.label, {this.primary = false, required this.onTap});
@@ -1237,22 +1173,9 @@ class _FilledBtn extends StatelessWidget {
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: primary ? _t.accent : _t.surface,
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-          child: Text(label,
-              style: TextStyle(
-                  color: primary ? const Color(0xFF141219) : _t.ink,
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600)),
-        ),
-      ),
-    );
+    return primary
+        ? FilledButton(onPressed: onTap, child: Text(label))
+        : OutlinedButton(onPressed: onTap, child: Text(label));
   }
 }
 
@@ -1262,35 +1185,18 @@ class _GhostBtn extends StatelessWidget {
   final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(label,
-              style: TextStyle(
-                  color: _t.accentDeep,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600)),
-          Icon(Icons.chevron_right, size: 15, color: _t.accentDeep),
-        ]),
+    return TextButton(
+      onPressed: onTap,
+      style: TextButton.styleFrom(
+        foregroundColor: _t.accentDeep,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        minimumSize: const Size(0, 0),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
-    );
-  }
-}
-
-class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.onRetry});
-  final VoidCallback onRetry;
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text('No pudimos cargar tu alimentación.',
-            style: TextStyle(color: _t.ink, fontSize: 15)),
-        const SizedBox(height: 12),
-        _FilledBtn('Reintentar', primary: true, onTap: onRetry),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Text(label,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        const Icon(Icons.chevron_right, size: 16),
       ]),
     );
   }

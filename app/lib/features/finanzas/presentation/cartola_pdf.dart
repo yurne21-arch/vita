@@ -36,7 +36,7 @@ Future<void> compartirCartolaPdf(Saldado s, List<Movimiento> gastos) async {
         pw.SizedBox(height: 4),
         pw.Text(rango, style: const pw.TextStyle(fontSize: 12)),
         pw.SizedBox(height: 16),
-        pw.Table.fromTextArray(
+        pw.TableHelper.fromTextArray(
           headerStyle: pw.TextStyle(
               fontWeight: pw.FontWeight.bold, color: PdfColors.white),
           headerDecoration: const pw.BoxDecoration(color: acento),

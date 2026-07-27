@@ -528,7 +528,7 @@ class _ReflexionCardState extends ConsumerState<_ReflexionCard> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
+            .showSnackBar(SnackBar(content: Text(mensajeDeError(e))));
       }
     } finally {
       if (mounted) setState(() => _guardando = false);

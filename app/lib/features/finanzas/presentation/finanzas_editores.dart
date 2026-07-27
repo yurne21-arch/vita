@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -237,8 +236,9 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
               onChanged: (v, quienSugerido, compartidoSugerido) => setState(() {
                 _medio = v;
                 if (quienSugerido != null) _quien = quienSugerido;
-                if (compartidoSugerido != null)
+                if (compartidoSugerido != null) {
                   _compartido = compartidoSugerido;
+                }
               }),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -264,7 +264,7 @@ class _MovimientoEditorState extends ConsumerState<_MovimientoEditor> {
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Gasto compartido'),
-              subtitle: const Text('Se reparte entre ambos (cuenta Tricount)'),
+              subtitle: const Text('Se reparte entre los dos'),
               value: _compartido,
               onChanged: (v) => setState(() => _compartido = v),
             ),

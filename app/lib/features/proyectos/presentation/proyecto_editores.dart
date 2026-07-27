@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/moneda.dart';
+import '../../../core/widgets/errores.dart';
 import '../data/projects_repository.dart';
 import 'projects_controller.dart';
 import 'proyectos_widgets.dart';
@@ -117,7 +118,7 @@ class _EditorProyectoState extends ConsumerState<_EditorProyecto> {
       if (mounted) {
         setState(() => _guardando = false);
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
+            .showSnackBar(SnackBar(content: Text(mensajeDeError(e))));
       }
     }
   }
@@ -357,7 +358,7 @@ class _EditorTareaState extends ConsumerState<_EditorTarea> {
       if (mounted) {
         setState(() => _guardando = false);
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
+            .showSnackBar(SnackBar(content: Text(mensajeDeError(e))));
       }
     }
   }
@@ -513,7 +514,7 @@ class _RegistroBitacoraState extends ConsumerState<_RegistroBitacora> {
       if (mounted) {
         setState(() => _guardando = false);
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
+            .showSnackBar(SnackBar(content: Text(mensajeDeError(e))));
       }
     }
   }
