@@ -60,21 +60,9 @@ class FinanzasScreen extends ConsumerStatefulWidget {
 class _FinanzasScreenState extends ConsumerState<FinanzasScreen> {
   _Seccion _seccion = _Seccion.resumen;
 
-  @override
-  void initState() {
-    super.initState();
-    // Abrir en el último mes con datos (los movimientos importados son de meses
-    // pasados; abrir en el mes actual mostraría una pantalla vacía).
-    Future.microtask(() async {
-      try {
-        final ult =
-            await ref.read(finanzasRepositoryProvider).ultimoMesConDatos();
-        if (ult != null && mounted) {
-          ref.read(mesFinanzasProvider.notifier).state = ult;
-        }
-      } catch (_) {/* si falla, se queda en el mes actual */}
-    });
-  }
+  // Finanzas abre siempre en el MES ACTUAL (mesFinanzasProvider ya arranca ahí).
+  // Antes saltaba al último mes con datos, lo que confundía (abría un mes que no
+  // era el de hoy). Para ver otros meses se usan las flechas del selector.
 
   void _cambiarMes(int delta) {
     final actual = ref.read(mesFinanzasProvider);

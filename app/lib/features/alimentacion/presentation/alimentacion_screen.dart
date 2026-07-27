@@ -450,11 +450,6 @@ class _Menu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hoy = plan.diaDe(DateTime.now()) ?? plan.dias.first;
-    final idx = plan.dias.indexOf(hoy);
-    final manana = idx + 1 < plan.dias.length ? plan.dias[idx + 1] : null;
-    final finde = plan.dias
-        .where((d) => d.comidas.any((c) => c.momento == 'finde'))
-        .toList();
 
     return _Page(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -464,161 +459,82 @@ class _Menu extends StatelessWidget {
                 fontSize: 26,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -.5)),
-        const SizedBox(height: 18),
-        _tip('**Te sobra arroz** — lo usamos el jueves.'),
-        const SizedBox(height: 18),
+        const SizedBox(height: 4),
+        Text('Las comidas de los 7 días.',
+            style: TextStyle(color: _t.muted, fontSize: 14)),
+        const SizedBox(height: 20),
         LayoutBuilder(builder: (context, c) {
-          final wide = c.maxWidth >= 800;
-          final cards = [
-            Expanded(flex: wide ? 3 : 1, child: _diaCard(hoy, esHoy: true)),
-            if (manana != null) ...[
-              SizedBox(width: wide ? 22 : 0, height: wide ? 0 : 16),
-              Expanded(flex: wide ? 2 : 1, child: _diaCard(manana)),
+          final cols = c.maxWidth >= 900 ? 3 : (c.maxWidth >= 620 ? 2 : 1);
+          const gap = 16.0;
+          final w = (c.maxWidth - gap * (cols - 1)) / cols;
+          return Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: [
+              for (final d in plan.dias)
+                SizedBox(
+                  width: cols == 1 ? c.maxWidth : w,
+                  child: _diaCard(
+                    d,
+                    esHoy: identical(d, hoy),
+                    esFinde: d.comidas.any((x) => x.momento == 'finde'),
+                  ),
+                ),
             ],
-          ];
-          return wide
-              ? IntrinsicHeight(
-                  child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: cards))
-              : Column(children: [
-                  _diaCard(hoy, esHoy: true),
-                  if (manana != null) ...[
-                    const SizedBox(height: 16),
-                    _diaCard(manana)
-                  ],
-                ]);
+          );
         }),
-        const SizedBox(height: 26),
-        if (finde.isNotEmpty) _weekend(finde),
       ]),
     );
   }
 
-  Widget _diaCard(DiaPlan d, {bool esHoy = false}) {
+  Widget _diaCard(DiaPlan d, {bool esHoy = false, bool esFinde = false}) {
     final des = _por(d, 'desayuno');
     final alm = _por(d, 'almuerzo') ?? _por(d, 'finde');
     final mer = _por(d, 'merienda');
-    Widget line(String k, String v, {Widget? trailing}) => Container(
+    Widget line(String k, String v) => Container(
           decoration:
               BoxDecoration(border: Border(top: BorderSide(color: _t.hair))),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 11),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(k.toUpperCase(),
                 style: TextStyle(
                     color: _t.muted,
-                    fontSize: 10.5,
+                    fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: .7)),
+                    letterSpacing: .6)),
             const SizedBox(height: 2),
-            Row(children: [
-              Expanded(
-                  child:
-                      Text(v, style: TextStyle(color: _t.ink, fontSize: 16))),
-              if (trailing != null) trailing,
-            ]),
+            Text(v, style: TextStyle(color: _t.ink, fontSize: 15)),
           ]),
         );
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 22, 24, 12),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
       decoration: BoxDecoration(
         color: _t.panel,
-        borderRadius: BorderRadius.circular(22),
-        border: esHoy ? Border.all(color: _t.accentSoft) : null,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+            color: esHoy
+                ? _t.accentSoft
+                : (esFinde ? _t.amber.withValues(alpha: .35) : _t.hair)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Text('${esHoy ? 'Hoy · ' : 'Mañana · '}${d.nombre}'.toUpperCase(),
+          Text(d.nombre.toUpperCase(),
               style: TextStyle(
-                  color: esHoy ? _t.accent : _t.muted,
+                  color: esHoy ? _t.accentDeep : _t.muted,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 1.4)),
+                  letterSpacing: 1.2)),
           const Spacer(),
-          if (esHoy) _pill('Por servir', null, _t.amber),
+          if (esHoy)
+            _pill('Hoy', null, _t.accent)
+          else if (esFinde)
+            _pill('Especial', null, _t.amber),
         ]),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         if (des != null) line('Desayuno', des.ensamble.nombre),
         if (alm != null) line('Almuerzo', alm.ensamble.nombre),
         if (mer != null) line('Merienda', mer.ensamble.nombre),
-      ]),
-    );
-  }
-
-  Widget _weekend(List<DiaPlan> finde) {
-    Widget dia(DiaPlan d) {
-      final alm = _por(d, 'finde') ?? _por(d, 'almuerzo');
-      final comps = <String>[];
-      if (alm != null) {
-        for (final comp in alm.ensamble.componentes) {
-          final a = biblioteca.alimentoDe(comp);
-          if (a != null && comps.length < 4) comps.add(a.nombre);
-        }
-      }
-      return Expanded(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(d.nombre.toUpperCase(),
-                style: TextStyle(
-                    color: _t.muted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: .5)),
-            const SizedBox(height: 5),
-            Text(alm?.ensamble.nombre ?? '—',
-                style: TextStyle(
-                    color: _t.ink,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -.3)),
-            const SizedBox(height: 12),
-            if (alm?.ensamble.descripcion != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(alm!.ensamble.descripcion!,
-                    style: TextStyle(color: _t.ink2, fontSize: 14)),
-              ),
-            for (final cName in comps)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(children: [
-                  Icon(Icons.restaurant, size: 15, color: _t.amber),
-                  const SizedBox(width: 11),
-                  Text(cName, style: TextStyle(color: _t.ink2, fontSize: 14.5)),
-                ]),
-              ),
-          ]),
-        ),
-      );
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        color: _t.panel,
-        border: Border.all(color: _t.amber.withValues(alpha: .22)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
-          child: Row(children: [
-            Icon(Icons.wb_sunny_outlined, size: 18, color: _t.amber),
-            const SizedBox(width: 10),
-            _kicker('Fin de semana familiar', color: _t.amber),
-          ]),
-        ),
-        Container(height: 1, color: _t.hairSoft),
-        IntrinsicHeight(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            for (var i = 0; i < finde.length && i < 2; i++) ...[
-              if (i > 0) Container(width: 1, color: _t.hairSoft),
-              dia(finde[i]),
-            ],
-          ]),
-        ),
       ]),
     );
   }
