@@ -203,9 +203,6 @@ class _Hoy extends StatelessWidget {
   Widget build(BuildContext context) {
     final hoy = plan.diaDe(DateTime.now()) ?? plan.dias.first;
     final hora = DateTime.now().hour;
-    final saludo = hora < 12
-        ? 'Buenos días'
-        : (hora < 20 ? 'Buenas tardes' : 'Buenas noches');
     final desayuno = _por(hoy, 'desayuno');
     final almuerzo = _por(hoy, 'almuerzo') ?? _por(hoy, 'finde');
     final merienda = _por(hoy, 'merienda');
@@ -362,27 +359,11 @@ class _Hoy extends StatelessWidget {
 
     return _Page(
       child: LayoutBuilder(builder: (context, c) {
-        final head = Text('$saludo, $nombre. ',
-            style: TextStyle(
-                color: _t.ink,
-                fontSize: 32,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -.7));
         final twoCol = c.maxWidth >= 900;
+        // Comida va directo a la comida: el saludo del día vive en Mi Vida.
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text.rich(TextSpan(children: [
-              WidgetSpan(child: head),
-              TextSpan(
-                  text: 'Todo bajo control.',
-                  style: TextStyle(
-                      color: _t.muted,
-                      fontSize: 32,
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: -.7)),
-            ])),
-            const SizedBox(height: 30),
             if (twoCol)
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(flex: 60, child: left),
@@ -645,13 +626,21 @@ class _Menu extends StatelessWidget {
 
 // ── COCINA: ¿cómo dejo lista la semana? ─────────────────────────────────────
 
-class _Cocina extends StatelessWidget {
+class _Cocina extends StatefulWidget {
   const _Cocina({required this.plan, required this.nino});
   final PlanSemana plan;
   final List<ComidaNino> nino;
 
   @override
+  State<_Cocina> createState() => _CocinaState();
+}
+
+class _CocinaState extends State<_Cocina> {
+  bool _lista = false;
+
+  @override
   Widget build(BuildContext context) {
+    final plan = widget.plan;
     final refri = plan.conservacion.where((c) => c.estado == 'refri').length;
     final cong = plan.conservacion.where((c) => c.estado == 'congelado').length;
     final recipientes = plan.dias
@@ -678,14 +667,23 @@ class _Cocina extends StatelessWidget {
 
     return _Page(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Cocina de la semana',
-            style: TextStyle(
-                color: _t.ink,
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -.5)),
+        Row(children: [
+          Expanded(
+            child: Text('Esto es lo que cocinas esta semana',
+                style: TextStyle(
+                    color: _t.ink,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -.5)),
+          ),
+          const SizedBox(width: 12),
+          _lista
+              ? _pill('Cocinada', Icons.check, _t.success)
+              : _pill('Por cocinar', null, _t.warning),
+        ]),
         const SizedBox(height: 8),
-        _tip('Una sola sesión. Ahorras **2 horas** reutilizando el pollo.'),
+        _tip(
+            'Una sola sesión y comes toda la semana. Ahorras **2 horas** reutilizando el pollo.'),
         const SizedBox(height: 22),
         Row(children: [
           _tile('1 h 25', 'activo'),
@@ -700,7 +698,7 @@ class _Cocina extends StatelessWidget {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(999),
               child: LinearProgressIndicator(
-                value: 1 / fases.length,
+                value: _lista ? 1.0 : 1 / fases.length,
                 minHeight: 7,
                 backgroundColor: _t.muted.withValues(alpha: .18),
                 valueColor: AlwaysStoppedAnimation(_t.accent),
@@ -708,27 +706,38 @@ class _Cocina extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 14),
-          Text('1 de ${fases.length}',
+          Text(_lista ? 'Cocinada' : '1 de ${fases.length}',
               style: TextStyle(
                   color: _t.muted, fontSize: 13, fontWeight: FontWeight.w600)),
         ]),
         const SizedBox(height: 8),
         for (final f in fases) _PhaseTile(fase: f),
-        const SizedBox(height: 28),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 26),
-          decoration: BoxDecoration(
-              color: _t.accentWash, borderRadius: BorderRadius.circular(22)),
-          child: Column(children: [
-            Text('Semana lista.',
-                style: TextStyle(
-                    color: _t.ink, fontSize: 18, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 3),
-            Text('Ahora solo disfruta. Nos vemos el domingo.',
-                style: TextStyle(color: _t.muted, fontSize: 14)),
-          ]),
-        ),
+        const SizedBox(height: 24),
+        if (!_lista)
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () => setState(() => _lista = true),
+              child: const Text('Marcar semana como cocinada'),
+            ),
+          )
+        else
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 26),
+            decoration: BoxDecoration(
+                color: _t.accentWash, borderRadius: BorderRadius.circular(22)),
+            child: Column(children: [
+              Text('Semana lista.',
+                  style: TextStyle(
+                      color: _t.ink,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 3),
+              Text('Ahora solo disfruta. Nos vemos el domingo.',
+                  style: TextStyle(color: _t.muted, fontSize: 14)),
+            ]),
+          ),
       ]),
     );
   }
@@ -857,6 +866,8 @@ class _Compras extends StatefulWidget {
 class _ComprasState extends State<_Compras> {
   // estado por ítem: 0 falta · 1 en carro · 2 comprado
   final _estado = <String, int>{};
+  // Día elegido para la compra (lo cambia la usuaria).
+  String _diaElegido = 'Mié 29';
 
   static const _cat = {
     'proteina': (Icons.restaurant, 'Carnes y proteínas'),
@@ -937,19 +948,29 @@ class _ComprasState extends State<_Compras> {
   }
 
   Widget _band() {
-    Widget chip(String s, bool sel) => Container(
-          margin: const EdgeInsets.only(right: 7),
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-          decoration: BoxDecoration(
-              color: sel ? _t.accent : _t.surface,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: sel ? _t.accent : _t.hair)),
-          child: Text(s,
-              style: TextStyle(
-                  color: sel ? const Color(0xFF141219) : _t.muted,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600)),
-        );
+    Widget chip(String s) {
+      final sel = _diaElegido == s;
+      return Padding(
+        padding: const EdgeInsets.only(right: 7),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: () => setState(() => _diaElegido = s),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+            decoration: BoxDecoration(
+                color: sel ? _t.accent : _t.surface,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: sel ? _t.accent : _t.hair)),
+            child: Text(s,
+                style: TextStyle(
+                    color: sel ? Colors.white : _t.ink2,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600)),
+          ),
+        ),
+      );
+    }
+
     return Wrap(
         spacing: 40,
         runSpacing: 20,
@@ -958,10 +979,12 @@ class _ComprasState extends State<_Compras> {
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             _kicker('Día elegido'),
             const SizedBox(height: 6),
-            Row(children: [
-              chip('Lun 27', false),
-              chip('Mié 29', true),
-              chip('Vie 31', false)
+            Wrap(runSpacing: 7, children: [
+              chip('Lun 27'),
+              chip('Mar 28'),
+              chip('Mié 29'),
+              chip('Jue 30'),
+              chip('Vie 31'),
             ]),
           ]),
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

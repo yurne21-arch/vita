@@ -49,7 +49,7 @@ class MiMesScreen extends ConsumerWidget {
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1040),
+                    constraints: const BoxConstraints(maxWidth: 1280),
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(
                           pad, AppSpacing.lg, pad, AppSpacing.xxl),
