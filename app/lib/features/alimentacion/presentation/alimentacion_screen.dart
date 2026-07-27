@@ -180,7 +180,7 @@ Widget _tip(String rich) {
 
 // ── HOY: ¿qué hago ahora? ────────────────────────────────────────────────────
 
-class _Hoy extends StatelessWidget {
+class _Hoy extends ConsumerWidget {
   const _Hoy(
       {required this.plan,
       required this.biblioteca,
@@ -199,12 +199,30 @@ class _Hoy extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final hoy = plan.diaDe(DateTime.now()) ?? plan.dias.first;
     final hora = DateTime.now().hour;
     final desayuno = _por(hoy, 'desayuno');
     final almuerzo = _por(hoy, 'almuerzo') ?? _por(hoy, 'finde');
     final merienda = _por(hoy, 'merienda');
+
+    // Estado real (congruente con Menú y Mi Vida): qué comió y si ya cocinó.
+    final estados = ref.watch(estadosComidaProvider).valueOrNull ??
+        const <String, EstadoComida>{};
+    final cocinada =
+        ref.watch(cocinaSesionProvider).valueOrNull?.cocinada ?? false;
+    String estadoDe(String momento) =>
+        estados[EstadoComida.claveDe(hoy.fecha, momento)]?.estado ?? 'planeado';
+    Future<void> marcarComido(ComidaPlan c) async {
+      final actual = estadoDe(c.momento);
+      await ref.read(alimentacionRepositoryProvider).guardarEstadoComida(
+            fecha: hoy.fecha,
+            momento: c.momento,
+            assemblyId: c.ensamble.id,
+            estado: actual == 'comido' ? 'planeado' : 'comido',
+          );
+      ref.invalidate(estadosComidaProvider);
+    }
 
     // "Ahora" según la hora — VITA decide la acción, no la usuaria.
     final String ahora;
@@ -230,12 +248,31 @@ class _Hoy extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (desayuno != null) ...[
-          Row(children: [
-            Icon(Icons.check, size: 15, color: _t.success),
-            const SizedBox(width: 8),
-            Text('Desayuno · ${desayuno.ensamble.nombre}',
-                style: TextStyle(color: _t.muted, fontSize: 13)),
-          ]),
+          InkWell(
+            onTap: () => marcarComido(desayuno),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(children: [
+                _hoyDot(estadoDe('desayuno')),
+                const SizedBox(width: 8),
+                Text('Desayuno · ${desayuno.ensamble.nombre}',
+                    style: TextStyle(
+                        color: _t.muted,
+                        fontSize: 13,
+                        decoration: estadoDe('desayuno') == 'no_comido'
+                            ? TextDecoration.lineThrough
+                            : null)),
+                const SizedBox(width: 8),
+                Text(
+                    estadoDe('desayuno') == 'comido'
+                        ? 'comido'
+                        : 'toca si ya comiste',
+                    style: TextStyle(
+                        color: _t.muted.withValues(alpha: .7), fontSize: 11)),
+              ]),
+            ),
+          ),
           const SizedBox(height: 26),
         ],
         _kicker('Ahora', color: _t.accent),
@@ -268,7 +305,9 @@ class _Hoy extends StatelessWidget {
                         color: _t.ink,
                         fontSize: 17,
                         fontWeight: FontWeight.w600))),
-            _pill('Listo', Icons.kitchen, _t.info),
+            cocinada
+                ? _pill('Cocinado', Icons.kitchen, _t.info)
+                : _pill('Por cocinar', null, _t.warning),
             const SizedBox(width: 12),
             _GhostBtn('Ver', onTap: () => _verDetalle(context, almuerzo)),
           ]),
@@ -303,7 +342,7 @@ class _Hoy extends StatelessWidget {
             child: Row(children: [
               Icon(Icons.shopping_cart_outlined, size: 15, color: _t.ink2),
               const SizedBox(width: 10),
-              Text('Compra quincenal en 3 días',
+              Text('Ver tu lista de compra',
                   style: TextStyle(color: _t.ink2, fontSize: 14)),
               const Spacer(),
               Icon(Icons.chevron_right, size: 16, color: _t.muted),
@@ -318,7 +357,10 @@ class _Hoy extends StatelessWidget {
       children: [
         _kicker('Preparado para tu familia', color: _t.accent),
         const SizedBox(height: 8),
-        Text('$personas recipientes listos',
+        Text(
+            cocinada
+                ? '$personas recipientes listos'
+                : 'Cocina la semana cuando puedas',
             style: TextStyle(
                 color: _t.ink, fontSize: 18, fontWeight: FontWeight.w600)),
         const SizedBox(height: 14),
@@ -375,6 +417,24 @@ class _Hoy extends StatelessWidget {
           ],
         );
       }),
+    );
+  }
+
+  Widget _hoyDot(String estado) {
+    if (estado == 'comido') {
+      return Container(
+          width: 18,
+          height: 18,
+          decoration: BoxDecoration(color: _t.success, shape: BoxShape.circle),
+          child: const Icon(Icons.check, size: 11, color: Colors.white));
+    }
+    return Container(
+      width: 18,
+      height: 18,
+      decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+              color: estado == 'no_comido' ? _t.muted : _t.accent, width: 1.6)),
     );
   }
 
