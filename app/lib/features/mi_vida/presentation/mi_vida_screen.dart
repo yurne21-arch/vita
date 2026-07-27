@@ -68,8 +68,9 @@ class MiVidaScreen extends ConsumerWidget {
 
 // ============================ LAYOUTS ============================
 
-/// Escritorio: grid editorial de 12 columnas, centrado y limitado para no
-/// estirarse al infinito, pero aprovechando el ancho.
+/// Escritorio: dos zonas — recorrido del día (foco) + contexto. Hero compacto.
+/// Zona principal: prioridades (foco) → agenda → estado. Zona de contexto:
+/// proyecto principal → hábitos. Aprovecha el ancho sin estirarse.
 class _DesktopLayout extends StatelessWidget {
   const _DesktopLayout();
 
@@ -80,28 +81,41 @@ class _DesktopLayout extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: _kDesktopMax),
         child: ListView(
           padding: const EdgeInsets.fromLTRB(
-              AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.xxl),
-          children: [
-            const _BuenosDias(),
-            const SizedBox(height: AppSpacing.xl),
-            const _Versiculo(), // Dios arriba
-            const SizedBox(height: _kGap),
-            const _Prioridades(), // protagonista, ancho completo
-            const SizedBox(height: _kGap),
-            const _EstadoGeneral(), // compacta, ancho completo
-            const SizedBox(height: _kGap),
-            // Cada tarjeta a su altura de contenido: así "TU DÍA" vacío no se
-            // estira para igualar a "PROYECTO PRINCIPAL".
+              AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.xxl),
+          children: const [
+            // Hero compacto: saludo + versículo juntos, poco aire vertical.
+            _BuenosDias(),
+            SizedBox(height: AppSpacing.xs),
+            _Versiculo(),
+            SizedBox(height: AppSpacing.xl),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Expanded(child: _Agenda()),
-                SizedBox(width: _kGap),
-                Expanded(child: _ProyectoPrincipal()),
+              children: [
+                Expanded(
+                  flex: 8,
+                  child: Column(
+                    children: [
+                      _Prioridades(), // foco
+                      SizedBox(height: _kGap),
+                      _Agenda(),
+                      SizedBox(height: _kGap),
+                      _EstadoGeneral(),
+                    ],
+                  ),
+                ),
+                SizedBox(width: AppSpacing.xl),
+                Expanded(
+                  flex: 5,
+                  child: Column(
+                    children: [
+                      _ProyectoPrincipal(),
+                      SizedBox(height: _kGap),
+                      _Habitos(),
+                    ],
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: _kGap),
-            const _Habitos(),
           ],
         ),
       ),
@@ -109,7 +123,8 @@ class _DesktopLayout extends StatelessWidget {
   }
 }
 
-/// Tablet: dos columnas. Mantiene el orden; pares donde tiene sentido.
+/// Tablet (640–1000): una columna aprovechando el ancho. Foco primero; el
+/// estado baja al final como cierre compacto.
 class _TabletLayout extends StatelessWidget {
   const _TabletLayout();
 
@@ -117,32 +132,27 @@ class _TabletLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.xxl),
-      children: [
-        const _BuenosDias(),
-        const SizedBox(height: AppSpacing.lg),
-        const _Versiculo(),
-        const SizedBox(height: _kGap),
-        const _Prioridades(),
-        const SizedBox(height: _kGap),
-        const _EstadoGeneral(),
-        const SizedBox(height: _kGap),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Expanded(child: _Agenda()),
-            SizedBox(width: _kGap),
-            Expanded(child: _ProyectoPrincipal()),
-          ],
-        ),
-        const SizedBox(height: _kGap),
-        const _Habitos(),
+          AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xxl),
+      children: const [
+        _BuenosDias(),
+        SizedBox(height: AppSpacing.xs),
+        _Versiculo(),
+        SizedBox(height: AppSpacing.lg),
+        _Prioridades(),
+        SizedBox(height: _kGap),
+        _Agenda(),
+        SizedBox(height: _kGap),
+        _ProyectoPrincipal(),
+        SizedBox(height: _kGap),
+        _Habitos(),
+        SizedBox(height: _kGap),
+        _EstadoGeneral(),
       ],
     );
   }
 }
 
-/// Móvil: una sola columna, orden exacto.
+/// Móvil: una columna. Hero mínimo, foco primero, estado al final.
 class _MobileLayout extends StatelessWidget {
   const _MobileLayout();
 
@@ -150,21 +160,21 @@ class _MobileLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md, AppSpacing.lg, AppSpacing.md, AppSpacing.xxl),
+          AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.xxl),
       children: const [
         _BuenosDias(),
-        SizedBox(height: AppSpacing.md),
+        SizedBox(height: AppSpacing.xs),
         _Versiculo(),
         SizedBox(height: _kGap),
         _Prioridades(),
-        SizedBox(height: _kGap),
-        _EstadoGeneral(),
         SizedBox(height: _kGap),
         _Agenda(),
         SizedBox(height: _kGap),
         _ProyectoPrincipal(),
         SizedBox(height: _kGap),
         _Habitos(),
+        SizedBox(height: _kGap),
+        _EstadoGeneral(),
       ],
     );
   }
