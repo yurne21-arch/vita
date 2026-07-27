@@ -4,7 +4,6 @@ import '../../../core/providers.dart';
 import '../data/alimentacion_repository.dart';
 import '../domain/alimentacion.dart';
 import '../domain/biblioteca_seed.dart';
-import '../domain/cocina_familiar.dart';
 import '../domain/motor.dart';
 
 final alimentacionRepositoryProvider = Provider<AlimentacionRepository>(
@@ -40,11 +39,4 @@ final planSemanaProvider = FutureProvider<PlanSemana>((ref) async {
     biblioteca: biblioteca,
     inicioSemana: inicio,
   );
-});
-
-/// El plan del niño (Juan Miguel) alineado a lo que ya se cocina en casa.
-final planNinoProvider = FutureProvider<List<ComidaNino>>((ref) async {
-  final plan = await ref.watch(planSemanaProvider.future);
-  final biblioteca = ref.watch(bibliotecaProvider);
-  return planNino(plan, biblioteca);
 });

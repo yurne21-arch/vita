@@ -76,33 +76,6 @@ final progresoDeProyectoProvider = FutureProvider.family<int, String>(
 
 final proyectoSeleccionadoIdProvider = StateProvider<String?>((ref) => null);
 
-final tareasSeleccionadoProvider =
-    Provider<AsyncValue<List<ProjectTask>>>((ref) {
-  final id = ref.watch(proyectoSeleccionadoIdProvider);
-  if (id == null) return const AsyncData<List<ProjectTask>>([]);
-  return ref.watch(tareasDeProyectoProvider(id));
-});
-
-final bitacoraSeleccionadoProvider =
-    Provider<AsyncValue<List<ProjectLogEntry>>>((ref) {
-  final id = ref.watch(proyectoSeleccionadoIdProvider);
-  if (id == null) return const AsyncData<List<ProjectLogEntry>>([]);
-  return ref.watch(bitacoraDeProyectoProvider(id));
-});
-
-final proximoPasoSeleccionadoProvider =
-    Provider<AsyncValue<ProjectTask?>>((ref) {
-  final id = ref.watch(proyectoSeleccionadoIdProvider);
-  if (id == null) return const AsyncData<ProjectTask?>(null);
-  return ref.watch(proximoPasoProvider(id));
-});
-
-final progresoSeleccionadoProvider = Provider<AsyncValue<int>>((ref) {
-  final id = ref.watch(proyectoSeleccionadoIdProvider);
-  if (id == null) return const AsyncData<int>(0);
-  return ref.watch(progresoDeProyectoProvider(id));
-});
-
 // ╭──────────────────────────────────────────────────────────────╮
 // │ Acciones — componen repo + bitácora automática + invalidación. │
 // │ El "cuándo registrar" vive aquí (no en el repositorio).        │
