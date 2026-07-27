@@ -733,13 +733,6 @@ class _PanelHero extends StatelessWidget {
       color: cs.surfaceContainerLow,
       borderRadius: BorderRadius.circular(22),
       border: Border.all(color: AppColors.accent.withValues(alpha: 0.35)),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.05),
-          blurRadius: 20,
-          offset: const Offset(0, 8),
-        ),
-      ],
     );
     final panel = Container(
       decoration: deco,
