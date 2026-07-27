@@ -116,12 +116,16 @@ class AlimentacionRepository {
 
   // ── Compras (con trazabilidad a Finanzas) ────────────────────
 
+  /// Los viajes al súper (tipo 'reposicion'): cada uno con su monto y su rastro
+  /// en Finanzas. La lista maestra de la quincena (tipo 'quincenal') no es un
+  /// gasto, así que no aparece aquí.
   Future<List<Compra>> compras() => _guard(() async {
         final userId = _userId();
         final rows = await _c
             .from('nutrition_compras')
             .select()
             .eq('user_id', userId)
+            .eq('tipo', 'reposicion')
             .order('fecha', ascending: false);
         return (rows as List)
             .map((m) => Compra.fromMap(m as Map<String, dynamic>))
@@ -217,6 +221,84 @@ class AlimentacionRepository {
           presupuesto: c.presupuesto,
           nota: c.nota,
         );
+      });
+
+  /// La lista de compra del período [inicio]–[fin] (una compra 'quincenal').
+  /// Si aún no existe, la crea y la siembra con [semilla] (lo que el plan pide
+  /// comprar). Si ya existe, conserva lo que la usuaria fue marcando. Así, cada
+  /// período nuevo genera su propia lista según lo que se consume.
+  Future<List<CompraItem>> asegurarLista({
+    required DateTime inicio,
+    required DateTime fin,
+    required List<
+            ({
+              String nombre,
+              String? categoria,
+              double? cantidad,
+              String? unidad
+            })>
+        semilla,
+  }) =>
+      _guard(() async {
+        final userId = _userId();
+        final existentes = await _c
+            .from('nutrition_compras')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('tipo', 'quincenal')
+            .eq('periodo_inicio', _fecha(inicio))
+            .limit(1);
+        String compraId;
+        if ((existentes as List).isNotEmpty) {
+          compraId = (existentes.first as Map)['id'] as String;
+        } else {
+          final row = await _c
+              .from('nutrition_compras')
+              .insert({
+                'user_id': userId,
+                'tipo': 'quincenal',
+                'fecha': _fecha(inicio),
+                'periodo_inicio': _fecha(inicio),
+                'periodo_fin': _fecha(fin),
+              })
+              .select('id')
+              .single();
+          compraId = row['id'] as String;
+          if (semilla.isNotEmpty) {
+            await _c.from('nutrition_compra_items').insert([
+              for (final s in semilla)
+                {
+                  'user_id': userId,
+                  'compra_id': compraId,
+                  'nombre': s.nombre,
+                  'categoria': s.categoria,
+                  'cantidad': s.cantidad,
+                  'unidad': s.unidad,
+                  'estado': 'falta',
+                }
+            ]);
+          }
+        }
+        final items = await _c
+            .from('nutrition_compra_items')
+            .select()
+            .eq('user_id', userId)
+            .eq('compra_id', compraId)
+            .order('created_at');
+        return (items as List)
+            .map((m) => CompraItem.fromMap(m as Map<String, dynamic>))
+            .toList();
+      });
+
+  /// Cambia el estado de un ítem de la lista (falta / en_carro / comprado).
+  Future<void> actualizarEstadoItem(String itemId, String estado) =>
+      _guard(() async {
+        final userId = _userId();
+        await _c
+            .from('nutrition_compra_items')
+            .update({'estado': estado})
+            .eq('id', itemId)
+            .eq('user_id', userId);
       });
 
   Future<List<CompraItem>> itemsDeCompra(String compraId) => _guard(() async {

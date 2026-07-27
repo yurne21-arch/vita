@@ -66,3 +66,26 @@ final cocinaSesionProvider = FutureProvider<CocinaSesion?>((ref) async {
   final inicio = lunesDe(DateTime.now());
   return ref.read(alimentacionRepositoryProvider).cocinaSesion(inicio);
 });
+
+/// La lista de compra del período actual, persistida y con estado por ítem.
+/// Se siembra desde lo que el plan pide comprar la primera vez; después
+/// conserva lo que la usuaria va marcando. Cada período nuevo genera su propia
+/// lista según lo que se consume (huevos, frescos, etc.).
+final listaComprasProvider = FutureProvider<List<CompraItem>>((ref) async {
+  ref.watch(usuarioActualProvider);
+  final plan = await ref.watch(planSemanaProvider.future);
+  final inicio = plan.inicio;
+  final fin = inicio.add(const Duration(days: 6));
+  final semilla = [
+    for (final it in [...plan.compras.principal, ...plan.compras.reposicion])
+      (
+        nombre: it.nombre,
+        categoria: it.categoria as String?,
+        cantidad: it.cantidad as double?,
+        unidad: it.unidad as String?,
+      ),
+  ];
+  return ref
+      .read(alimentacionRepositoryProvider)
+      .asegurarLista(inicio: inicio, fin: fin, semilla: semilla);
+});

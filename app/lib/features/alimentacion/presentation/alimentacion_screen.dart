@@ -1041,7 +1041,7 @@ const _mesesCorto = [
 
 String _fechaDia(DateTime d) => '${d.day} ${_mesesCorto[d.month - 1]}';
 
-// ── COMPRAS: ¿qué compro primero? ───────────────────────────────────────────
+// ── COMPRAS: la lista y los viajes al súper ─────────────────────────────────
 
 class _Compras extends ConsumerStatefulWidget {
   const _Compras({required this.plan});
@@ -1051,14 +1051,8 @@ class _Compras extends ConsumerStatefulWidget {
 }
 
 class _ComprasState extends ConsumerState<_Compras> {
-  // estado por ítem: 0 falta · 1 en carro · 2 comprado
-  final _estado = <String, int>{};
-  // Día elegido para la compra (lo cambia la usuaria).
-  String _diaElegido = 'Mié 29';
   // Categoría filtrada en la lista (null = todas).
   String? _filtroCat;
-
-  int _st(ItemCompra it) => _estado['${it.categoria}/${it.nombre}'] ?? 0;
 
   static const _cat = {
     'proteina': (Icons.restaurant, 'Carnes y proteínas'),
@@ -1071,31 +1065,34 @@ class _ComprasState extends ConsumerState<_Compras> {
     'despensa': (Icons.inventory_2_outlined, 'Despensa'),
   };
 
-  String _fmt(ItemCompra it) {
-    if (it.unidad == 'unidad') return '${it.cantidad.round()} u';
+  String _fmtItem(CompraItem it) {
+    final c = it.cantidad ?? 0;
+    if (it.unidad == 'unidad') return '${c.round()} u';
     if (it.unidad == 'ml') {
-      return it.cantidad >= 1000
-          ? '${(it.cantidad / 1000).toStringAsFixed(1)} L'
-          : '${it.cantidad.round()} ml';
+      return c >= 1000
+          ? '${(c / 1000).toStringAsFixed(1)} L'
+          : '${c.round()} ml';
     }
-    return it.cantidad >= 1000
-        ? '${(it.cantidad / 1000).toStringAsFixed(1)} kg'
-        : '${it.cantidad.round()} g';
+    return c >= 1000 ? '${(c / 1000).toStringAsFixed(1)} kg' : '${c.round()} g';
+  }
+
+  Future<void> _marcar(CompraItem it) async {
+    final nuevo = it.estado == 'comprado' ? 'falta' : 'comprado';
+    try {
+      await ref
+          .read(alimentacionRepositoryProvider)
+          .actualizarEstadoItem(it.id, nuevo);
+      ref.invalidate(listaComprasProvider);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(mensajeDeError(e))));
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Agrupa por título de categoría legible.
-    final grupos = <String, ({IconData icon, List<ItemCompra> items})>{};
-    for (final it in [
-      ...widget.plan.compras.principal,
-      ...widget.plan.compras.reposicion
-    ]) {
-      final meta = _cat[it.categoria] ?? (Icons.local_dining, 'Otros');
-      grupos.putIfAbsent(meta.$2, () => (icon: meta.$1, items: []));
-      grupos[meta.$2]!.items.add(it);
-    }
-
     return _Page(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Compras',
@@ -1105,39 +1102,80 @@ class _ComprasState extends ConsumerState<_Compras> {
                 fontWeight: FontWeight.w700,
                 letterSpacing: -.5)),
         const SizedBox(height: 5),
-        Text('Registra tus compras y se guardan en Finanzas.',
+        Text('Marca lo que ya compraste y registra el gasto en Finanzas.',
             style: TextStyle(color: _t.muted, fontSize: 14.5)),
         const SizedBox(height: 20),
         _misCompras(),
         const SizedBox(height: 22),
-        _band(),
-        const SizedBox(height: 22),
-        _despensa(),
-        const SizedBox(height: 20),
-        _filtros(grupos.keys.toList()),
-        const SizedBox(height: 16),
-        _legend(),
-        const SizedBox(height: 20),
-        for (final e in grupos.entries)
-          if (_filtroCat == null || _filtroCat == e.key)
-            _grupo(e.key, e.value.icon, e.value.items),
-        const SizedBox(height: 24),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 26),
-          decoration: BoxDecoration(
-              color: _t.accentWash, borderRadius: BorderRadius.circular(22)),
-          child: Column(children: [
-            Text('Al terminar, no pensarás en comida por 15 días.',
-                style: TextStyle(
-                    color: _t.ink, fontSize: 17, fontWeight: FontWeight.w600),
-                textAlign: TextAlign.center),
-            const SizedBox(height: 3),
-            Text('VITA se encarga del resto.',
-                style: TextStyle(color: _t.muted, fontSize: 14)),
-          ]),
-        ),
+        _laLista(),
       ]),
+    );
+  }
+
+  /// La lista de compra persistida: progreso real, lo que falta y el checklist
+  /// por categoría. Tildar un ítem lo resta de lo que falta y queda guardado.
+  Widget _laLista() {
+    final listaAsync = ref.watch(listaComprasProvider);
+    return listaAsync.when(
+      loading: () => const Padding(
+          padding: EdgeInsets.all(24),
+          child: Center(child: CircularProgressIndicator())),
+      error: (e, _) => VitaCard(
+        child: ErrorEnTarjeta(
+          mensaje: mensajeDeError(e),
+          onReintentar: () => ref.invalidate(listaComprasProvider),
+        ),
+      ),
+      data: (items) {
+        if (items.isEmpty) {
+          return Text('Tu plan no necesita compras esta semana.',
+              style: TextStyle(color: _t.muted, fontSize: 14));
+        }
+        final total = items.length;
+        final comprados = items.where((it) => it.estado == 'comprado').length;
+        final faltan = total - comprados;
+
+        // Agrupa por categoría legible.
+        final grupos = <String, ({IconData icon, List<CompraItem> items})>{};
+        for (final it in items) {
+          final meta = _cat[it.categoria] ?? (Icons.local_dining, 'Otros');
+          grupos.putIfAbsent(meta.$2, () => (icon: meta.$1, items: []));
+          grupos[meta.$2]!.items.add(it);
+        }
+
+        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            _kicker('Tu lista'),
+            const Spacer(),
+            faltan == 0
+                ? _pill('Todo comprado', Icons.check, _t.success)
+                : _pill('Faltan $faltan', null, _t.warning),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                    value: total == 0 ? 0 : comprados / total,
+                    minHeight: 7,
+                    backgroundColor: _t.muted.withValues(alpha: .18),
+                    valueColor: AlwaysStoppedAnimation(_t.accent)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text('$comprados/$total',
+                style: TextStyle(
+                    color: _t.ink, fontSize: 13, fontWeight: FontWeight.w700)),
+          ]),
+          const SizedBox(height: 18),
+          _filtros(grupos.keys.toList()),
+          const SizedBox(height: 8),
+          for (final e in grupos.entries)
+            if (_filtroCat == null || _filtroCat == e.key)
+              _grupo(e.key, e.value.icon, e.value.items),
+        ]);
+      },
     );
   }
 
@@ -1286,6 +1324,7 @@ class _ComprasState extends ConsumerState<_Compras> {
                 }
                 try {
                   final c = await repo.crearCompra(
+                    tipo: 'reposicion',
                     supermercado: superCtrl.text.trim().isEmpty
                         ? null
                         : superCtrl.text.trim(),
@@ -1313,105 +1352,6 @@ class _ComprasState extends ConsumerState<_Compras> {
       ),
     );
   }
-
-  Widget _band() {
-    Widget chip(String s) {
-      final sel = _diaElegido == s;
-      return Padding(
-        padding: const EdgeInsets.only(right: 7),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(999),
-          onTap: () => setState(() => _diaElegido = s),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-            decoration: BoxDecoration(
-                color: sel ? _t.accent : _t.surface,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: sel ? _t.accent : _t.hair)),
-            child: Text(s,
-                style: TextStyle(
-                    color: sel ? Colors.white : _t.ink2,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600)),
-          ),
-        ),
-      );
-    }
-
-    return Wrap(
-        spacing: 40,
-        runSpacing: 20,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            _kicker('Día elegido'),
-            const SizedBox(height: 6),
-            Wrap(runSpacing: 7, children: [
-              chip('Lun 27'),
-              chip('Mar 28'),
-              chip('Mié 29'),
-              chip('Jue 30'),
-              chip('Vie 31'),
-            ]),
-          ]),
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            _kicker('Presupuesto'),
-            const SizedBox(height: 6),
-            Text('\$85.400',
-                style: TextStyle(
-                    color: _t.ink, fontSize: 16, fontWeight: FontWeight.w600)),
-          ]),
-          SizedBox(
-            width: 240,
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              _kicker('En el supermercado'),
-              const SizedBox(height: 8),
-              Row(children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                        value: .43,
-                        minHeight: 7,
-                        backgroundColor: _t.muted.withValues(alpha: .18),
-                        valueColor: AlwaysStoppedAnimation(_t.accent)),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text('18/42',
-                    style: TextStyle(
-                        color: _t.ink,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700)),
-              ]),
-            ]),
-          ),
-        ]);
-  }
-
-  Widget _despensa() => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(
-            color: _t.bg2, borderRadius: BorderRadius.circular(22)),
-        child: Row(children: [
-          Icon(Icons.inventory_2_outlined, size: 18, color: _t.accent),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text.rich(TextSpan(
-                style: TextStyle(color: _t.ink2, fontSize: 14),
-                children: [
-                  const TextSpan(
-                      text: 'Ya tienes en casa: ',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                  const TextSpan(text: 'arroz, pollo, queso, huevos, leche. '),
-                  TextSpan(
-                      text: 'VITA lo usa primero.',
-                      style: TextStyle(color: _t.muted)),
-                ])),
-          ),
-        ]),
-      );
 
   Widget _filtros(List<String> cats) {
     Widget chip(String label, String? cat) {
@@ -1443,30 +1383,12 @@ class _ComprasState extends ConsumerState<_Compras> {
     ]);
   }
 
-  Widget _legend() => Row(children: [
-        _leg(Border.all(color: _t.muted, width: 1.8), 'Falta'),
-        const SizedBox(width: 18),
-        _leg(BoxDecoration(color: _t.amber, shape: BoxShape.circle), 'En carro',
-            box: true),
-        const SizedBox(width: 18),
-        _leg(BoxDecoration(color: _t.success, shape: BoxShape.circle),
-            'Comprado',
-            box: true),
-      ]);
-
-  Widget _leg(dynamic deco, String s, {bool box = false}) => Row(children: [
-        Container(
-            width: 11,
-            height: 11,
-            decoration: box
-                ? deco as BoxDecoration
-                : BoxDecoration(
-                    border: deco as Border, shape: BoxShape.circle)),
-        const SizedBox(width: 6),
-        Text(s, style: TextStyle(color: _t.muted, fontSize: 12.5)),
-      ]);
-
-  Widget _grupo(String titulo, IconData icon, List<ItemCompra> items) {
+  Widget _grupo(String titulo, IconData icon, List<CompraItem> items) {
+    // Pendientes arriba, comprados abajo (sin reordenar entre sí).
+    final ordenados = [
+      ...items.where((it) => it.estado != 'comprado'),
+      ...items.where((it) => it.estado == 'comprado'),
+    ];
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1480,15 +1402,10 @@ class _ComprasState extends ConsumerState<_Compras> {
         const SizedBox(height: 4),
         LayoutBuilder(builder: (context, c) {
           final cols = c.maxWidth >= 900 ? 3 : (c.maxWidth >= 560 ? 2 : 1);
-          // Pendientes arriba, comprados abajo (sin reordenar entre sí).
-          final ordenados = [
-            ...items.where((it) => _st(it) != 2),
-            ...items.where((it) => _st(it) == 2),
-          ];
           return Wrap(
             children: [
               for (final it in ordenados)
-                SizedBox(width: c.maxWidth / cols - 16, child: _item(it)),
+                SizedBox(width: c.maxWidth / cols - 16, child: _itemRow(it)),
             ],
           );
         }),
@@ -1496,19 +1413,17 @@ class _ComprasState extends ConsumerState<_Compras> {
     );
   }
 
-  Widget _item(ItemCompra it) {
-    final st = _estado['${it.categoria}/${it.nombre}'] ?? 0;
-    final done = st == 2;
+  Widget _itemRow(CompraItem it) {
+    final done = it.estado == 'comprado';
     return InkWell(
-      onTap: () => setState(
-          () => _estado['${it.categoria}/${it.nombre}'] = (st + 1) % 3),
+      onTap: () => _marcar(it),
       child: Container(
         decoration:
             BoxDecoration(border: Border(top: BorderSide(color: _t.hairSoft))),
-        padding: const EdgeInsets.symmetric(vertical: 9),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         margin: const EdgeInsets.only(right: 16),
         child: Row(children: [
-          _stateDot(st),
+          _checkDot(done),
           const SizedBox(width: 12),
           Expanded(
             child: Text(it.nombre,
@@ -1517,7 +1432,7 @@ class _ComprasState extends ConsumerState<_Compras> {
                     fontSize: 14,
                     decoration: done ? TextDecoration.lineThrough : null)),
           ),
-          Text(_fmt(it),
+          Text(_fmtItem(it),
               style: TextStyle(
                   color: _t.muted, fontSize: 13, fontWeight: FontWeight.w600)),
         ]),
@@ -1525,33 +1440,18 @@ class _ComprasState extends ConsumerState<_Compras> {
     );
   }
 
-  Widget _stateDot(int st) {
-    if (st == 1) {
-      return Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(color: _t.amber, shape: BoxShape.circle),
-          child: Center(
-              child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                      color: Colors.white, shape: BoxShape.circle))));
-    }
-    if (st == 2) {
-      return Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(color: _t.success, shape: BoxShape.circle),
-          child: const Icon(Icons.check, size: 12, color: Colors.white));
-    }
-    return Container(
-        width: 20,
-        height: 20,
+  Widget _checkDot(bool done) => Container(
+        width: 22,
+        height: 22,
         decoration: BoxDecoration(
+            color: done ? _t.success : Colors.transparent,
             shape: BoxShape.circle,
-            border: Border.all(color: _t.muted, width: 1.8)));
-  }
+            border: Border.all(
+                color: done ? _t.success : _t.muted, width: done ? 0 : 1.8)),
+        child: done
+            ? const Icon(Icons.check, size: 13, color: Colors.white)
+            : null,
+      );
 }
 
 // ── botones (del sistema de diseño compartido) ──────────────────────────────
