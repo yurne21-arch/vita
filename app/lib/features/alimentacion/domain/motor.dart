@@ -17,7 +17,8 @@ class Biblioteca {
     required this.preparaciones,
     required this.ensambles,
   })  : _alimentos = {for (final a in alimentos) a.id: a},
-        _preparaciones = {for (final p in preparaciones) p.id: p};
+        _preparaciones = {for (final p in preparaciones) p.id: p},
+        _ensambles = {for (final e in ensambles) e.id: e};
 
   final List<Alimento> alimentos;
   final List<Preparacion> preparaciones;
@@ -25,10 +26,12 @@ class Biblioteca {
 
   final Map<String, Alimento> _alimentos;
   final Map<String, Preparacion> _preparaciones;
+  final Map<String, Ensamble> _ensambles;
 
   Alimento? alimento(String? id) => id == null ? null : _alimentos[id];
   Preparacion? preparacion(String? id) =>
       id == null ? null : _preparaciones[id];
+  Ensamble? ensamble(String? id) => id == null ? null : _ensambles[id];
 
   /// El alimento subyacente de un componente (directo, o vía su preparación).
   Alimento? alimentoDe(ComponenteEnsamble c) {

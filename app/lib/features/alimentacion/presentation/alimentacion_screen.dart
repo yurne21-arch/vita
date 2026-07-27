@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/errores.dart';
 import '../../../core/widgets/vita_card.dart';
+import '../domain/alimentacion.dart';
 import '../domain/cocina_familiar.dart';
 import '../domain/motor.dart';
 import 'alimentacion_controller.dart';
@@ -433,21 +434,15 @@ class _Hoy extends StatelessWidget {
 
 // ── MENÚ: ¿qué comeré esta semana? ──────────────────────────────────────────
 
-class _Menu extends StatelessWidget {
+class _Menu extends ConsumerWidget {
   const _Menu({required this.plan, required this.biblioteca});
   final PlanSemana plan;
   final Biblioteca biblioteca;
 
-  ComidaPlan? _por(DiaPlan d, String m) {
-    for (final c in d.comidas) {
-      if (c.momento == m) return c;
-    }
-    return null;
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final hoy = plan.diaDe(DateTime.now()) ?? plan.dias.first;
+    final estados = ref.watch(estadosComidaProvider).valueOrNull ?? const {};
 
     return _Page(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -458,7 +453,7 @@ class _Menu extends StatelessWidget {
                 fontWeight: FontWeight.w700,
                 letterSpacing: -.5)),
         const SizedBox(height: 4),
-        Text('Las comidas de los 7 días.',
+        Text('Toca una comida para ver cómo prepararla, marcarla o cambiarla.',
             style: TextStyle(color: _t.muted, fontSize: 14)),
         const SizedBox(height: 20),
         LayoutBuilder(builder: (context, c) {
@@ -472,11 +467,9 @@ class _Menu extends StatelessWidget {
               for (final d in plan.dias)
                 SizedBox(
                   width: cols == 1 ? c.maxWidth : w,
-                  child: _diaCard(
-                    d,
-                    esHoy: identical(d, hoy),
-                    esFinde: d.comidas.any((x) => x.momento == 'finde'),
-                  ),
+                  child: _diaCard(d, estados,
+                      esHoy: identical(d, hoy),
+                      esFinde: d.comidas.any((x) => x.momento == 'finde')),
                 ),
             ],
           );
@@ -485,28 +478,10 @@ class _Menu extends StatelessWidget {
     );
   }
 
-  Widget _diaCard(DiaPlan d, {bool esHoy = false, bool esFinde = false}) {
-    final des = _por(d, 'desayuno');
-    final alm = _por(d, 'almuerzo') ?? _por(d, 'finde');
-    final mer = _por(d, 'merienda');
-    Widget line(String k, String v) => Container(
-          decoration:
-              BoxDecoration(border: Border(top: BorderSide(color: _t.hair))),
-          padding: const EdgeInsets.symmetric(vertical: 11),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(k.toUpperCase(),
-                style: TextStyle(
-                    color: _t.muted,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: .6)),
-            const SizedBox(height: 2),
-            Text(v, style: TextStyle(color: _t.ink, fontSize: 15)),
-          ]),
-        );
+  Widget _diaCard(DiaPlan d, Map<String, EstadoComida> estados,
+      {bool esHoy = false, bool esFinde = false}) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
       decoration: BoxDecoration(
         color: _t.panel,
         borderRadius: BorderRadius.circular(16),
@@ -529,12 +504,198 @@ class _Menu extends StatelessWidget {
           else if (esFinde)
             _pill('Especial', null, _t.amber),
         ]),
-        const SizedBox(height: 10),
-        if (des != null) line('Desayuno', des.ensamble.nombre),
-        if (alm != null) line('Almuerzo', alm.ensamble.nombre),
-        if (mer != null) line('Merienda', mer.ensamble.nombre),
+        const SizedBox(height: 4),
+        for (final c in d.comidas)
+          _ComidaTile(
+            fecha: d.fecha,
+            comida: c,
+            biblioteca: biblioteca,
+            estado: estados[EstadoComida.claveDe(d.fecha, c.momento)],
+          ),
       ]),
     );
+  }
+}
+
+/// Una comida en el menú: desplegable con la preparación, y botones para
+/// marcar (comí / no comí) y cambiarla por otra de la biblioteca. Guarda todo.
+class _ComidaTile extends ConsumerStatefulWidget {
+  const _ComidaTile({
+    required this.fecha,
+    required this.comida,
+    required this.biblioteca,
+    this.estado,
+  });
+  final DateTime fecha;
+  final ComidaPlan comida;
+  final Biblioteca biblioteca;
+  final EstadoComida? estado;
+
+  @override
+  ConsumerState<_ComidaTile> createState() => _ComidaTileState();
+}
+
+class _ComidaTileState extends ConsumerState<_ComidaTile> {
+  bool _open = false;
+
+  static const _label = {
+    'desayuno': 'Desayuno',
+    'almuerzo': 'Almuerzo',
+    'merienda': 'Merienda',
+    'finde': 'Almuerzo',
+  };
+
+  Ensamble get _ensamble =>
+      widget.biblioteca.ensamble(widget.estado?.assemblyId) ??
+      widget.comida.ensamble;
+
+  Future<void> _guardar({String? assemblyId, String? estado}) async {
+    final repo = ref.read(alimentacionRepositoryProvider);
+    await repo.guardarEstadoComida(
+      fecha: widget.fecha,
+      momento: widget.comida.momento,
+      assemblyId: assemblyId ?? widget.estado?.assemblyId ?? _ensamble.id,
+      estado: estado ?? widget.estado?.estado ?? 'planeado',
+    );
+    ref.invalidate(estadosComidaProvider);
+  }
+
+  Future<void> _cambiar() async {
+    final opciones = widget.biblioteca.porMomento(widget.comida.momento);
+    final elegido = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: _t.panel,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => ListView(shrinkWrap: true, children: [
+        Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 6),
+            child: _kicker('Cambiar por')),
+        for (final e in opciones)
+          ListTile(
+            title: Text(e.nombre, style: TextStyle(color: _t.ink)),
+            subtitle: e.descripcion == null
+                ? null
+                : Text(e.descripcion!, style: TextStyle(color: _t.muted)),
+            onTap: () => Navigator.pop(context, e.id),
+          ),
+      ]),
+    );
+    if (elegido != null) {
+      await _guardar(assemblyId: elegido, estado: 'planeado');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final e = _ensamble;
+    final st = widget.estado?.estado ?? 'planeado';
+    return Container(
+      decoration:
+          BoxDecoration(border: Border(top: BorderSide(color: _t.hair))),
+      child: Column(children: [
+        InkWell(
+          onTap: () => setState(() => _open = !_open),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(children: [
+              Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                          (_label[widget.comida.momento] ??
+                                  widget.comida.momento)
+                              .toUpperCase(),
+                          style: TextStyle(
+                              color: _t.muted,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: .6)),
+                      const SizedBox(height: 2),
+                      Text(e.nombre,
+                          style: TextStyle(
+                              color: st == 'no_comido' ? _t.muted : _t.ink,
+                              fontSize: 15,
+                              decoration: st == 'no_comido'
+                                  ? TextDecoration.lineThrough
+                                  : null)),
+                    ]),
+              ),
+              if (st == 'comido')
+                _pill('Comí', Icons.check, _t.success)
+              else if (st == 'no_comido')
+                _pill('No comí', null, _t.muted),
+              const SizedBox(width: 6),
+              AnimatedRotation(
+                turns: _open ? .25 : 0,
+                duration: const Duration(milliseconds: 180),
+                child: Icon(Icons.chevron_right, size: 18, color: _t.muted),
+              ),
+            ]),
+          ),
+        ),
+        if (_open)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _receta(e),
+              const SizedBox(height: 10),
+              Wrap(spacing: 8, runSpacing: 6, children: [
+                _btn('Comí', Icons.check, () => _guardar(estado: 'comido')),
+                _btn('No comí', Icons.close,
+                    () => _guardar(estado: 'no_comido')),
+                _btn('Cambiar', Icons.swap_horiz, _cambiar),
+              ]),
+            ]),
+          ),
+      ]),
+    );
+  }
+
+  Widget _btn(String label, IconData icon, VoidCallback onTap) =>
+      OutlinedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 16),
+        label: Text(label),
+        style: OutlinedButton.styleFrom(
+            visualDensity: VisualDensity.compact, foregroundColor: _t.ink),
+      );
+
+  Widget _receta(Ensamble e) {
+    final ingredientes = <String>[];
+    final pasos = <String>[];
+    for (final comp in e.componentes) {
+      final a = widget.biblioteca.alimentoDe(comp);
+      if (a != null) ingredientes.add(a.nombre);
+      final prep = widget.biblioteca.preparacion(comp.preparationId);
+      if (prep != null) {
+        pasos.add(prep.tiempoMin != null
+            ? '${prep.nombre} (${prep.tiempoMin} min)'
+            : prep.nombre);
+      }
+    }
+    Widget linea(String k, String v) => Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Text.rich(TextSpan(
+              style: TextStyle(color: _t.ink2, fontSize: 13.5, height: 1.4),
+              children: [
+                TextSpan(
+                    text: '$k: ',
+                    style:
+                        TextStyle(color: _t.ink, fontWeight: FontWeight.w600)),
+                TextSpan(text: v),
+              ])),
+        );
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      if (e.descripcion != null) ...[
+        Text(e.descripcion!, style: TextStyle(color: _t.ink2, fontSize: 13.5)),
+        const SizedBox(height: 8),
+      ],
+      if (ingredientes.isNotEmpty) linea('Qué lleva', ingredientes.join(', ')),
+      if (pasos.isNotEmpty) linea('Cómo', '${pasos.join(' · ')} · y armar'),
+    ]);
   }
 }
 

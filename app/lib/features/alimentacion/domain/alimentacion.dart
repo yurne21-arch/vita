@@ -579,3 +579,37 @@ class CompraItem {
         sustituto: m['sustituto'] as String?,
       );
 }
+
+/// La decisión de la usuaria sobre una comida de un día: si la comió, y si la
+/// cambió por otra. El plan es determinista; esto guarda solo el override.
+class EstadoComida {
+  const EstadoComida({
+    required this.fecha,
+    required this.momento,
+    this.assemblyId,
+    this.estado = 'planeado',
+  });
+
+  final DateTime fecha;
+  final String momento; // desayuno | almuerzo | merienda | finde
+  final String? assemblyId; // comida elegida (si la cambió)
+  final String estado; // planeado | comido | no_comido
+
+  bool get comido => estado == 'comido';
+  bool get noComido => estado == 'no_comido';
+
+  static String claveDe(DateTime fecha, String momento) {
+    final mm = fecha.month.toString().padLeft(2, '0');
+    final dd = fecha.day.toString().padLeft(2, '0');
+    return '${fecha.year}-$mm-$dd|$momento';
+  }
+
+  String get clave => claveDe(fecha, momento);
+
+  factory EstadoComida.fromMap(Map<String, dynamic> m) => EstadoComida(
+        fecha: DateTime.parse(m['fecha'] as String),
+        momento: m['momento'] as String,
+        assemblyId: m['assembly_id'] as String?,
+        estado: (m['estado'] as String?) ?? 'planeado',
+      );
+}

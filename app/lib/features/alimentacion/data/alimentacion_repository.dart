@@ -249,4 +249,37 @@ class AlimentacionRepository {
           'sustituto': it.sustituto,
         });
       });
+
+  // ── Estados de comida (comí / no comí / cambiada) ────────────
+
+  Future<List<EstadoComida>> estadosComida(DateTime desde, DateTime hasta) =>
+      _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('nutrition_meal_state')
+            .select()
+            .eq('user_id', userId)
+            .gte('fecha', _fecha(desde))
+            .lte('fecha', _fecha(hasta));
+        return (rows as List)
+            .map((m) => EstadoComida.fromMap(m as Map<String, dynamic>))
+            .toList();
+      });
+
+  Future<void> guardarEstadoComida({
+    required DateTime fecha,
+    required String momento,
+    String? assemblyId,
+    String estado = 'planeado',
+  }) =>
+      _guard(() async {
+        final userId = _userId();
+        await _c.from('nutrition_meal_state').upsert({
+          'user_id': userId,
+          'fecha': _fecha(fecha),
+          'momento': momento,
+          'assembly_id': assemblyId,
+          'estado': estado,
+        }, onConflict: 'user_id, fecha, momento');
+      });
 }

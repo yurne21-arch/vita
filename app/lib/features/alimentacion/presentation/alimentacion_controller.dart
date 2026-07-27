@@ -47,3 +47,15 @@ final comprasProvider = FutureProvider<List<Compra>>((ref) async {
   ref.watch(usuarioActualProvider);
   return ref.read(alimentacionRepositoryProvider).compras();
 });
+
+/// Estados de comida de la semana actual (comí / no comí / cambiada), indexados
+/// por `fecha|momento`. Los fija la usuaria desde Menú, Hoy o Mi Vida.
+final estadosComidaProvider =
+    FutureProvider<Map<String, EstadoComida>>((ref) async {
+  ref.watch(usuarioActualProvider);
+  final inicio = lunesDe(DateTime.now());
+  final fin = inicio.add(const Duration(days: 6));
+  final list =
+      await ref.read(alimentacionRepositoryProvider).estadosComida(inicio, fin);
+  return {for (final e in list) e.clave: e};
+});
