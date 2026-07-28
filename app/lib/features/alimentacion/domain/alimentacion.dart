@@ -306,6 +306,10 @@ class Ensamble {
     required this.momento,
     this.descripcion,
     this.emoji,
+    this.queEs,
+    this.pasos = const [],
+    this.calificacion,
+    this.tiempoMin,
     this.frecuencia = Frecuencias.frecuente,
     this.etiquetas = const [],
     this.estado = 'ok',
@@ -320,8 +324,12 @@ class Ensamble {
   final String momento; // desayuno|almuerzo|merienda|finde
   final String? descripcion; // acompañamiento apetitoso ("con arroz al ajo…")
   final String? emoji; // ícono de la comida ("🍗")
+  final String? queEs; // qué es este plato, en una frase clara
+  final List<String> pasos; // cómo se prepara, paso a paso
+  final double? calificacion; // qué tan bien calificada (0–5)
+  final int? tiempoMin; // tiempo aproximado de preparación
   final String frecuencia;
-  final List<String> etiquetas;
+  final List<String> etiquetas; // 'fácil' · 'económica' · 'saludable'…
   final String estado; // ok|ajustar|quitar
   final String? alternativaDe; // ensamble del que es plan B
   final String? notas;
@@ -336,6 +344,13 @@ class Ensamble {
         id: m['id'] as String,
         nombre: m['nombre'] as String,
         momento: m['momento'] as String,
+        descripcion: m['descripcion'] as String?,
+        emoji: m['emoji'] as String?,
+        queEs: m['que_es'] as String?,
+        pasos:
+            (m['pasos'] as List?)?.map((e) => e as String).toList() ?? const [],
+        calificacion: (m['calificacion'] as num?)?.toDouble(),
+        tiempoMin: (m['tiempo_min'] as num?)?.toInt(),
         frecuencia: (m['frecuencia'] as String?) ?? Frecuencias.frecuente,
         etiquetas:
             (m['etiquetas'] as List?)?.map((e) => e as String).toList() ??
@@ -636,4 +651,50 @@ class CocinaSesion {
             : DateTime.parse(m['cocinada_at'] as String).toLocal(),
         nota: m['nota'] as String?,
       );
+}
+
+/// Traduce una cantidad en gramos/ml a una referencia VISUAL (sin balanza):
+/// taza, palma, puño, unidad, cucharada. Es aproximado a propósito — orienta,
+/// no pesa. La usuaria pidió medidas gráficas, no gramos.
+String porcionVisual(Alimento a, double cantidad) {
+  if (cantidad <= 0) return '';
+  // Contables por unidad natural: huevos, arepas, frutas. Recibe gramos y los
+  // pasa a unidades con gramosPorUnidad (1 huevo ≈ 55 g).
+  if (a.unidad == 'unidad') {
+    final porUnidad = a.gramosPorUnidad ?? 1;
+    final n = (cantidad / porUnidad).round().clamp(1, 99);
+    final nombre = a.nombre.toLowerCase();
+    return n == 1 ? '1 $nombre' : '$n ${nombre}s';
+  }
+  switch (a.categoria) {
+    case 'proteina':
+      return _aprox(cantidad / 100, 'palma', 'palmas'); // 1 palma ≈ 100 g
+    case 'carbohidrato':
+      return _aprox(cantidad / 180, 'taza', 'tazas'); // 1 taza ≈ 180 g cocido
+    case 'verdura':
+      return _aprox(cantidad / 80, 'puñado', 'puñados');
+    case 'fruta':
+      return _aprox(cantidad / 120, 'porción', 'porciones');
+    case 'lacteo':
+      if (a.unidad == 'ml') return cantidad >= 200 ? '1 vaso' : '½ vaso';
+      return _aprox(cantidad / 30, 'lonja', 'lonjas'); // 1 lonja ≈ 30 g
+    case 'fresco':
+      final n = a.nombre.toLowerCase();
+      return _aprox(cantidad / 100, n, '${n}s');
+    case 'grasa':
+      return _aprox(cantidad / 12, 'cucharada', 'cucharadas'); // 1 cda ≈ 12 g
+    default:
+      return '${cantidad.round()} g';
+  }
+}
+
+/// Redondea a media unidad y lo dice en humano: ½, 1, 1½, 2…
+String _aprox(double n, String uno, String varios) {
+  final medios = (n * 2).round().clamp(1, 200);
+  final entero = medios ~/ 2;
+  final mitad = medios.isOdd;
+  if (medios == 1) return '½ $uno';
+  final numero = mitad ? '$entero½' : '$entero';
+  final palabra = (entero == 1 && !mitad) ? uno : varios;
+  return '$numero $palabra';
 }

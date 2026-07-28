@@ -67,6 +67,10 @@ Ensamble _e(
   List<(String, String, String)> comps, {
   String? descripcion,
   String? emoji,
+  String? queEs,
+  List<String> pasos = const [],
+  double? calificacion,
+  int? tiempoMin,
   String frecuencia = Frecuencias.frecuente,
   String? alternativaDe,
   List<String> etiquetas = const [],
@@ -89,6 +93,10 @@ Ensamble _e(
     momento: momento,
     descripcion: descripcion,
     emoji: emoji,
+    queEs: queEs,
+    pasos: pasos,
+    calificacion: calificacion,
+    tiempoMin: tiempoMin,
     frecuencia: frecuencia,
     alternativaDe: alternativaDe,
     etiquetas: etiquetas,
@@ -122,9 +130,9 @@ Biblioteca bibliotecaAprobada() {
         kcal: 218, prot: 5.5, carb: 45, grasa: 2.5, fibra: 2),
     _a('pan', 'Pan', 'carbohidrato',
         kcal: 265, prot: 9, carb: 49, grasa: 3.2, fibra: 2.4),
-    _a('paquecas', 'Paquecas', 'carbohidrato',
+    _a('paquecas', 'Panquecas', 'carbohidrato',
         kcal: 230, prot: 6, carb: 35, grasa: 7, fibra: 1),
-    _a('choclo', 'Choclo', 'carbohidrato',
+    _a('choclo', 'Maíz (jojoto)', 'carbohidrato',
         kcal: 96, prot: 3.4, carb: 21, grasa: 1.5, fibra: 2.4),
     // Verduras / frescos
     _a('lechuga', 'Lechuga', 'verdura',
@@ -141,11 +149,11 @@ Biblioteca bibliotecaAprobada() {
         kcal: 31, prot: 1, carb: 6, fibra: 2.1),
     _a('cebolla', 'Cebolla', 'verdura',
         kcal: 40, prot: 1.1, carb: 9, fibra: 1.7),
-    _a('palta', 'Palta', 'fresco',
+    _a('palta', 'Aguacate', 'fresco',
         kcal: 160, prot: 2, carb: 9, grasa: 15, fibra: 7),
     // Lácteos
     _a('queso', 'Queso', 'lacteo', kcal: 350, prot: 25, carb: 2, grasa: 27),
-    _a('quesillo', 'Quesillo', 'lacteo',
+    _a('quesillo', 'Queso blanco', 'lacteo',
         kcal: 300, prot: 20, carb: 3, grasa: 23),
     _a('leche', 'Leche', 'lacteo',
         kcal: 62, prot: 3.2, carb: 4.8, grasa: 3.3, unidad: 'ml'),
@@ -154,8 +162,7 @@ Biblioteca bibliotecaAprobada() {
         kcal: 52, prot: 0.3, carb: 14, fibra: 2.4),
     _a('platano', 'Plátano', 'fruta',
         kcal: 89, prot: 1.1, carb: 23, grasa: 0.3, fibra: 2.6),
-    _a('frutilla', 'Frutillas', 'fruta',
-        kcal: 33, prot: 0.7, carb: 8, fibra: 2),
+    _a('frutilla', 'Fresas', 'fruta', kcal: 33, prot: 0.7, carb: 8, fibra: 2),
     _a('uva', 'Uvas', 'fruta', kcal: 69, prot: 0.7, carb: 18, fibra: 0.9),
     _a('maracuya', 'Maracuyá', 'fruta',
         kcal: 97, prot: 2.2, carb: 23, fibra: 10),
@@ -215,7 +222,7 @@ Biblioteca bibliotecaAprobada() {
   ];
 
   final ensambles = <Ensamble>[
-    // ── Desayunos (nombres de menú, salados) ──
+    // ── Desayunos (venezolanos, salados) ──
     _e(
         'des_arepa_pollo',
         'Arepa rellena de pollo',
@@ -225,8 +232,18 @@ Biblioteca bibliotecaAprobada() {
           ('prep', 'pollo_desmenuzado', 'proteina'),
         ],
         descripcion: 'pollo desmenuzado y jugoso',
+        queEs:
+            'Arepa de maíz recién asada, abierta y rellena con pollo desmenuzado jugoso. El desayuno venezolano de siempre.',
+        pasos: [
+          'Amasa la harina de maíz con agua tibia y sal hasta que no se pegue en las manos.',
+          'Forma las arepas y ásalas en budare o sartén ~7 min por lado, hasta que suenen huecas.',
+          'Ábrelas por un lado y rellénalas con el pollo desmenuzado caliente.',
+        ],
+        calificacion: 4.8,
+        tiempoMin: 25,
         emoji: '🫓',
-        frecuencia: Frecuencias.favoritaFrecuente),
+        frecuencia: Frecuencias.favoritaFrecuente,
+        etiquetas: ['fácil', 'económica']),
     _e(
         'des_perico',
         'Perico venezolano',
@@ -235,22 +252,42 @@ Biblioteca bibliotecaAprobada() {
           ('prep', 'huevo_perico', 'proteina'),
           ('food', 'arepa', 'base'),
         ],
-        descripcion: 'huevo con tomate y cebolla, con arepa',
+        descripcion: 'huevo revuelto con tomate y cebolla, con arepa',
+        queEs:
+            'Huevos revueltos con tomate y cebolla sofritos — el perico de toda la vida, acompañado de arepa.',
+        pasos: [
+          'Sofríe cebolla y tomate picados en un poco de aceite hasta que ablanden.',
+          'Agrega los huevos batidos y revuelve a fuego bajo hasta que cuajen.',
+          'Sirve con arepa caliente.',
+        ],
+        calificacion: 4.6,
+        tiempoMin: 12,
         emoji: '🍳',
-        frecuencia: Frecuencias.ocasional),
+        frecuencia: Frecuencias.ocasional,
+        etiquetas: ['fácil', 'económica']),
     _e(
         'des_arepa_queso',
-        'Arepa con queso derretido',
+        'Arepa con queso',
         Momentos.desayuno,
         [
           ('food', 'arepa', 'base'),
           ('food', 'queso', 'lacteo'),
         ],
         descripcion: 'sencilla y reconfortante',
-        emoji: '🧀'),
+        queEs:
+            'Arepa caliente rellena de queso que se derrite adentro. Simple y reconfortante.',
+        pasos: [
+          'Asa la arepa hasta que esté doradita y suene hueca.',
+          'Ábrela y pon el queso en rebanadas dentro.',
+          'Ciérrala un momento para que el calor lo derrita.',
+        ],
+        calificacion: 4.5,
+        tiempoMin: 20,
+        emoji: '🧀',
+        etiquetas: ['fácil', 'económica']),
     _e(
         'des_huevo_palta',
-        'Huevo con palta y arepa',
+        'Huevo con aguacate y arepa',
         Momentos.desayuno,
         [
           ('prep', 'huevo_plancha', 'proteina'),
@@ -258,11 +295,21 @@ Biblioteca bibliotecaAprobada() {
           ('food', 'arepa', 'base'),
         ],
         descripcion: 'cremoso, salado, para empezar el día',
+        queEs:
+            'Huevo a la plancha con aguacate cremoso y arepa. Salado y suave para empezar el día.',
+        pasos: [
+          'Cocina el huevo a la plancha al punto que te guste.',
+          'Corta el aguacate en láminas y sálalo.',
+          'Sirve con la arepa caliente.',
+        ],
+        calificacion: 4.5,
+        tiempoMin: 12,
         emoji: '🥑',
-        frecuencia: Frecuencias.ocasional),
+        frecuencia: Frecuencias.ocasional,
+        etiquetas: ['fácil', 'saludable']),
     _e(
         'des_tostada_palta',
-        'Tostada de palta',
+        'Tostada de aguacate',
         Momentos.desayuno,
         [
           ('food', 'pan', 'base'),
@@ -270,8 +317,18 @@ Biblioteca bibliotecaAprobada() {
           ('food', 'tomate', 'fresco'),
           ('food', 'quesillo', 'lacteo'),
         ],
-        descripcion: 'con tomate y quesillo fresco',
-        emoji: '🥑'),
+        descripcion: 'con tomate y queso blanco fresco',
+        queEs:
+            'Pan tostado con aguacate pisado, tomate y queso blanco fresco. Liviano y fresco.',
+        pasos: [
+          'Tuesta el pan.',
+          'Pisa el aguacate con un poco de sal y limón y úntalo sobre el pan.',
+          'Corona con rodajas de tomate y queso blanco.',
+        ],
+        calificacion: 4.4,
+        tiempoMin: 10,
+        emoji: '🥑',
+        etiquetas: ['fácil', 'saludable']),
     _e(
         'des_arepa_jamonqueso',
         'Arepa de jamón y queso',
@@ -282,18 +339,37 @@ Biblioteca bibliotecaAprobada() {
           ('food', 'queso', 'lacteo'),
         ],
         descripcion: 'el clásico que nunca falla',
-        emoji: '🥪'),
+        queEs: 'La arepa clásica rellena de jamón y queso. La que nunca falla.',
+        pasos: [
+          'Asa la arepa hasta dorar.',
+          'Ábrela y rellénala con jamón y queso.',
+          'Caliéntala un momento para que se una todo.',
+        ],
+        calificacion: 4.6,
+        tiempoMin: 20,
+        emoji: '🥪',
+        etiquetas: ['fácil', 'económica']),
     _e(
         'des_paquecas_queso',
-        'Paquecas con queso',
+        'Panquecas con queso',
         Momentos.desayuno,
         [
           ('food', 'paquecas', 'base'),
           ('food', 'queso', 'lacteo'),
         ],
         descripcion: 'esponjosas, para consentirte',
+        queEs:
+            'Panquecas esponjosas dobladas con queso adentro. Un desayuno para consentirse.',
+        pasos: [
+          'Mezcla harina, huevo y leche hasta una masa suave sin grumos.',
+          'Cocina cada panqueca en sartén ligeramente engrasado; voltea cuando burbujee.',
+          'Rellena con queso y dóblala.',
+        ],
+        calificacion: 4.5,
+        tiempoMin: 20,
         emoji: '🥞',
-        frecuencia: Frecuencias.ocasional),
+        frecuencia: Frecuencias.ocasional,
+        etiquetas: ['fácil']),
 
     // ── Almuerzos entre semana (Lun–Vie) ──
     _e(
@@ -311,8 +387,18 @@ Biblioteca bibliotecaAprobada() {
           ('food', 'aceite', 'aliño'),
         ],
         descripcion: 'con arroz al ajo y ensalada fresca',
+        queEs:
+            'Pechuga de pollo a la plancha con toque de ajo y limón, arroz y ensalada fresca. Ligero y con buena proteína.',
+        pasos: [
+          'Sazona el pollo con ajo, sal, pimienta y un chorrito de limón; hazlo a la plancha ~6 min por lado.',
+          'Cocina el arroz con un diente de ajo para darle sabor.',
+          'Arma la ensalada con lechuga, tomate, pepino, zanahoria y aguacate; aliña con un hilo de aceite de oliva.',
+        ],
+        calificacion: 4.7,
+        tiempoMin: 30,
         emoji: '🍗',
-        frecuencia: Frecuencias.favoritaFrecuente),
+        frecuencia: Frecuencias.favoritaFrecuente,
+        etiquetas: ['saludable']),
     _e(
         'alm_carne_arroz',
         'Carne a la plancha',
@@ -326,7 +412,17 @@ Biblioteca bibliotecaAprobada() {
           ('food', 'aceite', 'aliño'),
         ],
         descripcion: 'con arroz blanco y ensalada de la casa',
-        emoji: '🥩'),
+        queEs:
+            'Bistec de res a la plancha, jugoso, con arroz blanco y ensalada de la casa.',
+        pasos: [
+          'Sazona la carne con sal y pimienta; séllala en plancha bien caliente 3–4 min por lado.',
+          'Déjala reposar 3 min antes de cortar para que quede jugosa.',
+          'Sirve con arroz y ensalada de tomate, pepino y aguacate.',
+        ],
+        calificacion: 4.6,
+        tiempoMin: 25,
+        emoji: '🥩',
+        etiquetas: ['saludable']),
     _e(
         'alm_pasta_atun',
         'Pasta marinera de atún',
@@ -337,10 +433,20 @@ Biblioteca bibliotecaAprobada() {
           ('food', 'tomate', 'fresco'),
         ],
         descripcion: 'con tomate natural',
-        emoji: '🍝'),
+        queEs:
+            'Pasta con atún y tomate natural. Rápida, rendidora y económica.',
+        pasos: [
+          'Cocina la pasta al dente en agua con sal.',
+          'Sofríe tomate picado y suma el atún escurrido.',
+          'Mezcla con la pasta y sirve.',
+        ],
+        calificacion: 4.3,
+        tiempoMin: 20,
+        emoji: '🍝',
+        etiquetas: ['económica', 'rápida']),
     _e(
         'alm_pollo_salteado',
-        'Pollo salteado oriental',
+        'Pollo salteado con vegetales',
         Momentos.almuerzo,
         [
           ('prep', 'pollo_salteado', 'proteina'),
@@ -350,7 +456,17 @@ Biblioteca bibliotecaAprobada() {
           ('food', 'brocoli', 'verdura'),
         ],
         descripcion: 'con verduras crocantes y arroz',
-        emoji: '🥢'),
+        queEs:
+            'Tiras de pollo salteadas con pimentón, zanahoria y brócoli crocantes, servidas sobre arroz.',
+        pasos: [
+          'Corta el pollo en tiras y saltéalo a fuego alto hasta dorar.',
+          'Agrega los vegetales y saltea 4–5 min para que queden crocantes.',
+          'Sirve sobre el arroz.',
+        ],
+        calificacion: 4.5,
+        tiempoMin: 25,
+        emoji: '🥢',
+        etiquetas: ['saludable']),
     _e(
         'alm_bolonesa',
         'Pasta boloñesa',
@@ -361,9 +477,19 @@ Biblioteca bibliotecaAprobada() {
           ('food', 'tomate', 'fresco'),
         ],
         descripcion: 'salsa de carne lenta con tomate',
-        emoji: '🍝'),
+        queEs:
+            'Pasta con salsa de carne molida y tomate cocinada con calma. Rinde y le gusta a todos.',
+        pasos: [
+          'Sofríe cebolla; suma la carne molida y dórala.',
+          'Agrega tomate y cocina a fuego bajo unos 20 min.',
+          'Mézclala con la pasta al dente.',
+        ],
+        calificacion: 4.7,
+        tiempoMin: 30,
+        emoji: '🍝',
+        etiquetas: ['económica']),
 
-    // ── Meriendas (solo lista aprobada) ──
+    // ── Meriendas ──
     _e(
         'mer_platano_leche',
         'Plátano con leche',
@@ -372,7 +498,12 @@ Biblioteca bibliotecaAprobada() {
           ('food', 'platano', 'fruta'),
           ('food', 'leche', 'lacteo'),
         ],
-        emoji: '🥛'),
+        queEs: 'Plátano maduro con un vaso de leche. Dulce natural y energía.',
+        pasos: ['Pela y corta el plátano.', 'Acompáñalo con leche.'],
+        calificacion: 4.2,
+        tiempoMin: 3,
+        emoji: '🥛',
+        etiquetas: ['fácil']),
     _e(
         'mer_manzana',
         'Manzana fresca',
@@ -380,7 +511,12 @@ Biblioteca bibliotecaAprobada() {
         [
           ('food', 'manzana', 'fruta'),
         ],
-        emoji: '🍎'),
+        queEs: 'Una manzana fresca, crujiente y liviana.',
+        pasos: ['Lávala y cómela entera o en gajos.'],
+        calificacion: 4.0,
+        tiempoMin: 1,
+        emoji: '🍎',
+        etiquetas: ['fácil', 'saludable']),
     _e(
         'mer_uva',
         'Uvas',
@@ -388,7 +524,12 @@ Biblioteca bibliotecaAprobada() {
         [
           ('food', 'uva', 'fruta'),
         ],
-        emoji: '🍇'),
+        queEs: 'Un puñado de uvas frescas, dulces y refrescantes.',
+        pasos: ['Lávalas y sírvelas.'],
+        calificacion: 4.0,
+        tiempoMin: 1,
+        emoji: '🍇',
+        etiquetas: ['fácil', 'saludable']),
     _e(
         'mer_platano',
         'Plátano',
@@ -396,21 +537,30 @@ Biblioteca bibliotecaAprobada() {
         [
           ('food', 'platano', 'fruta'),
         ],
-        emoji: '🍌'),
+        queEs: 'Un plátano, práctico y lleno de energía.',
+        pasos: ['Pélalo y cómelo.'],
+        calificacion: 3.9,
+        tiempoMin: 1,
+        emoji: '🍌',
+        etiquetas: ['fácil']),
     _e(
         'mer_batido_frutilla',
-        'Batido de frutillas',
+        'Batido de fresas',
         Momentos.merienda,
         [
           ('food', 'leche', 'lacteo'),
           ('food', 'frutilla', 'fruta'),
         ],
-        descripcion: 'leche y frutillas, cremoso',
+        descripcion: 'leche y fresas, cremoso',
+        queEs: 'Fresas licuadas con leche, cremoso y natural.',
+        pasos: ['Licúa las fresas con la leche.', 'Sirve bien frío.'],
+        calificacion: 4.4,
+        tiempoMin: 5,
         emoji: '🥤',
         frecuencia: Frecuencias.ocasional,
-        etiquetas: ['batido']),
+        etiquetas: ['batido', 'fácil']),
 
-    // ── Fin de semana: comida bonita casera (no comida rápida) ──
+    // ── Fin de semana: comida rica y diferente (no comida rápida) ──
     _e(
         'fin_salmon',
         'Salmón al horno',
@@ -425,8 +575,18 @@ Biblioteca bibliotecaAprobada() {
         ],
         descripcion:
             'con mantequilla de ajo, papas baby, espárragos y jugo de maracuyá',
+        queEs:
+            'Salmón al horno con mantequilla de ajo, papas baby y espárragos, acompañado de jugo de maracuyá. Comida de fin de semana, bonita y sabrosa.',
+        pasos: [
+          'Unta el salmón con mantequilla de ajo, sal y unas gotas de limón.',
+          'Hornéalo a 200°C unos 15 min, junto a las papas baby.',
+          'Saltea los espárragos aparte y sirve con jugo de maracuyá natural.',
+        ],
+        calificacion: 4.9,
+        tiempoMin: 35,
         emoji: '🐟',
-        frecuencia: Frecuencias.soloFinde),
+        frecuencia: Frecuencias.soloFinde,
+        etiquetas: ['saludable', 'especial']),
     _e(
         'fin_pollo_relleno',
         'Pollo relleno',
@@ -439,9 +599,19 @@ Biblioteca bibliotecaAprobada() {
           ('food', 'lechuga', 'verdura'),
         ],
         descripcion: 'con arroz de almendras y ensalada tropical',
+        queEs:
+            'Pechuga rellena, con arroz salteado con almendras y ensalada tropical. Un plato de domingo diferente.',
+        pasos: [
+          'Abre la pechuga tipo libro, rellénala y ciérrala con palillos.',
+          'Séllala en sartén y termínala al horno ~15 min.',
+          'Saltea el arroz con almendras y sirve con la ensalada.',
+        ],
+        calificacion: 4.6,
+        tiempoMin: 40,
         emoji: '🍗',
         frecuencia: Frecuencias.soloFinde,
-        alternativaDe: 'fin_salmon'),
+        alternativaDe: 'fin_salmon',
+        etiquetas: ['especial']),
     _e(
         'fin_carne_horno',
         'Carne al horno',
@@ -453,9 +623,19 @@ Biblioteca bibliotecaAprobada() {
           ('food', 'lechuga', 'verdura'),
           ('food', 'tomate', 'fresco'),
         ],
-        descripcion: 'con papas gratinadas y ensalada César',
+        descripcion: 'con papas gratinadas y ensalada',
+        queEs:
+            'Carne al horno tierna, con papas gratinadas y ensalada. Para compartir el fin de semana.',
+        pasos: [
+          'Sazona la carne y séllala en sartén para sellar los jugos.',
+          'Hornéala lento hasta que esté tierna (alrededor de 1 hora).',
+          'Gratina las papas con queso y arma la ensalada fresca.',
+        ],
+        calificacion: 4.7,
+        tiempoMin: 75,
         emoji: '🥩',
-        frecuencia: Frecuencias.soloFinde),
+        frecuencia: Frecuencias.soloFinde,
+        etiquetas: ['especial']),
     _e(
         'fin_parrilla',
         'Parrilla del domingo',
@@ -467,9 +647,19 @@ Biblioteca bibliotecaAprobada() {
           ('food', 'lechuga', 'verdura'),
         ],
         descripcion: 'carnes a la parrilla, papas y ensalada',
+        queEs:
+            'Carnes a la parrilla con papas y ensalada. El domingo en familia.',
+        pasos: [
+          'Sazona las carnes solo con sal para no tapar el sabor.',
+          'Ásalas a la parrilla al punto de cada quien.',
+          'Acompaña con papas y ensalada fresca.',
+        ],
+        calificacion: 4.8,
+        tiempoMin: 45,
         emoji: '🔥',
         frecuencia: Frecuencias.soloFinde,
-        alternativaDe: 'fin_carne_horno'),
+        alternativaDe: 'fin_carne_horno',
+        etiquetas: ['especial']),
   ];
 
   return Biblioteca(

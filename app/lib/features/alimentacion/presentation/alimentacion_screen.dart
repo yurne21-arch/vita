@@ -450,43 +450,61 @@ class _Hoy extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _kicker('Detalle familiar', color: _t.accent),
+              _kicker('Receta', color: _t.accent),
               const SizedBox(height: 8),
               Text(comida.ensamble.nombre,
                   style: TextStyle(
                       color: _t.ink,
                       fontSize: 19,
                       fontWeight: FontWeight.w600)),
-              const SizedBox(height: 16),
-              for (final p in comida.porciones)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+              const SizedBox(height: 12),
+              Flexible(
+                child: SingleChildScrollView(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(p.persona,
-                            style: TextStyle(
-                                color: _t.ink,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14)),
-                        Text(_ingredientes(comida, p),
-                            style: TextStyle(color: _t.muted, fontSize: 13)),
+                        recetaCompleta(comida.ensamble, biblioteca),
+                        const SizedBox(height: 18),
+                        _kicker('Tu porción'),
+                        const SizedBox(height: 6),
+                        for (final p in comida.porciones)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(p.persona,
+                                      style: TextStyle(
+                                          color: _t.ink,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14)),
+                                  Text(_ingredientes(comida, p),
+                                      style: TextStyle(
+                                          color: _t.muted,
+                                          fontSize: 13,
+                                          height: 1.4)),
+                                ]),
+                          ),
                       ]),
                 ),
+              ),
             ]),
       ),
     );
   }
 
+  /// Porción por persona en referencia VISUAL (taza, palma, puño), no gramos.
   String _ingredientes(ComidaPlan comida, PorcionCalculada p) {
     final out = <String>[];
     for (final comp in comida.ensamble.componentes) {
       final g = p.gramos[comp.id];
       if (g == null || g <= 0) continue;
       final a = biblioteca.alimentoDe(comp);
-      if (a != null) out.add('${a.nombre} ${g.round()} ${a.unidad}');
+      if (a == null) continue;
+      final visual = porcionVisual(a, g);
+      out.add(visual.isEmpty ? a.nombre : '${a.nombre}: $visual');
     }
-    return out.join(' · ');
+    return out.join('   ·   ');
   }
 }
 
@@ -721,41 +739,137 @@ class _ComidaTileState extends ConsumerState<_ComidaTile> {
             visualDensity: VisualDensity.compact, foregroundColor: _t.ink),
       );
 
-  Widget _receta(Ensamble e) {
-    final ingredientes = <String>[];
-    final pasos = <String>[];
+  Widget _receta(Ensamble e) => recetaCompleta(e, widget.biblioteca);
+}
+
+/// La receta completa de un plato: qué es, calificación, tiempo, etiquetas,
+/// ingredientes con porción VISUAL (taza, palma, puño — sin balanza) y pasos
+/// numerados. Es el recetario que la usuaria pidió: que de verdad explique.
+Widget recetaCompleta(Ensamble e, Biblioteca biblioteca) {
+  final ingredientes = <String>[];
+  for (final comp in e.componentes) {
+    final a = biblioteca.alimentoDe(comp);
+    if (a == null) continue;
+    final gr = a.unidad == 'ml' ? 200.0 : (_gPorRol[comp.rol] ?? 100.0);
+    final visual = porcionVisual(a, gr);
+    ingredientes.add(visual.isEmpty ? a.nombre : '${a.nombre} · $visual');
+  }
+
+  // Pasos reales del recetario; si no hay, arma desde las preparaciones.
+  var pasos = e.pasos;
+  if (pasos.isEmpty) {
+    final autom = <String>[];
     for (final comp in e.componentes) {
-      final a = widget.biblioteca.alimentoDe(comp);
-      if (a != null) ingredientes.add(a.nombre);
-      final prep = widget.biblioteca.preparacion(comp.preparationId);
+      final prep = biblioteca.preparacion(comp.preparationId);
       if (prep != null) {
-        pasos.add(prep.tiempoMin != null
+        autom.add(prep.tiempoMin != null
             ? '${prep.nombre} (${prep.tiempoMin} min)'
             : prep.nombre);
       }
     }
-    Widget linea(String k, String v) => Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: Text.rich(TextSpan(
-              style: TextStyle(color: _t.ink2, fontSize: 13.5, height: 1.4),
-              children: [
-                TextSpan(
-                    text: '$k: ',
-                    style:
-                        TextStyle(color: _t.ink, fontWeight: FontWeight.w600)),
-                TextSpan(text: v),
-              ])),
-        );
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      if (e.descripcion != null) ...[
-        Text(e.descripcion!, style: TextStyle(color: _t.ink2, fontSize: 13.5)),
-        const SizedBox(height: 8),
-      ],
-      if (ingredientes.isNotEmpty) linea('Qué lleva', ingredientes.join(', ')),
-      if (pasos.isNotEmpty) linea('Cómo', '${pasos.join(' · ')} · y armar'),
-    ]);
+    if (autom.isNotEmpty) pasos = [...autom, 'Sirve y arma el plato.'];
   }
+
+  return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    if (e.queEs != null) ...[
+      Text(e.queEs!,
+          style: TextStyle(color: _t.ink2, fontSize: 13.5, height: 1.45)),
+      const SizedBox(height: 10),
+    ],
+    Wrap(spacing: 8, runSpacing: 6, children: [
+      if (e.calificacion != null)
+        _metaChip(Icons.star, _estrellas(e.calificacion!)),
+      if (e.tiempoMin != null) _metaChip(Icons.schedule, '${e.tiempoMin} min'),
+      for (final tag in e.etiquetas) _tagChip(tag),
+    ]),
+    if (ingredientes.isNotEmpty) ...[
+      const SizedBox(height: 12),
+      _kicker('Ingredientes'),
+      const SizedBox(height: 6),
+      for (final ing in ingredientes)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 3),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Icon(Icons.circle, size: 5, color: _t.accent),
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+                child: Text(ing,
+                    style: TextStyle(
+                        color: _t.ink2, fontSize: 13.5, height: 1.35))),
+          ]),
+        ),
+    ],
+    if (pasos.isNotEmpty) ...[
+      const SizedBox(height: 12),
+      _kicker('Preparación'),
+      const SizedBox(height: 6),
+      for (var i = 0; i < pasos.length; i++)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(
+              width: 20,
+              height: 20,
+              alignment: Alignment.center,
+              decoration:
+                  BoxDecoration(color: _t.accentWash, shape: BoxShape.circle),
+              child: Text('${i + 1}',
+                  style: TextStyle(
+                      color: _t.accentDeep,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700)),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+                child: Text(pasos[i],
+                    style: TextStyle(
+                        color: _t.ink2, fontSize: 13.5, height: 1.4))),
+          ]),
+        ),
+    ],
+  ]);
 }
+
+/// Gramos orientativos por rol, para traducir a porción visual en la receta.
+const _gPorRol = <String, double>{
+  'proteina': 120.0,
+  'base': 180.0,
+  'verdura': 80.0,
+  'fresco': 60.0,
+  'fruta': 120.0,
+  'lacteo': 30.0,
+  'aliño': 10.0,
+};
+
+String _estrellas(double n) {
+  final llenas = n.round().clamp(0, 5);
+  return '${'★' * llenas}${'☆' * (5 - llenas)}  ${n.toStringAsFixed(1)}';
+}
+
+Widget _metaChip(IconData icon, String texto) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+          color: _t.bg2, borderRadius: BorderRadius.circular(999)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 12, color: _t.accent),
+        const SizedBox(width: 5),
+        Text(texto,
+            style: TextStyle(
+                color: _t.ink2, fontSize: 12, fontWeight: FontWeight.w600)),
+      ]),
+    );
+
+Widget _tagChip(String tag) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+          color: _t.accentWash, borderRadius: BorderRadius.circular(999)),
+      child: Text(tag,
+          style: TextStyle(
+              color: _t.accentDeep, fontSize: 12, fontWeight: FontWeight.w600)),
+    );
 
 // ── COCINA: ¿cómo dejo lista la semana? ─────────────────────────────────────
 
