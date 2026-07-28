@@ -247,6 +247,7 @@ class AlimentacionRepository {
             .eq('user_id', userId)
             .eq('tipo', 'quincenal')
             .eq('periodo_inicio', _fecha(inicio))
+            .eq('periodo_fin', _fecha(fin))
             .limit(1);
         String compraId;
         if ((existentes as List).isNotEmpty) {

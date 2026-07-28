@@ -1205,7 +1205,7 @@ class _ComprasState extends ConsumerState<_Compras> {
 
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            _kicker('Tu lista'),
+            _kicker('Tu lista · quincena'),
             const Spacer(),
             faltan == 0
                 ? _pill('Todo comprado', Icons.check, _t.success)

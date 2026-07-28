@@ -29,6 +29,16 @@ DateTime lunesDe(DateTime d) {
   return soloDia.subtract(Duration(days: soloDia.weekday - 1));
 }
 
+/// Lunes de inicio de la quincena que contiene [d]. Rejilla estable de 14 días
+/// anclada al lunes 2024-01-01, para que dos semanas seguidas caigan en la
+/// misma quincena (la compra es quincenal, no semanal).
+DateTime quincenaDe(DateTime d) {
+  final lun = lunesDe(d);
+  final ref = DateTime(2024, 1, 1); // lunes de referencia
+  final semanas = lun.difference(ref).inDays ~/ 7;
+  return ref.add(Duration(days: (semanas ~/ 2) * 14));
+}
+
 /// El plan de la semana actual, generado por el motor determinista.
 final planSemanaProvider = FutureProvider<PlanSemana>((ref) async {
   final perfiles = await ref.watch(perfilesNutricionalesProvider.future);
@@ -67,24 +77,51 @@ final cocinaSesionProvider = FutureProvider<CocinaSesion?>((ref) async {
   return ref.read(alimentacionRepositoryProvider).cocinaSesion(inicio);
 });
 
-/// La lista de compra del período actual, persistida y con estado por ítem.
-/// Se siembra desde lo que el plan pide comprar la primera vez; después
-/// conserva lo que la usuaria va marcando. Cada período nuevo genera su propia
-/// lista según lo que se consume (huevos, frescos, etc.).
+/// La lista de compra de la QUINCENA actual, persistida y con estado por ítem.
+/// Se siembra sumando lo que piden las dos semanas del plan (la compra es
+/// quincenal); después conserva lo que la usuaria va marcando. Cada quincena
+/// nueva genera su propia lista según lo que se consume (huevos, frescos, etc.).
 final listaComprasProvider = FutureProvider<List<CompraItem>>((ref) async {
   ref.watch(usuarioActualProvider);
-  final plan = await ref.watch(planSemanaProvider.future);
-  final inicio = plan.inicio;
-  final fin = inicio.add(const Duration(days: 6));
-  final semilla = [
-    for (final it in [...plan.compras.principal, ...plan.compras.reposicion])
-      (
+  final perfiles = await ref.watch(perfilesNutricionalesProvider.future);
+  final biblioteca = bibliotecaAprobada();
+  final inicio = quincenaDe(DateTime.now());
+  final fin = inicio.add(const Duration(days: 13));
+
+  const motor = MotorNutricional();
+  final semana1 = motor.generar(
+      perfiles: perfiles, biblioteca: biblioteca, inicioSemana: inicio);
+  final semana2 = motor.generar(
+      perfiles: perfiles,
+      biblioteca: biblioteca,
+      inicioSemana: inicio.add(const Duration(days: 7)),
+      rotacion: 1);
+
+  // Suma las cantidades de las dos semanas por (nombre, unidad).
+  final acum = <String,
+      ({String nombre, String? categoria, double cantidad, String? unidad})>{};
+  for (final plan in [semana1, semana2]) {
+    for (final it in [...plan.compras.principal, ...plan.compras.reposicion]) {
+      final clave = '${it.nombre}|${it.unidad}';
+      final prev = acum[clave];
+      acum[clave] = (
         nombre: it.nombre,
-        categoria: it.categoria as String?,
-        cantidad: it.cantidad as double?,
-        unidad: it.unidad as String?,
+        categoria: it.categoria,
+        cantidad: (prev?.cantidad ?? 0) + it.cantidad,
+        unidad: it.unidad,
+      );
+    }
+  }
+  final semilla = [
+    for (final v in acum.values)
+      (
+        nombre: v.nombre,
+        categoria: v.categoria,
+        cantidad: v.cantidad as double?,
+        unidad: v.unidad,
       ),
   ];
+
   return ref
       .read(alimentacionRepositoryProvider)
       .asegurarLista(inicio: inicio, fin: fin, semilla: semilla);
