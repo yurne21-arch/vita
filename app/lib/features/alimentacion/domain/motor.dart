@@ -415,39 +415,59 @@ class MotorNutricional {
 
   /// Ajusta el almuerzo para que el DÍA cierre: proteína ≥ meta y kcal en ±tol.
   /// No inventa comidas; solo mueve porciones ya presentes.
+  ///
+  /// Itera proteína↔calorías porque se afectan mutuamente: el proteico del
+  /// ancla se lleva a la meta (subiendo o BAJANDO, p. ej. bajar la carne del
+  /// pabellón que venía muy alta), y las calorías se cierran repartiendo el
+  /// ajuste entre TODOS los carbohidratos del plato (arroz + caraotas + tajadas).
+  /// Como los carbohidratos también aportan algo de proteína, se re-cierra la
+  /// proteína en la siguiente vuelta hasta que ambos queden dentro.
   void _cerrarDia(List<_MealPortion> meals, PerfilNutricional perfil) {
     if (meals.isEmpty) return;
     // El almuerzo (mayor peso) absorbe el cierre; si no, la comida más grande.
     final ancla =
         meals.reduce((a, z) => z.macros().kcal > a.macros().kcal ? z : a);
-    final protMin = perfil.protObjetivoG;
+    final protMeta = perfil.protObjetivoG;
     final metaKcal = perfil.kcalObjetivo;
+    final tol =
+        metaKcal == null ? 0.0 : metaKcal * perfil.kcalToleranciaPct / 100;
+    final prot = ancla.proteico;
+    final carbos = ancla.comps
+        .where((c) =>
+            !identical(c, ancla.proteico) &&
+            c.alimento.macros100.kcal > 0 &&
+            c.alimento.macros100.carb > 0)
+        .toList();
 
-    // a) Cerrar proteína: subir el proteico del ancla hasta la meta diaria.
-    if (protMin != null && ancla.proteico != null) {
-      final prot = ancla.proteico!;
-      final por100 = prot.alimento.macros100.prot;
-      if (por100 > 0) {
-        var faltan = protMin - _sumaProt(meals);
-        if (faltan > 0) {
-          prot.gramos =
-              _limitar(prot.gramos + faltan / (por100 / 100), 40, 400);
+    for (var iter = 0; iter < 6; iter++) {
+      // a) Proteína del día = meta: fija el proteico del ancla para que el total
+      // dé la meta (sube o baja).
+      if (protMeta != null && prot != null) {
+        final por100 = prot.alimento.macros100.prot;
+        if (por100 > 0) {
+          final otros =
+              _sumaProt(meals) - prot.alimento.macrosPara(prot.gramos).prot;
+          prot.gramos = _limitar((protMeta - otros) / (por100 / 100), 40, 400);
         }
       }
-    }
-
-    // b) Cerrar calorías con el carbohidrato del ancla.
-    if (metaKcal != null && ancla.carbo != null) {
-      final carbo = ancla.carbo!;
-      final por100 = carbo.alimento.macros100.kcal;
-      if (por100 > 0) {
-        final tol = metaKcal * perfil.kcalToleranciaPct / 100;
+      // b) Calorías del día = meta: reparte el delta entre los carbohidratos.
+      if (metaKcal != null && carbos.isNotEmpty) {
         final delta = metaKcal - _sumaKcal(meals); // + faltan, − sobran
         if (delta.abs() > tol) {
-          carbo.gramos =
-              _limitar(carbo.gramos + delta / (por100 / 100), 20, 600);
+          final porCarbo = delta / carbos.length;
+          for (final c in carbos) {
+            c.gramos = _limitar(
+                c.gramos + porCarbo / (c.alimento.macros100.kcal / 100),
+                20,
+                600);
+          }
         }
       }
+      // ¿Cerró? proteína ≥ meta y kcal dentro de la tolerancia.
+      final protOk = protMeta == null || _sumaProt(meals) >= protMeta * 0.99;
+      final kcalOk =
+          metaKcal == null || (_sumaKcal(meals) - metaKcal).abs() <= tol;
+      if (protOk && kcalOk) break;
     }
   }
 
