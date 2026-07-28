@@ -355,6 +355,7 @@ class AlimentacionRepository {
     String? assemblyId,
     String estado = 'planeado',
     String? comidaLibre,
+    String? nombre,
   }) =>
       _guard(() async {
         final userId = _userId();
@@ -365,6 +366,8 @@ class AlimentacionRepository {
           'assembly_id': assemblyId,
           'estado': estado,
           'comida_libre': comidaLibre,
+          // Nombre legible (plato o "comí otra cosa") para el resumen del mes.
+          'nombre': comidaLibre ?? nombre,
         }, onConflict: 'user_id, fecha, momento');
       });
 

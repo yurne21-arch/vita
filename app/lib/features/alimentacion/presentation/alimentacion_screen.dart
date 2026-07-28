@@ -220,6 +220,7 @@ class _Hoy extends ConsumerWidget {
             momento: c.momento,
             assemblyId: c.ensamble.id,
             estado: actual == 'comido' ? 'planeado' : 'comido',
+            nombre: c.ensamble.nombre,
           );
       ref.invalidate(estadosComidaProvider);
     }
@@ -643,6 +644,7 @@ class _ComidaTileState extends ConsumerState<_ComidaTile> {
       assemblyId: assemblyId ?? widget.estado?.assemblyId ?? _ensamble.id,
       estado: estado ?? widget.estado?.estado ?? 'planeado',
       comidaLibre: comidaLibre,
+      nombre: _ensamble.nombre,
     );
     ref.invalidate(estadosComidaProvider);
     ref.invalidate(historialComidasProvider);

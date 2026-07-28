@@ -153,6 +153,7 @@ class _Contenido extends StatelessWidget {
       if (!balance.salud.vacio) _CardSalud(balance.salud),
       if (balance.habitos.isNotEmpty) _CardHabitos(balance.habitos),
       if (!balance.finanzas.vacio) _CardFinanzas(balance.finanzas),
+      if (!balance.comida.vacio) _CardComida(balance.comida),
       if (!balance.agenda.vacio) _CardAgenda(balance.agenda),
     ];
 
@@ -439,6 +440,61 @@ class _CardFinanzas extends StatelessWidget {
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CardComida extends StatelessWidget {
+  const _CardComida(this.r);
+  final ResumenComidaMes r;
+
+  String _sugerencia() {
+    if (r.registros == 0) {
+      return 'Este mes no registraste comidas. Marca lo que comes y te diré tu patrón.';
+    }
+    if (r.registros < 10) {
+      return 'Registra más seguido para ver mejor cómo comes y ayudarte.';
+    }
+    if (r.otraCosa >= (r.registros * 0.4).ceil()) {
+      return 'Varias veces comiste algo distinto al plan. Dime cuáles para sumarlas a tu menú.';
+    }
+    if (r.noComio >= (r.registros * 0.5).ceil()) {
+      return 'Te saltaste comidas seguido; quizá el plan tenga de más.';
+    }
+    return 'Vas parejo con tu plan. Sigue así.';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return _CardArea(
+      icono: Icons.restaurant_outlined,
+      color: AppColors.accent,
+      titulo: 'Comida',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _LineaDato(
+              texto: r.registros == 1
+                  ? 'Registraste 1 comida'
+                  : 'Registraste ${r.registros} comidas'),
+          if (r.masComio != null)
+            _LineaDato(
+                texto:
+                    'Lo que más comiste: ${r.masComio} (${r.masComioVeces})'),
+          if (r.otraCosa > 0)
+            _LineaDato(texto: 'Comiste otra cosa ${r.otraCosa} veces'),
+          if (r.noComio > 0)
+            _LineaDato(texto: 'No comiste lo planeado ${r.noComio} veces'),
+          const SizedBox(height: 4),
+          Text(
+            _sugerencia(),
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
+          ),
         ],
       ),
     );

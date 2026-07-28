@@ -71,6 +71,7 @@ class MiMesRepository {
           _habitos(userId, desdeStr, hastaStr),
           _finanzas(userId, mes, desdeStr, hastaStr),
           _agenda(userId, desde, hasta),
+          _comida(userId, desdeStr, hastaStr),
         ]);
 
         return BalanceMes(
@@ -80,8 +81,59 @@ class MiMesRepository {
           habitos: resultados[2] as List<HabitoMes>,
           finanzas: resultados[3] as ResumenFinanzasMes,
           agenda: resultados[4] as ResumenAgendaMes,
+          comida: resultados[5] as ResumenComidaMes,
         );
       });
+
+  // ───────────────── Comida (lo vivido, no lo planeado) ─────────────────
+
+  /// Resumen de comidas del mes leyendo nutrition_meal_state (directo, sin
+  /// importar el feature Alimentación). El nombre del plato viene denormalizado.
+  Future<ResumenComidaMes> _comida(
+      String userId, String desde, String hasta) async {
+    final filas = await _c
+        .from('nutrition_meal_state')
+        .select('estado, nombre, comida_libre')
+        .eq('user_id', userId)
+        .gte('fecha', desde)
+        .lt('fecha', hasta);
+
+    var registros = 0;
+    var noComio = 0;
+    var otraCosa = 0;
+    final cuenta = <String, int>{};
+    for (final f in filas as List) {
+      final m = f as Map<String, dynamic>;
+      final estado = m['estado'] as String?;
+      if (estado == 'comido') {
+        registros++;
+        if (m['comida_libre'] != null) otraCosa++;
+        final nombre = (m['nombre'] as String?)?.trim();
+        if (nombre != null && nombre.isNotEmpty) {
+          cuenta[nombre] = (cuenta[nombre] ?? 0) + 1;
+        }
+      } else if (estado == 'no_comido') {
+        noComio++;
+      }
+    }
+
+    String? masComio;
+    var masVeces = 0;
+    cuenta.forEach((nombre, veces) {
+      if (veces > masVeces) {
+        masVeces = veces;
+        masComio = nombre;
+      }
+    });
+
+    return ResumenComidaMes(
+      registros: registros,
+      noComio: noComio,
+      otraCosa: otraCosa,
+      masComio: masComio,
+      masComioVeces: masVeces,
+    );
+  }
 
   // ───────────────── Proyectos / trabajo ─────────────────
 

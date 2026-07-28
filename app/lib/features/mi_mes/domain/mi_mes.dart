@@ -14,6 +14,7 @@ class BalanceMes {
     required this.habitos,
     required this.finanzas,
     required this.agenda,
+    required this.comida,
   });
 
   final DateTime mes; // primer día del mes
@@ -22,6 +23,7 @@ class BalanceMes {
   final List<HabitoMes> habitos;
   final ResumenFinanzasMes finanzas;
   final ResumenAgendaMes agenda;
+  final ResumenComidaMes comida;
 
   /// El mes no tiene absolutamente nada registrado.
   bool get vacio =>
@@ -29,7 +31,28 @@ class BalanceMes {
       salud.vacio &&
       habitos.isEmpty &&
       finanzas.vacio &&
-      agenda.vacio;
+      agenda.vacio &&
+      comida.vacio;
+}
+
+/// Resumen de Comida del mes: lo que la usuaria registró (comí / no comí / comí
+/// otra cosa) y qué comió más. Si no marca una comida, no cuenta (no comió eso).
+class ResumenComidaMes {
+  const ResumenComidaMes({
+    required this.registros,
+    required this.noComio,
+    required this.otraCosa,
+    required this.masComio,
+    required this.masComioVeces,
+  });
+
+  final int registros; // veces que marcó "comí"
+  final int noComio; // veces que marcó "no comí"
+  final int otraCosa; // veces que comió algo distinto al plan
+  final String? masComio; // el plato que más comió
+  final int masComioVeces;
+
+  bool get vacio => registros == 0 && noComio == 0 && otraCosa == 0;
 }
 
 // ───────────────── Proyectos / trabajo ─────────────────

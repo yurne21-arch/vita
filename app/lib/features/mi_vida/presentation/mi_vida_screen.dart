@@ -24,6 +24,7 @@ import '../../proyectos/presentation/proyecto_detalle_screen.dart';
 import '../../proyectos/presentation/proyecto_editores.dart';
 import '../../proyectos/presentation/proyectos_widgets.dart';
 import '../../alimentacion/domain/alimentacion.dart';
+import '../../alimentacion/domain/motor.dart';
 import '../../alimentacion/presentation/alimentacion_controller.dart';
 
 const EdgeInsets _kCardPad = EdgeInsets.fromLTRB(20, 18, 20, 18);
@@ -1237,6 +1238,7 @@ class _ComidaHoy extends ConsumerWidget {
                       fecha: hoy.fecha,
                       momento: c.momento,
                       titulo: _nombreMomento[c.momento] ?? c.momento,
+                      biblioteca: biblioteca,
                       ensamble: biblioteca.ensamble(estados[
                                   EstadoComida.claveDe(hoy.fecha, c.momento)]
                               ?.assemblyId) ??
@@ -1264,6 +1266,7 @@ class _ComidaHoyFila extends ConsumerWidget {
     required this.fecha,
     required this.momento,
     required this.titulo,
+    required this.biblioteca,
     required this.ensamble,
     required this.estado,
   });
@@ -1271,6 +1274,7 @@ class _ComidaHoyFila extends ConsumerWidget {
   final DateTime fecha;
   final String momento;
   final String titulo;
+  final Biblioteca biblioteca;
   final Ensamble ensamble;
   final String estado;
 
@@ -1286,9 +1290,47 @@ class _ComidaHoyFila extends ConsumerWidget {
                 momento: momento,
                 assemblyId: ensamble.id,
                 estado: estado == nuevo ? 'planeado' : nuevo,
+                nombre: ensamble.nombre,
               );
           ref.invalidate(estadosComidaProvider);
         });
+
+    // Cambiar la comida del día desde la pantalla principal (modificar el plan).
+    Future<void> cambiar() async {
+      final opciones = biblioteca.porMomento(momento);
+      final elegido = await showModalBottomSheet<String>(
+        context: context,
+        showDragHandle: true,
+        builder: (_) => ListView(shrinkWrap: true, children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+            child: Text('Cambiar $titulo',
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+          ),
+          for (final e in opciones)
+            ListTile(
+              leading:
+                  Text(e.emoji ?? '🍽️', style: const TextStyle(fontSize: 20)),
+              title: Text(e.nombre),
+              subtitle: e.descripcion == null ? null : Text(e.descripcion!),
+              onTap: () => Navigator.pop(context, e.id),
+            ),
+        ]),
+      );
+      if (elegido == null || !context.mounted) return;
+      final nuevo = biblioteca.ensamble(elegido);
+      await accionSegura(context, () async {
+        await ref.read(alimentacionRepositoryProvider).guardarEstadoComida(
+              fecha: fecha,
+              momento: momento,
+              assemblyId: elegido,
+              estado: 'planeado',
+              nombre: nuevo?.nombre,
+            );
+        ref.invalidate(estadosComidaProvider);
+      });
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
@@ -1299,26 +1341,42 @@ class _ComidaHoyFila extends ConsumerWidget {
             const SizedBox(width: AppSpacing.sm),
           ],
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  titulo.toUpperCase(),
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: AppColors.lightMuted,
-                    letterSpacing: 0.4,
-                    fontWeight: FontWeight.w600,
+            child: InkWell(
+              onTap: cambiar,
+              borderRadius: BorderRadius.circular(6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    titulo.toUpperCase(),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: AppColors.lightMuted,
+                      letterSpacing: 0.4,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                Text(
-                  ensamble.nombre,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: noComido ? AppColors.lightMuted : AppColors.lightInk,
-                    decoration: noComido ? TextDecoration.lineThrough : null,
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          ensamble.nombre,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: noComido
+                                ? AppColors.lightMuted
+                                : AppColors.lightInk,
+                            decoration:
+                                noComido ? TextDecoration.lineThrough : null,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.expand_more,
+                          size: 16, color: AppColors.lightMuted),
+                    ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
