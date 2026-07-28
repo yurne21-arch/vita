@@ -110,10 +110,10 @@ Biblioteca bibliotecaAprobada() {
     // Proteínas (macros por 100 g cocido salvo indicado)
     _a('pollo', 'Pollo', 'proteina',
         kcal: 165, prot: 31, grasa: 3.6, rinde: 70),
-    _a('carne', 'Carne de vacuno', 'proteina',
-        kcal: 200, prot: 27, grasa: 10, rinde: 70),
-    _a('molida', 'Carne molida', 'proteina',
-        kcal: 230, prot: 26, grasa: 14, rinde: 75),
+    _a('carne', 'Carne de vacuno (magra)', 'proteina',
+        kcal: 150, prot: 27, grasa: 5, rinde: 70),
+    _a('molida', 'Carne molida (magra)', 'proteina',
+        kcal: 180, prot: 26, grasa: 9, rinde: 75),
     _a('atun', 'Atún', 'proteina', kcal: 130, prot: 28, grasa: 1),
     _a('salmon', 'Salmón', 'proteina', kcal: 200, prot: 22, grasa: 12),
     _a('huevo', 'Huevo', 'proteina',
@@ -750,19 +750,31 @@ Biblioteca bibliotecaAprobada() {
   );
 }
 
-/// Perfiles provisionales por defecto (mientras no exista el perfil real).
-/// Metas PROVISIONALES; se recalculan con el formulario de perfil.
+/// Perfiles por defecto. El de Yurby está calculado con sus datos reales
+/// (Mifflin-St Jeor): 61,5 kg · 34 años · 150 cm · actividad ligera (entreno
+/// en ayunas ~30 min). Mantenimiento ≈ 1590 kcal; déficit ~18% para bajar
+/// ~0,4 kg/semana preservando músculo (proteína alta, carbohidratos justos).
 List<PerfilNutricional> perfilesProvisionales() => const [
       PerfilNutricional(
         id: 'yurby',
         nombre: 'Yurby',
         sexo: 'femenino',
+        edad: 34,
+        estaturaCm: 150,
+        pesoKg: 61.5,
         objetivo: Objetivos.deficit,
-        kcalObjetivo: 1550,
-        protObjetivoG: 115,
-        grasaMinG: 40,
+        actividad: 'ligero',
+        mantenimientoEstimado: 1590,
+        deficitAplicado: 290,
+        kcalObjetivo: 1300,
+        protObjetivoG: 120, // ~2 g/kg: preserva músculo en déficit
+        grasaMinG: 40, // piso hormonal (~0,65 g/kg)
+        carbDistPct: 25, // carbohidratos justos
         kcalToleranciaPct: 5,
-        provisional: true,
+        formulaUsada: 'Mifflin-St Jeor',
+        motivo:
+            'Déficit ~18% para bajar ~0,4 kg/sem sin perder músculo; proteína alta y carbohidratos justos.',
+        provisional: false,
       ),
       PerfilNutricional(
         id: 'juan',

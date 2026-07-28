@@ -431,15 +431,25 @@ class MotorNutricional {
     final metaKcal = perfil.kcalObjetivo;
     final tol =
         metaKcal == null ? 0.0 : metaKcal * perfil.kcalToleranciaPct / 100;
+    final grasaMin = perfil.grasaMinG ?? 0;
     final prot = ancla.proteico;
-    final carbos = ancla.comps
+    // Carbohidratos de TODO el día (no solo el almuerzo): así un día con un
+    // plato de tres almidones (pabellón) más una arepa de desayuno también
+    // puede reducirse hasta la meta.
+    final todos = meals.expand((m) => m.comps).toList();
+    final carbos = todos
         .where((c) =>
-            !identical(c, ancla.proteico) &&
+            !identical(c, prot) &&
             c.alimento.macros100.kcal > 0 &&
             c.alimento.macros100.carb > 0)
         .toList();
+    // Grasas AÑADIDAS del día (aliños y alimentos muy grasos que no son el
+    // proteico): aceite, mantequilla, queso, aguacate, almendras.
+    final grasosos = todos
+        .where((c) => !identical(c, prot) && c.alimento.macros100.grasa >= 12)
+        .toList();
 
-    for (var iter = 0; iter < 6; iter++) {
+    for (var iter = 0; iter < 8; iter++) {
       // a) Proteína del día = meta: fija el proteico del ancla para que el total
       // dé la meta (sube o baja).
       if (protMeta != null && prot != null) {
@@ -463,6 +473,23 @@ class MotorNutricional {
           }
         }
       }
+      // c) Si aún SOBRAN calorías (plato graso), recorta las grasas añadidas sin
+      // bajar del piso de grasa del perfil (salud hormonal).
+      if (metaKcal != null && grasosos.isNotEmpty) {
+        final sobra = _sumaKcal(meals) - metaKcal;
+        final margenGrasa = _sumaGrasa(meals) - grasaMin; // g recortables
+        if (sobra > tol && margenGrasa > 0.5) {
+          final kcalGrasosos = grasosos.fold<double>(
+              0, (s, c) => s + c.alimento.macrosPara(c.gramos).kcal);
+          if (kcalGrasosos > 0) {
+            final quitar = sobra < margenGrasa * 9 ? sobra : margenGrasa * 9;
+            final factor = (1 - quitar / kcalGrasosos).clamp(0.05, 1.0);
+            for (final c in grasosos) {
+              c.gramos = _limitar(c.gramos * factor, 2, 600);
+            }
+          }
+        }
+      }
       // ¿Cerró? proteína ≥ meta y kcal dentro de la tolerancia.
       final protOk = protMeta == null || _sumaProt(meals) >= protMeta * 0.99;
       final kcalOk =
@@ -475,6 +502,8 @@ class MotorNutricional {
       m.fold(0, (s, x) => s + x.macros().kcal);
   double _sumaProt(List<_MealPortion> m) =>
       m.fold(0, (s, x) => s + x.macros().prot);
+  double _sumaGrasa(List<_MealPortion> m) =>
+      m.fold(0, (s, x) => s + x.macros().grasa);
 
   double _limitar(double v, double min, double max) =>
       v < min ? min : (v > max ? max : v);
