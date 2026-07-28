@@ -77,6 +77,18 @@ final cocinaSesionProvider = FutureProvider<CocinaSesion?>((ref) async {
   return ref.read(alimentacionRepositoryProvider).cocinaSesion(inicio);
 });
 
+/// El historial de comidas de los últimos 30 días (lo que sí comió, no comió,
+/// o comió en su lugar). Ordenado de lo más reciente a lo más antiguo.
+final historialComidasProvider =
+    FutureProvider.autoDispose<List<EstadoComida>>((ref) async {
+  ref.watch(usuarioActualProvider);
+  final hasta = DateTime.now();
+  final desde = hasta.subtract(const Duration(days: 30));
+  return ref
+      .read(alimentacionRepositoryProvider)
+      .historialComidas(desde, hasta);
+});
+
 /// La lista de compra de la QUINCENA actual, persistida y con estado por ítem.
 /// Se siembra sumando lo que piden las dos semanas del plan (la compra es
 /// quincenal); después conserva lo que la usuaria va marcando. Cada quincena

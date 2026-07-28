@@ -522,12 +522,21 @@ class _Menu extends ConsumerWidget {
 
     return _Page(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Tu semana',
-            style: TextStyle(
-                color: _t.ink,
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -.5)),
+        Row(children: [
+          Expanded(
+            child: Text('Tu semana',
+                style: TextStyle(
+                    color: _t.ink,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -.5)),
+          ),
+          TextButton.icon(
+            onPressed: () => mostrarHistorial(context, biblioteca),
+            icon: const Icon(Icons.history, size: 18),
+            label: const Text('Historial'),
+          ),
+        ]),
         const SizedBox(height: 4),
         Text('Toca una comida para ver cómo prepararla, marcarla o cambiarla.',
             style: TextStyle(color: _t.muted, fontSize: 14)),
@@ -625,15 +634,48 @@ class _ComidaTileState extends ConsumerState<_ComidaTile> {
       widget.biblioteca.ensamble(widget.estado?.assemblyId) ??
       widget.comida.ensamble;
 
-  Future<void> _guardar({String? assemblyId, String? estado}) async {
+  Future<void> _guardar(
+      {String? assemblyId, String? estado, String? comidaLibre}) async {
     final repo = ref.read(alimentacionRepositoryProvider);
     await repo.guardarEstadoComida(
       fecha: widget.fecha,
       momento: widget.comida.momento,
       assemblyId: assemblyId ?? widget.estado?.assemblyId ?? _ensamble.id,
       estado: estado ?? widget.estado?.estado ?? 'planeado',
+      comidaLibre: comidaLibre,
     );
     ref.invalidate(estadosComidaProvider);
+    ref.invalidate(historialComidasProvider);
+  }
+
+  /// "Comí otra cosa": registra en texto libre lo que sí comió. Queda en el
+  /// historial para que después se agregue al recetario.
+  Future<void> _comiOtraCosa() async {
+    final ctrl = TextEditingController(text: widget.estado?.comidaLibre ?? '');
+    final texto = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Qué comiste?'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+              hintText: 'Ej: Ensalada con atún y aguacate'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+              child: const Text('Guardar')),
+        ],
+      ),
+    );
+    if (texto != null && texto.isNotEmpty) {
+      await _guardar(estado: 'comido', comidaLibre: texto);
+    }
   }
 
   Future<void> _cambiar() async {
@@ -691,11 +733,24 @@ class _ComidaTileState extends ConsumerState<_ComidaTile> {
                       const SizedBox(height: 2),
                       Text(e.nombre,
                           style: TextStyle(
-                              color: st == 'no_comido' ? _t.muted : _t.ink,
+                              color: st == 'no_comido' ||
+                                      widget.estado?.comidaLibre != null
+                                  ? _t.muted
+                                  : _t.ink,
                               fontSize: 15,
-                              decoration: st == 'no_comido'
+                              decoration: st == 'no_comido' ||
+                                      widget.estado?.comidaLibre != null
                                   ? TextDecoration.lineThrough
                                   : null)),
+                      if (widget.estado?.comidaLibre != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text('Comiste: ${widget.estado!.comidaLibre}',
+                              style: TextStyle(
+                                  color: _t.accentDeep,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600)),
+                        ),
                     ]),
               ),
               if (st == 'comido')
@@ -722,6 +777,7 @@ class _ComidaTileState extends ConsumerState<_ComidaTile> {
                 _btn('Comí', Icons.check, () => _guardar(estado: 'comido')),
                 _btn('No comí', Icons.close,
                     () => _guardar(estado: 'no_comido')),
+                _btn('Comí otra cosa', Icons.edit_outlined, _comiOtraCosa),
                 _btn('Cambiar', Icons.swap_horiz, _cambiar),
               ]),
             ]),
@@ -870,6 +926,86 @@ Widget _tagChip(String tag) => Container(
           style: TextStyle(
               color: _t.accentDeep, fontSize: 12, fontWeight: FontWeight.w600)),
     );
+
+/// Muestra el historial de comidas (lo que sí comió / no comió / comió otra
+/// cosa) de los últimos 30 días. Es lo vivido, no lo planeado.
+void mostrarHistorial(BuildContext context, Biblioteca biblioteca) {
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: _t.panel,
+    isScrollControlled: true,
+    showDragHandle: true,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+    builder: (_) => Consumer(builder: (context, ref, _) {
+      final async = ref.watch(historialComidasProvider);
+      return DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: .7,
+        maxChildSize: .92,
+        builder: (context, scroll) => Padding(
+          padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+          child: async.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(
+                child:
+                    Text(mensajeDeError(e), style: TextStyle(color: _t.muted))),
+            data: (lista) => ListView(controller: scroll, children: [
+              const SizedBox(height: 4),
+              _kicker('Historial · últimos 30 días'),
+              const SizedBox(height: 12),
+              if (lista.isEmpty)
+                Text(
+                    'Aún no hay comidas registradas. Marca comí, no comí o "comí otra cosa" y aquí queda el historial.',
+                    style:
+                        TextStyle(color: _t.muted, fontSize: 14, height: 1.4))
+              else
+                for (final e in lista) _filaHistorial(e, biblioteca),
+            ]),
+          ),
+        ),
+      );
+    }),
+  );
+}
+
+Widget _filaHistorial(EstadoComida e, Biblioteca biblioteca) {
+  const label = {
+    'desayuno': 'Desayuno',
+    'almuerzo': 'Almuerzo',
+    'merienda': 'Merienda',
+    'finde': 'Especial',
+  };
+  final nombre =
+      e.comidaLibre ?? biblioteca.ensamble(e.assemblyId)?.nombre ?? 'Comida';
+  final noComido = e.estado == 'no_comido';
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 14),
+    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Icon(noComido ? Icons.close : Icons.check,
+          size: 16, color: noComido ? _t.muted : _t.success),
+      const SizedBox(width: 12),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('${_fechaDia(e.fecha)} · ${label[e.momento] ?? e.momento}',
+              style: TextStyle(
+                  color: _t.muted, fontSize: 12, fontWeight: FontWeight.w600)),
+          Text(noComido ? 'No comí lo planeado' : nombre,
+              style: TextStyle(
+                  color: noComido ? _t.muted : _t.ink,
+                  fontSize: 14.5,
+                  decoration: noComido ? TextDecoration.lineThrough : null)),
+          if (e.comidaLibre != null)
+            Text('comí otra cosa',
+                style: TextStyle(
+                    color: _t.accentDeep,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600)),
+        ]),
+      ),
+    ]),
+  );
+}
 
 // ── COCINA: ¿cómo dejo lista la semana? ─────────────────────────────────────
 

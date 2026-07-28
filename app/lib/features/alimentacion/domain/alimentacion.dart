@@ -603,12 +603,15 @@ class EstadoComida {
     required this.momento,
     this.assemblyId,
     this.estado = 'planeado',
+    this.comidaLibre,
   });
 
   final DateTime fecha;
   final String momento; // desayuno | almuerzo | merienda | finde
   final String? assemblyId; // comida elegida (si la cambió)
   final String estado; // planeado | comido | no_comido
+  final String?
+      comidaLibre; // lo que SÍ comió, en texto libre ("comí otra cosa")
 
   bool get comido => estado == 'comido';
   bool get noComido => estado == 'no_comido';
@@ -626,6 +629,7 @@ class EstadoComida {
         momento: m['momento'] as String,
         assemblyId: m['assembly_id'] as String?,
         estado: (m['estado'] as String?) ?? 'planeado',
+        comidaLibre: m['comida_libre'] as String?,
       );
 }
 

@@ -354,6 +354,7 @@ class AlimentacionRepository {
     required String momento,
     String? assemblyId,
     String estado = 'planeado',
+    String? comidaLibre,
   }) =>
       _guard(() async {
         final userId = _userId();
@@ -363,7 +364,28 @@ class AlimentacionRepository {
           'momento': momento,
           'assembly_id': assemblyId,
           'estado': estado,
+          'comida_libre': comidaLibre,
         }, onConflict: 'user_id, fecha, momento');
+      });
+
+  /// El historial de comidas registradas (comí / no comí / comí otra cosa) en
+  /// el rango, de la más reciente a la más antigua. Es lo que la usuaria ha
+  /// vivido, no lo planeado.
+  Future<List<EstadoComida>> historialComidas(DateTime desde, DateTime hasta) =>
+      _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('nutrition_meal_state')
+            .select()
+            .eq('user_id', userId)
+            .neq('estado', 'planeado')
+            .gte('fecha', _fecha(desde))
+            .lte('fecha', _fecha(hasta))
+            .order('fecha', ascending: false)
+            .order('momento');
+        return (rows as List)
+            .map((m) => EstadoComida.fromMap(m as Map<String, dynamic>))
+            .toList();
       });
 
   // ── Cocina de la semana (meal prep) ──────────────────────────
