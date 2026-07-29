@@ -649,13 +649,16 @@ Widget recetaCompleta(Ensamble e, Biblioteca biblioteca) {
     final visual = porcionVisual(a, gr);
     // Detalle: medida visual + gramos (carbos y proteínas), y para lo hecho con
     // harina (arepa, panquecas) cuánta harina lleva.
+    // Proteínas y almidones (arroz, pasta, papa) se pesan COCIDOS: sus valores
+    // están calculados sobre el alimento ya cocido.
+    final cocido = a.categoria == 'proteina' || a.categoria == 'carbohidrato';
     final String detalle;
     if (a.notaUnidad != null) {
       detalle = '$visual · ${a.notaUnidad}';
     } else if (a.gramosPorUnidad != null || visual.isEmpty) {
       detalle = visual; // 2 huevos, 1 plátano, 1 manzana
     } else {
-      detalle = '$visual (~${gr.round()} g)'; // arroz, pollo, carne, pasta…
+      detalle = '$visual (~${gr.round()} g${cocido ? ' cocido' : ''})';
     }
     ingredientes.add(detalle.isEmpty ? a.nombre : '${a.nombre} · $detalle');
   }
