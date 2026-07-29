@@ -86,14 +86,9 @@ class AlimentacionScreen extends ConsumerWidget {
             ),
             data: (p) {
               final biblioteca = ref.watch(bibliotecaProvider);
-              final personas = perfiles.asData?.value.length ?? 2;
               return TabBarView(
                 children: [
-                  _Hoy(
-                      plan: p,
-                      biblioteca: biblioteca,
-                      nombre: nombre,
-                      personas: personas + 1),
+                  _Hoy(plan: p, biblioteca: biblioteca, nombre: nombre),
                   _Menu(plan: p, biblioteca: biblioteca),
                   _Cocina(plan: p),
                   _Compras(plan: p),
@@ -181,331 +176,164 @@ Widget _tip(String rich) {
 // ── HOY: ¿qué hago ahora? ────────────────────────────────────────────────────
 
 class _Hoy extends ConsumerWidget {
-  const _Hoy(
-      {required this.plan,
-      required this.biblioteca,
-      required this.nombre,
-      required this.personas});
+  const _Hoy({
+    required this.plan,
+    required this.biblioteca,
+    required this.nombre,
+  });
   final PlanSemana plan;
   final Biblioteca biblioteca;
   final String nombre;
-  final int personas;
 
-  ComidaPlan? _por(DiaPlan d, String m) {
-    for (final c in d.comidas) {
-      if (c.momento == m) return c;
-    }
-    return null;
-  }
+  static const _momLabel = {
+    'desayuno': 'Desayuno',
+    'almuerzo': 'Almuerzo',
+    'finde': 'Especial',
+    'merienda': 'Merienda',
+  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hoy = plan.diaDe(DateTime.now()) ?? plan.dias.first;
-    final hora = DateTime.now().hour;
-    final desayuno = _por(hoy, 'desayuno');
-    final almuerzo = _por(hoy, 'almuerzo') ?? _por(hoy, 'finde');
-    final merienda = _por(hoy, 'merienda');
-
-    // Estado real (congruente con Menú y Mi Vida): qué comió y si ya cocinó.
     final estados = ref.watch(estadosComidaProvider).valueOrNull ??
         const <String, EstadoComida>{};
     final cocinada =
         ref.watch(cocinaSesionProvider).valueOrNull?.cocinada ?? false;
-    String estadoDe(String momento) =>
-        estados[EstadoComida.claveDe(hoy.fecha, momento)]?.estado ?? 'planeado';
-    Future<void> marcarComido(ComidaPlan c) async {
-      final actual = estadoDe(c.momento);
-      await ref.read(alimentacionRepositoryProvider).guardarEstadoComida(
-            fecha: hoy.fecha,
-            momento: c.momento,
-            assemblyId: c.ensamble.id,
-            estado: actual == 'comido' ? 'planeado' : 'comido',
-            nombre: c.ensamble.nombre,
-          );
-      ref.invalidate(estadosComidaProvider);
-    }
-
-    // "Ahora" según la hora — VITA decide la acción, no la usuaria.
-    final String ahora;
-    if (hora < 10 && desayuno != null) {
-      ahora = 'Prepara tu ${desayuno.ensamble.nombre.toLowerCase()}';
-    } else if (hora < 15 && almuerzo != null) {
-      ahora = 'Lleva tu recipiente';
-    } else if (merienda != null && hora < 18) {
-      ahora = 'Merienda: ${merienda.ensamble.nombre.toLowerCase()}';
-    } else {
-      ahora = 'Nada pendiente. Disfruta.';
-    }
-
-    // Tip de conservación (anticipación real, desde el plan).
-    final cong = plan.conservacion
-        .where((c) => c.estado == 'congelado' && c.fechaDescongelar != null)
-        .toList();
-    final tip = cong.isNotEmpty
-        ? '**Deja ${cong.first.preparacion.toLowerCase()} para mañana.** Se descongela mejor y conserva la textura.'
-        : '**Esta semana cocinas una sola vez.** Todo lo demás ya está listo.';
-
-    final left = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (desayuno != null) ...[
-          InkWell(
-            onTap: () => marcarComido(desayuno),
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Row(children: [
-                _hoyDot(estadoDe('desayuno')),
-                const SizedBox(width: 8),
-                Text('Desayuno · ${desayuno.ensamble.nombre}',
-                    style: TextStyle(
-                        color: _t.muted,
-                        fontSize: 13,
-                        decoration: estadoDe('desayuno') == 'no_comido'
-                            ? TextDecoration.lineThrough
-                            : null)),
-                const SizedBox(width: 8),
-                Text(
-                    estadoDe('desayuno') == 'comido'
-                        ? 'comido'
-                        : 'toca si ya comiste',
-                    style: TextStyle(
-                        color: _t.muted.withValues(alpha: .7), fontSize: 11)),
-              ]),
-            ),
-          ),
-          const SizedBox(height: 26),
-        ],
-        _kicker('Ahora', color: _t.accent),
-        const SizedBox(height: 9),
-        Row(children: [
-          Expanded(
-            child: Text(ahora,
-                style: TextStyle(
-                    color: _t.ink,
-                    fontSize: 23,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -.4)),
-          ),
-        ]),
-        const SizedBox(height: 26),
-        if (almuerzo != null) ...[
-          _kicker('Luego'),
-          const SizedBox(height: 8),
-          Row(children: [
-            SizedBox(
-                width: 52,
-                child: Text('13:00',
-                    style: TextStyle(
-                        color: _t.muted,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600))),
-            Expanded(
-                child: Text(almuerzo.ensamble.nombre,
-                    style: TextStyle(
-                        color: _t.ink,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600))),
-            cocinada
-                ? _pill('Cocinado', Icons.kitchen, _t.info)
-                : _pill('Por cocinar', null, _t.warning),
-            const SizedBox(width: 12),
-            _GhostBtn('Ver', onTap: () => _verDetalle(context, almuerzo)),
-          ]),
-          const SizedBox(height: 26),
-        ],
-        if (merienda != null) ...[
-          _kicker('Más tarde'),
-          const SizedBox(height: 8),
-          Row(children: [
-            SizedBox(
-                width: 52,
-                child: Text('15:45',
-                    style: TextStyle(
-                        color: _t.muted,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600))),
-            Expanded(
-                child: Text(merienda.ensamble.nombre,
-                    style: TextStyle(
-                        color: _t.ink2,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500))),
-          ]),
-          const SizedBox(height: 26),
-        ],
-        _tip(tip),
-        const SizedBox(height: 26),
-        InkWell(
-          onTap: () => DefaultTabController.of(context).animateTo(3),
-          child: Padding(
-            padding: const EdgeInsets.only(top: 22),
-            child: Row(children: [
-              Icon(Icons.shopping_cart_outlined, size: 15, color: _t.ink2),
-              const SizedBox(width: 10),
-              Text('Ver tu lista de compra',
-                  style: TextStyle(color: _t.ink2, fontSize: 14)),
-              const Spacer(),
-              Icon(Icons.chevron_right, size: 16, color: _t.muted),
-            ]),
-          ),
-        ),
-      ],
-    );
-
-    final right = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _kicker('Preparado para tu familia', color: _t.accent),
-        const SizedBox(height: 8),
-        Text(
-            cocinada
-                ? '$personas recipientes listos'
-                : 'Cocina la semana cuando puedas',
-            style: TextStyle(
-                color: _t.ink, fontSize: 18, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 14),
-        Row(children: [
-          for (var i = 0; i < personas; i++)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                    color: _t.accentWash,
-                    borderRadius: BorderRadius.circular(13)),
-                child: Icon(Icons.inventory_2_outlined,
-                    size: 15, color: _t.accentDeep),
-              ),
-            ),
-        ]),
-        const SizedBox(height: 14),
-        _GhostBtn('Ver detalle',
-            onTap: () =>
-                almuerzo == null ? null : _verDetalle(context, almuerzo)),
-        Container(
-            height: 1,
-            color: _t.hair,
-            margin: const EdgeInsets.symmetric(vertical: 26)),
-        Row(children: [
-          Icon(Icons.check, size: 15, color: _t.success),
-          const SizedBox(width: 9),
-          Text('Tu objetivo del día está cubierto',
-              style: TextStyle(color: _t.muted, fontSize: 13.5)),
-        ]),
-      ],
-    );
+    final totalKcal = hoy.totales[nombre]?.kcal.round();
 
     return _Page(
-      child: LayoutBuilder(builder: (context, c) {
-        final twoCol = c.maxWidth >= 900;
-        // Comida va directo a la comida: el saludo del día vive en Mi Vida.
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (twoCol)
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Expanded(flex: 60, child: left),
-                const SizedBox(width: 56),
-                Expanded(flex: 33, child: right),
-              ])
-            else ...[
-              left,
-              const SizedBox(height: 34),
-              right,
-            ],
-          ],
-        );
-      }),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Hoy',
+            style: TextStyle(
+                color: _t.ink,
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -.5)),
+        const SizedBox(height: 4),
+        Text('${hoy.nombre} · ${_fechaDia(hoy.fecha)}',
+            style: TextStyle(color: _t.muted, fontSize: 14)),
+        const SizedBox(height: 20),
+
+        // Resumen del día: tu meta repartida en las tres comidas.
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+          decoration: BoxDecoration(
+              color: _t.accentWash, borderRadius: BorderRadius.circular(20)),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              _kicker('Tu día'),
+              const Spacer(),
+              if (totalKcal != null)
+                Text('~$totalKcal kcal',
+                    style: TextStyle(
+                        color: _t.accentDeep,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700)),
+            ]),
+            const SizedBox(height: 14),
+            Row(children: [
+              for (final c in hoy.comidas)
+                Expanded(
+                  child: Column(children: [
+                    Text((_momLabel[c.momento] ?? c.momento).toUpperCase(),
+                        style: TextStyle(
+                            color: _t.muted,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: .4)),
+                    const SizedBox(height: 3),
+                    Text(
+                        '${c.porcionDe(nombre)?.macros.kcal.round() ?? 0} kcal',
+                        style: TextStyle(
+                            color: _t.ink,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700)),
+                  ]),
+                ),
+            ]),
+          ]),
+        ),
+        const SizedBox(height: 18),
+
+        Text('Toca una comida para ver la receta, marcarla o cambiarla.',
+            style: TextStyle(color: _t.muted, fontSize: 13)),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: _t.panel,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: _t.hair),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(children: [
+            for (final c in hoy.comidas)
+              _ComidaTile(
+                fecha: hoy.fecha,
+                comida: c,
+                biblioteca: biblioteca,
+                estado: estados[EstadoComida.claveDe(hoy.fecha, c.momento)],
+              ),
+          ]),
+        ),
+        const SizedBox(height: 18),
+
+        Row(children: [
+          Expanded(
+            child: _AccesoRapido(
+              icon: cocinada
+                  ? Icons.check_circle_outline
+                  : Icons.local_fire_department_outlined,
+              label: cocinada ? 'Ya cocinaste' : 'Cómo cocinar',
+              onTap: () => DefaultTabController.of(context).animateTo(2),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _AccesoRapido(
+              icon: Icons.shopping_cart_outlined,
+              label: 'Lista de compra',
+              onTap: () => DefaultTabController.of(context).animateTo(3),
+            ),
+          ),
+        ]),
+      ]),
     );
   }
+}
 
-  Widget _hoyDot(String estado) {
-    if (estado == 'comido') {
-      return Container(
-          width: 18,
-          height: 18,
-          decoration: BoxDecoration(color: _t.success, shape: BoxShape.circle),
-          child: const Icon(Icons.check, size: 11, color: Colors.white));
-    }
-    return Container(
-      width: 18,
-      height: 18,
-      decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-              color: estado == 'no_comido' ? _t.muted : _t.accent, width: 1.6)),
-    );
-  }
+class _AccesoRapido extends StatelessWidget {
+  const _AccesoRapido(
+      {required this.icon, required this.label, required this.onTap});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
 
-  void _verDetalle(BuildContext context, ComidaPlan comida) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: _t.panel,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 22, 24, 40),
-        child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _kicker('Receta', color: _t.accent),
-              const SizedBox(height: 8),
-              Text(comida.ensamble.nombre,
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        decoration: BoxDecoration(
+            color: _t.bg2,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _t.hair)),
+        child: Row(children: [
+          Icon(icon, size: 18, color: _t.accent),
+          const SizedBox(width: 10),
+          Expanded(
+              child: Text(label,
                   style: TextStyle(
                       color: _t.ink,
-                      fontSize: 19,
-                      fontWeight: FontWeight.w600)),
-              const SizedBox(height: 12),
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        recetaCompleta(comida.ensamble, biblioteca),
-                        const SizedBox(height: 18),
-                        _kicker('Tu porción'),
-                        const SizedBox(height: 6),
-                        for (final p in comida.porciones)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(p.persona,
-                                      style: TextStyle(
-                                          color: _t.ink,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14)),
-                                  Text(_ingredientes(comida, p),
-                                      style: TextStyle(
-                                          color: _t.muted,
-                                          fontSize: 13,
-                                          height: 1.4)),
-                                ]),
-                          ),
-                      ]),
-                ),
-              ),
-            ]),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600))),
+          Icon(Icons.chevron_right, size: 16, color: _t.muted),
+        ]),
       ),
     );
-  }
-
-  /// Porción por persona en referencia VISUAL (taza, palma, puño), no gramos.
-  String _ingredientes(ComidaPlan comida, PorcionCalculada p) {
-    final out = <String>[];
-    for (final comp in comida.ensamble.componentes) {
-      final g = p.gramos[comp.id];
-      if (g == null || g <= 0) continue;
-      final a = biblioteca.alimentoDe(comp);
-      if (a == null) continue;
-      final visual = porcionVisual(a, g);
-      out.add(visual.isEmpty ? a.nombre : '${a.nombre}: $visual');
-    }
-    return out.join('   ·   ');
   }
 }
 
@@ -808,7 +636,16 @@ Widget recetaCompleta(Ensamble e, Biblioteca biblioteca) {
   for (final comp in e.componentes) {
     final a = biblioteca.alimentoDe(comp);
     if (a == null) continue;
-    final gr = a.unidad == 'ml' ? 200.0 : (_gPorRol[comp.rol] ?? 100.0);
+    final double gr;
+    if (a.gramosPorUnidad != null) {
+      // Contables: 1 pieza grande (arepa, plátano), 2 finas (pan, huevo).
+      final unidades = a.gramosPorUnidad! <= 60 ? 2.0 : 1.0;
+      gr = a.gramosPorUnidad! * unidades;
+    } else if (a.unidad == 'ml') {
+      gr = 200.0;
+    } else {
+      gr = _gPorRol[comp.rol] ?? 100.0;
+    }
     final visual = porcionVisual(a, gr);
     ingredientes.add(visual.isEmpty ? a.nombre : '${a.nombre} · $visual');
   }
@@ -1764,29 +1601,4 @@ class _ComprasState extends ConsumerState<_Compras> {
             ? const Icon(Icons.check, size: 13, color: Colors.white)
             : null,
       );
-}
-
-// ── botones (del sistema de diseño compartido) ──────────────────────────────
-
-class _GhostBtn extends StatelessWidget {
-  const _GhostBtn(this.label, {required this.onTap});
-  final String label;
-  final VoidCallback? onTap;
-  @override
-  Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: onTap,
-      style: TextButton.styleFrom(
-        foregroundColor: _t.accentDeep,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        minimumSize: const Size(0, 0),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Text(label,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-        const Icon(Icons.chevron_right, size: 16),
-      ]),
-    );
-  }
 }

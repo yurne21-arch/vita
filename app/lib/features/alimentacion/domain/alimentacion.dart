@@ -205,6 +205,7 @@ class Alimento {
     this.macros100 = Macros.cero,
     this.unidad = 'g',
     this.gramosPorUnidad,
+    this.unidadNombre,
     this.rindeCocidoPct,
     this.precioClp,
     this.precioPor,
@@ -218,6 +219,7 @@ class Alimento {
   final Macros macros100; // por 100 g / 100 ml
   final String unidad; // 'g' | 'ml' | 'unidad'
   final double? gramosPorUnidad; // 1 huevo ≈ 55 g, 1 arepa ≈ 150 g
+  final String? unidadNombre; // cómo se cuenta: 'arepa', 'rebanada', 'huevo'…
   final double? rindeCocidoPct; // crudo→cocido (pollo ≈ 70)
   final double? precioClp;
   final String? precioPor; // 'g'|'kg'|'ml'|'l'|'unidad'
@@ -662,13 +664,12 @@ class CocinaSesion {
 /// no pesa. La usuaria pidió medidas gráficas, no gramos.
 String porcionVisual(Alimento a, double cantidad) {
   if (cantidad <= 0) return '';
-  // Contables por unidad natural: huevos, arepas, frutas. Recibe gramos y los
-  // pasa a unidades con gramosPorUnidad (1 huevo ≈ 55 g).
-  if (a.unidad == 'unidad') {
-    final porUnidad = a.gramosPorUnidad ?? 1;
-    final n = (cantidad / porUnidad).round().clamp(1, 99);
-    final nombre = a.nombre.toLowerCase();
-    return n == 1 ? '1 $nombre' : '$n ${nombre}s';
+  // Contables por unidad (huevo, arepa, pan, plátano, manzana…): se dicen por
+  // unidad, nunca en "palma" ni "taza". Recibe gramos y los pasa a unidades.
+  if (a.gramosPorUnidad != null) {
+    final n = (cantidad / a.gramosPorUnidad!).round().clamp(1, 30);
+    final u = a.unidadNombre ?? a.nombre.toLowerCase();
+    return n == 1 ? '1 $u' : '$n ${u}s';
   }
   switch (a.categoria) {
     case 'proteina':
