@@ -206,6 +206,7 @@ class Alimento {
     this.unidad = 'g',
     this.gramosPorUnidad,
     this.unidadNombre,
+    this.notaUnidad,
     this.rindeCocidoPct,
     this.precioClp,
     this.precioPor,
@@ -220,6 +221,7 @@ class Alimento {
   final String unidad; // 'g' | 'ml' | 'unidad'
   final double? gramosPorUnidad; // 1 huevo ≈ 55 g, 1 arepa ≈ 150 g
   final String? unidadNombre; // cómo se cuenta: 'arepa', 'rebanada', 'huevo'…
+  final String? notaUnidad; // detalle de cocina ("½ taza de harina por arepa")
   final double? rindeCocidoPct; // crudo→cocido (pollo ≈ 70)
   final double? precioClp;
   final String? precioPor; // 'g'|'kg'|'ml'|'l'|'unidad'

@@ -21,6 +21,7 @@ Alimento _a(
   String unidad = 'g',
   double? gramosPorUnidad,
   String? unidadNombre,
+  String? notaUnidad,
   double? rinde,
 }) =>
     Alimento(
@@ -32,6 +33,7 @@ Alimento _a(
       unidad: unidad,
       gramosPorUnidad: gramosPorUnidad,
       unidadNombre: unidadNombre,
+      notaUnidad: notaUnidad,
       rindeCocidoPct: rinde,
     );
 
@@ -140,7 +142,8 @@ Biblioteca bibliotecaAprobada() {
         grasa: 2.5,
         fibra: 2,
         gramosPorUnidad: 150,
-        unidadNombre: 'arepa'),
+        unidadNombre: 'arepa',
+        notaUnidad: '½ taza de harina de maíz PAN (~50 g) + agua, por arepa'),
     _a('pan', 'Pan', 'carbohidrato',
         kcal: 265,
         prot: 9,
@@ -156,7 +159,9 @@ Biblioteca bibliotecaAprobada() {
         grasa: 7,
         fibra: 1,
         gramosPorUnidad: 45,
-        unidadNombre: 'panqueca'),
+        unidadNombre: 'panqueca',
+        notaUnidad:
+            '¼ taza de harina + 1 huevo + chorrito de leche, por panqueca'),
     _a('choclo', 'Maíz (jojoto)', 'carbohidrato',
         kcal: 96, prot: 3.4, carb: 21, grasa: 1.5, fibra: 2.4),
     _a('caraotas', 'Caraotas negras', 'carbohidrato',

@@ -647,7 +647,17 @@ Widget recetaCompleta(Ensamble e, Biblioteca biblioteca) {
       gr = _gPorRol[comp.rol] ?? 100.0;
     }
     final visual = porcionVisual(a, gr);
-    ingredientes.add(visual.isEmpty ? a.nombre : '${a.nombre} · $visual');
+    // Detalle: medida visual + gramos (carbos y proteínas), y para lo hecho con
+    // harina (arepa, panquecas) cuánta harina lleva.
+    final String detalle;
+    if (a.notaUnidad != null) {
+      detalle = '$visual · ${a.notaUnidad}';
+    } else if (a.gramosPorUnidad != null || visual.isEmpty) {
+      detalle = visual; // 2 huevos, 1 plátano, 1 manzana
+    } else {
+      detalle = '$visual (~${gr.round()} g)'; // arroz, pollo, carne, pasta…
+    }
+    ingredientes.add(detalle.isEmpty ? a.nombre : '${a.nombre} · $detalle');
   }
 
   // Pasos reales del recetario; si no hay, arma desde las preparaciones.
