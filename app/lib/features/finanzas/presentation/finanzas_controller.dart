@@ -72,6 +72,14 @@ final balanceCompartidoProvider = FutureProvider<BalanceCompartido>((ref) {
   return ref.watch(finanzasRepositoryProvider).balanceCompartido();
 });
 
+/// Cuántos gastos hay por saldar en la cuadratura (compartidos + tarjeta de
+/// crédito). Habilita el botón aunque no haya reparto que mostrar.
+final pendientesCuadraturaProvider = FutureProvider<int>((ref) {
+  ref.watch(usuarioActualProvider);
+  ref.watch(movimientosProvider);
+  return ref.watch(finanzasRepositoryProvider).pendientesCuadratura();
+});
+
 /// Gastos compartidos sin saldar (para compartir por WhatsApp).
 final gastosCompartidosPendientesProvider =
     FutureProvider<List<Movimiento>>((ref) {
@@ -384,6 +392,7 @@ class FinanzasAcciones {
   Future<void> saldarCompartido() async {
     await _repo.saldarCompartido();
     _ref.invalidate(balanceCompartidoProvider);
+    _ref.invalidate(pendientesCuadraturaProvider);
     _ref.invalidate(historialSaldadosProvider);
     _ref.invalidate(gastosCompartidosPendientesProvider);
   }

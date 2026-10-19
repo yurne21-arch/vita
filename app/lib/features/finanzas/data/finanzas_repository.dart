@@ -543,6 +543,26 @@ class FinanzasRepository {
         return BalanceCompartido(puestoPorYurby: yurby, puestoPorJuan: juan);
       });
 
+  /// Cuántos gastos hay por saldar en la cuadratura: compartidos + pagados con
+  /// tarjeta de crédito. Sirve para habilitar el botón aunque no haya reparto.
+  Future<int> pendientesCuadratura() => _guard(() async {
+        final userId = _userId();
+        final rows = await _c
+            .from('finance_transactions')
+            .select('id, compartido, tarjeta_id')
+            .eq('user_id', userId)
+            .eq('tipo', 'gasto')
+            .eq('tricount_saldado', false);
+        return (rows as List).where(_entraEnCuadratura).length;
+      });
+
+  /// Un gasto entra en la cuadratura si es compartido O se pagó con tarjeta de
+  /// crédito (aunque sea personal: la tarjeta se paga al cuadrar).
+  static bool _entraEnCuadratura(dynamic r) {
+    final m = r as Map;
+    return m['compartido'] == true || m['tarjeta_id'] != null;
+  }
+
   static const _colsMov =
       'id, tipo, monto, categoria, ambito, nota, fecha, quien, compartido, cuenta_id, tarjeta_id, loan_id, tricount_saldado';
 
@@ -606,11 +626,30 @@ class FinanzasRepository {
   Future<void> saldarCompartido() => _guard(() async {
         final userId = _userId();
         final balance = await balanceCompartido();
-        final pendientes = await gastosCompartidosPendientes();
+
+        // Qué se salda en esta cuadratura: los gastos COMPARTIDOS (el reparto) +
+        // TODOS los pagados con TARJETA DE CRÉDITO, aunque sean personales. La
+        // tarjeta se paga al hacer la cuadratura, así que esos gastos quedan
+        // saldados y no se arrastran al mes siguiente ni se duplican con el pago
+        // de la tarjeta. Los montos del reparto (quién puso cuánto) salen solo de
+        // lo compartido; lo personal con tarjeta se salda pero no crea deuda
+        // entre ambos.
+        final rows = await _c
+            .from('finance_transactions')
+            .select('id, compartido, tarjeta_id, fecha')
+            .eq('user_id', userId)
+            .eq('tipo', 'gasto')
+            .eq('tricount_saldado', false);
+        final pendientes = (rows as List).where(_entraEnCuadratura).toList();
         if (pendientes.isEmpty) return;
 
+        final ids = pendientes.map((r) => (r as Map)['id'] as String).toList();
+
         // Rango de fechas de este cuadre.
-        final fechas = pendientes.map((m) => m.fecha).toList()..sort();
+        final fechas = pendientes
+            .map((r) => DateTime.parse((r as Map)['fecha'] as String))
+            .toList()
+          ..sort();
         final desde = fechas.first;
         final hasta = fechas.last;
 
@@ -634,14 +673,12 @@ class FinanzasRepository {
             .single();
         final cuadreId = cuadre['id'] as String;
 
-        // 2) Ligar y saldar los gastos de este cuadre.
+        // 2) Ligar y saldar exactamente esos gastos (compartidos + tarjeta).
         await _c
             .from('finance_transactions')
             .update({'tricount_saldado': true, 'settlement_id': cuadreId})
             .eq('user_id', userId)
-            .eq('tipo', 'gasto')
-            .eq('compartido', true)
-            .eq('tricount_saldado', false);
+            .inFilter('id', ids);
       });
 
   /// Historial de cuadres (más reciente primero).

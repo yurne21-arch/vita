@@ -394,14 +394,64 @@ class _TricountCard extends ConsumerWidget {
     final b = ref.watch(balanceCompartidoProvider).valueOrNull;
     if (b == null) return const SizedBox.shrink();
 
-    // Sin nada por repartir (nunca hubo, o ya se saldó todo).
+    // Sin reparto compartido. Pero puede que haya gastos con tarjeta por saldar.
     if (b.total == 0) {
-      return const _Vacio(
-        icon: Icons.groups_outlined,
-        titulo: 'Nada por repartir.',
-        subtitulo:
-            'Marca un gasto como "compartido" y verás aquí quién le debe a quién. '
-            'Cuando se paguen entre ustedes, toca "Ya nos pagamos".',
+      final pendientes =
+          ref.watch(pendientesCuadraturaProvider).valueOrNull ?? 0;
+      if (pendientes == 0) {
+        return const _Vacio(
+          icon: Icons.groups_outlined,
+          titulo: 'Nada por repartir.',
+          subtitulo:
+              'Marca un gasto como "compartido" y verás aquí quién le debe a quién. '
+              'Cuando se paguen entre ustedes, toca "Ya nos pagamos".',
+        );
+      }
+      return Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              color: AppColors.accent.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+              border:
+                  Border.all(color: AppColors.accent.withValues(alpha: 0.20)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('CUADRATURA · TARJETAS POR SALDAR',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      letterSpacing: 1.1,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.accent,
+                    )),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                    'Tienes $pendientes gasto${pendientes == 1 ? '' : 's'} con '
+                    'tarjeta de crédito por saldar.',
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                    'Al hacer la cuadratura quedan pagados y no se arrastran al '
+                    'mes siguiente.',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.tonalIcon(
+              onPressed: () => _saldar(context, ref),
+              icon: const Icon(Icons.handshake_outlined, size: 18),
+              label: const Text('Hacer la cuadratura'),
+            ),
+          ),
+        ],
       );
     }
 
@@ -468,10 +518,11 @@ class _TricountCard extends ConsumerWidget {
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          'Suma todos los gastos marcados como "compartidos" que aún no se han '
+          'Suma los gastos marcados como "compartidos" que aún no se han '
           'saldado. Se reparten por igual; la diferencia es lo que falta para '
-          'quedar a mano. Al pagarse entre ustedes, toca el botón y el saldo '
-          'vuelve a cero (los gastos no se borran).',
+          'quedar a mano. Al tocar el botón, se salda el reparto Y TODOS los '
+          'gastos con tarjeta de crédito (que se pagan en la cuadratura), así '
+          'no se arrastran ni se duplican. Los gastos no se borran.',
           style: theme.textTheme.bodySmall
               ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
@@ -485,9 +536,10 @@ class _TricountCard extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('¿Quedaron a mano?'),
         content: const Text(
-          'Se marca el reparto compartido como saldado hasta hoy. El saldo '
-          'vuelve a cero y solo contará los gastos compartidos de aquí en '
-          'adelante. Tus gastos no se borran.',
+          'Se marca como saldado el reparto compartido Y todos los gastos '
+          'pagados con tarjeta de crédito (se pagan en la cuadratura). El saldo '
+          'vuelve a cero y de aquí en adelante empieza limpio, sin arrastrar ni '
+          'duplicar lo de antes. Tus gastos no se borran.',
         ),
         actions: [
           TextButton(
