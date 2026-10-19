@@ -365,17 +365,20 @@ class GastoProyectoMes {
 /// Categorías de gasto. Son las MISMAS que las del presupuesto (mismos textos),
 /// para que Movimientos, Presupuesto y el gráfico concuerden y no haya despelote.
 const List<String> kCategoriasGasto = [
-  'Alimentacion',
-  'Familia',
-  'Estilo de vida',
-  'Servicios',
-  'Hogar',
-  'Vivienda',
-  'Personal',
-  'Salud',
-  'Mantenciones',
-  'Imprevistos',
-  'Contribucion',
+  'ALIMENTACION',
+  'SALIDAS',
+  'COLEGIOS',
+  'SERVICIOS CASA',
+  'SALUD',
+  'SERVICIOS PERSONALES',
+  'GASTOS CASA',
+  'MANTENCIONES VEHICULOS',
+  'CONTRIBUCION',
+  'IMPREVISTOS',
+  'GASTOS PERSONALES',
+  // 'Pago Deuda' se mantiene (igual que siempre) para los pagos de créditos y
+  // tarjetas: es lo que separa deuda de gastos en los balances. No se renombra
+  // para no partir el histórico.
   'Pago Deuda',
 ];
 
