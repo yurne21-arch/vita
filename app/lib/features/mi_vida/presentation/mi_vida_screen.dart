@@ -1693,6 +1693,19 @@ class _HabitoRow extends StatelessWidget {
                 ),
               ),
             ),
+            if (habito.racha > 0) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text('🔥 ${habito.racha}',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                        color: AppColors.warning, fontWeight: FontWeight.w700)),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+            ],
             Icon(
               done ? Icons.check_circle : Icons.circle_outlined,
               color:

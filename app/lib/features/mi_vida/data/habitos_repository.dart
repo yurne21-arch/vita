@@ -21,6 +21,8 @@ class Habito {
     required this.hecho,
     this.emoji,
     this.hora,
+    this.racha = 0,
+    this.cumplidos30 = 0,
   });
 
   final String id;
@@ -30,6 +32,12 @@ class Habito {
   final String? emoji;
   final String? hora;
 
+  /// Días seguidos cumplidos (hasta hoy, o hasta ayer si hoy aún no lo marcas).
+  final int racha;
+
+  /// Cuántos de los últimos 30 días se cumplió (para el % de constancia).
+  final int cumplidos30;
+
   Habito copyWith({bool? hecho}) => Habito(
         id: id,
         nombre: nombre,
@@ -37,6 +45,8 @@ class Habito {
         hecho: hecho ?? this.hecho,
         emoji: emoji,
         hora: hora,
+        racha: racha,
+        cumplidos30: cumplidos30,
       );
 }
 
@@ -70,12 +80,13 @@ class HabitosRepository {
     return user.id;
   }
 
-  String get _hoy {
-    final n = DateTime.now();
-    final mm = n.month.toString().padLeft(2, '0');
-    final dd = n.day.toString().padLeft(2, '0');
-    return '${n.year}-$mm-$dd';
+  String _fecha(DateTime d) {
+    final mm = d.month.toString().padLeft(2, '0');
+    final dd = d.day.toString().padLeft(2, '0');
+    return '${d.year}-$mm-$dd';
   }
+
+  String get _hoy => _fecha(DateTime.now());
 
   /// Traduce cualquier fallo de Supabase a un mensaje humano.
   Future<T> _guard<T>(Future<T> Function() accion) async {
@@ -122,9 +133,13 @@ class HabitosRepository {
         await _c.from('habitos').upsert(filas, onConflict: 'user_id,nombre');
       });
 
-  /// Lee los hábitos del usuario con su estado de HOY.
+  /// Lee los hábitos del usuario con su estado de HOY, su racha (días seguidos)
+  /// y su constancia de los últimos 30 días.
   Future<List<Habito>> habitosDeHoy() => _guard(() async {
         final userId = _userId();
+        final hoy = DateTime.now();
+        // 90 días de historial para calcular rachas largas.
+        final desde = _fecha(hoy.subtract(const Duration(days: 90)));
 
         final resultados = await Future.wait([
           _c
@@ -135,14 +150,47 @@ class HabitosRepository {
               .order('orden'),
           _c
               .from('habitos_log')
-              .select('habito_id, hecho')
+              .select('habito_id, fecha, hecho')
               .eq('user_id', userId)
-              .eq('fecha', _hoy),
+              .gte('fecha', desde),
         ]);
 
-        final hechos = <String, bool>{};
+        // Fechas cumplidas por hábito (solo las hechas) + estado de hoy.
+        final cumplidas = <String, Set<String>>{};
+        final hechoHoy = <String, bool>{};
+        final hoyStr = _fecha(hoy);
         for (final l in (resultados[1] as List)) {
-          hechos[l['habito_id'] as String] = l['hecho'] as bool;
+          final hid = l['habito_id'] as String;
+          final f = l['fecha'] as String;
+          final done = l['hecho'] as bool;
+          if (done) (cumplidas[hid] ??= <String>{}).add(f);
+          if (f == hoyStr) hechoHoy[hid] = done;
+        }
+
+        // Racha: días seguidos cumplidos, contando desde hoy (o ayer si hoy
+        // aún no lo marcas, para no romper la racha a media mañana).
+        int racha(String hid) {
+          final set = cumplidas[hid] ?? const <String>{};
+          var cursor = hoy;
+          if (!set.contains(hoyStr)) {
+            cursor = cursor.subtract(const Duration(days: 1));
+          }
+          var n = 0;
+          while (set.contains(_fecha(cursor))) {
+            n++;
+            cursor = cursor.subtract(const Duration(days: 1));
+          }
+          return n;
+        }
+
+        // Constancia: cuántos de los últimos 30 días se cumplió.
+        int cumplidos30(String hid) {
+          final set = cumplidas[hid] ?? const <String>{};
+          var n = 0;
+          for (var i = 0; i < 30; i++) {
+            if (set.contains(_fecha(hoy.subtract(Duration(days: i))))) n++;
+          }
+          return n;
         }
 
         return (resultados[0] as List)
@@ -152,7 +200,9 @@ class HabitosRepository {
                   orden: (h['orden'] as num).toInt(),
                   emoji: h['emoji'] as String?,
                   hora: h['hora'] as String?,
-                  hecho: hechos[h['id']] ?? false,
+                  hecho: hechoHoy[h['id']] ?? false,
+                  racha: racha(h['id'] as String),
+                  cumplidos30: cumplidos30(h['id'] as String),
                 ))
             .toList();
       });
