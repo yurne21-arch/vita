@@ -43,11 +43,39 @@ const double _kBpTablet = 640;
 /// Solo se muestra lo que existe: no hay tarjetas de módulos futuros
 /// (entrenamiento, menú, cierre del día). Una tarjeta que no hace nada le
 /// cuesta a la usuaria un scroll cada día y no le devuelve nada.
-class MiVidaScreen extends ConsumerWidget {
+class MiVidaScreen extends ConsumerStatefulWidget {
   const MiVidaScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MiVidaScreen> createState() => _MiVidaScreenState();
+}
+
+class _MiVidaScreenState extends ConsumerState<MiVidaScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Al volver a la app (p. ej. tras marcar un hábito en Telegram), recargar
+    // para que lo que marcaste fuera de VITA se vea reflejado al instante.
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(habitosControllerProvider);
+      ref.invalidate(seguimientoHabitosProvider);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       // Cerrar sesión vive en Ajustes: no es una acción de uso diario y no
       // debería estar a un toque de distancia en la pantalla principal.
