@@ -50,6 +50,46 @@ class Habito {
       );
 }
 
+/// Estado de un hábito en un día concreto, para el control semanal/mensual.
+enum DiaEstado {
+  /// Marcó que sí lo hizo.
+  hecho,
+
+  /// Marcó que no lo hizo.
+  noHecho,
+
+  /// Ese día no le tocaba (p. ej. ejercicio un domingo).
+  noTocaba,
+
+  /// Le tocaba pero no quedó registrado (ni sí ni no).
+  sinDato,
+}
+
+/// Resumen de constancia de un hábito: su semana y su mes.
+class SeguimientoHabito {
+  const SeguimientoHabito({
+    required this.nombre,
+    required this.emoji,
+    required this.semana,
+    required this.mesCumplidos,
+    required this.mesProgramados,
+  });
+
+  final String nombre;
+  final String? emoji;
+
+  /// Últimos 7 días, del más antiguo (índice 0) a hoy (índice 6).
+  final List<DiaEstado> semana;
+
+  /// De los últimos 30 días, cuántos le tocaban y cuántos cumplió.
+  final int mesCumplidos;
+  final int mesProgramados;
+
+  /// Porcentaje de constancia del mes (0 si no le tocó ningún día).
+  int get mesPorcentaje =>
+      mesProgramados == 0 ? 0 : ((mesCumplidos * 100) / mesProgramados).round();
+}
+
 class HabitosRepository {
   HabitosRepository(this._service);
   final SupabaseService _service;
@@ -258,6 +298,90 @@ class HabitosRepository {
   /// Quita un hábito sin borrar su historial: lo desactiva.
   Future<void> eliminar(String id) => _guard(() async {
         await _c.from('habitos').update({'activo': false}).eq('id', id);
+      });
+
+  /// Control de constancia: por cada hábito, su semana (7 días) y su mes (30),
+  /// distinguiendo "no lo hice" de "no me tocaba" para que el número sea justo.
+  Future<List<SeguimientoHabito>> seguimiento() => _guard(() async {
+        final userId = _userId();
+        final ahora = DateTime.now();
+        final hoy = DateTime(ahora.year, ahora.month, ahora.day);
+        final desde = _fecha(hoy.subtract(const Duration(days: 29)));
+
+        final res = await Future.wait([
+          _c
+              .from('habitos')
+              .select('id, nombre, emoji, orden')
+              .eq('user_id', userId)
+              .eq('activo', true)
+              .order('orden'),
+          _c
+              .from('habito_recordatorios')
+              .select('habito_id, dias')
+              .eq('user_id', userId)
+              .eq('activo', true),
+          _c
+              .from('habitos_log')
+              .select('habito_id, fecha, hecho')
+              .eq('user_id', userId)
+              .gte('fecha', desde),
+        ]);
+
+        // Días en que cada hábito tiene recordatorio (vacío = todos los días).
+        final reglas = <String, List<Set<int>>>{};
+        for (final r in (res[1] as List)) {
+          final hid = r['habito_id'] as String;
+          final dias = <int>{
+            for (final d in (r['dias'] as List? ?? const []))
+              (d as num).toInt(),
+          };
+          (reglas[hid] ??= <Set<int>>[]).add(dias);
+        }
+        bool tocaba(String hid, DateTime d) {
+          final rs = reglas[hid];
+          if (rs == null || rs.isEmpty) return true; // sin reglas = diario
+          final wd = d.weekday; // 1=Lun .. 7=Dom
+          return rs.any((s) => s.isEmpty || s.contains(wd));
+        }
+
+        // Registro por hábito y fecha (sí / no).
+        final log = <String, Map<String, bool>>{};
+        for (final l in (res[2] as List)) {
+          final hid = l['habito_id'] as String;
+          (log[hid] ??= <String, bool>{})[l['fecha'] as String] =
+              l['hecho'] as bool;
+        }
+
+        DiaEstado estado(String hid, DateTime d) {
+          if (!tocaba(hid, d)) return DiaEstado.noTocaba;
+          final v = log[hid]?[_fecha(d)];
+          if (v == null) return DiaEstado.sinDato;
+          return v ? DiaEstado.hecho : DiaEstado.noHecho;
+        }
+
+        final salida = <SeguimientoHabito>[];
+        for (final h in (res[0] as List)) {
+          final hid = h['id'] as String;
+          final semana = <DiaEstado>[
+            for (var i = 6; i >= 0; i--)
+              estado(hid, hoy.subtract(Duration(days: i))),
+          ];
+          var prog = 0, cumpl = 0;
+          for (var i = 0; i < 30; i++) {
+            final d = hoy.subtract(Duration(days: i));
+            if (!tocaba(hid, d)) continue;
+            prog++;
+            if (estado(hid, d) == DiaEstado.hecho) cumpl++;
+          }
+          salida.add(SeguimientoHabito(
+            nombre: h['nombre'] as String,
+            emoji: h['emoji'] as String?,
+            semana: semana,
+            mesCumplidos: cumpl,
+            mesProgramados: prog,
+          ));
+        }
+        return salida;
       });
 }
 

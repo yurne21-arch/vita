@@ -69,3 +69,10 @@ final habitosControllerProvider =
     AsyncNotifierProvider<HabitosController, List<Habito>>(
   HabitosController.new,
 );
+
+/// Control de constancia (semana y mes) para la vista de seguimiento.
+final seguimientoHabitosProvider =
+    FutureProvider.autoDispose<List<SeguimientoHabito>>((ref) {
+  ref.watch(usuarioActualProvider); // recarga si cambia la sesión
+  return ref.read(habitosRepositoryProvider).seguimiento();
+});

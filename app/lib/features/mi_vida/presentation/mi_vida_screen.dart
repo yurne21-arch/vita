@@ -1120,11 +1120,23 @@ class _Habitos extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Eyebrow('HÁBITOS'),
-              IconButton(
-                tooltip: 'Administrar hábitos',
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.tune, size: 18, color: AppColors.accent),
-                onPressed: () => _administrarHabitos(context, ref),
+              Row(
+                children: [
+                  IconButton(
+                    tooltip: 'Ver mi constancia',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.insights,
+                        size: 18, color: AppColors.accent),
+                    onPressed: () => _seguimientoHabitos(context),
+                  ),
+                  IconButton(
+                    tooltip: 'Administrar hábitos',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.tune,
+                        size: 18, color: AppColors.accent),
+                    onPressed: () => _administrarHabitos(context, ref),
+                  ),
+                ],
               ),
             ],
           ),
@@ -1507,6 +1519,233 @@ Future<void> _administrarHabitos(BuildContext context, WidgetRef ref) {
       },
     ),
   );
+}
+
+// Inicial del día de la semana (índice = DateTime.weekday, 1=Lun .. 7=Dom).
+const _inicialDia = ['', 'L', 'M', 'M', 'J', 'V', 'S', 'D'];
+const double _celdaLado = 20;
+const double _nombreAncho = 84;
+
+/// Abre el control de constancia (semana y mes) de los hábitos.
+Future<void> _seguimientoHabitos(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => const _SeguimientoSheet(),
+  );
+}
+
+class _SeguimientoSheet extends ConsumerWidget {
+  const _SeguimientoSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final async = ref.watch(seguimientoHabitosProvider);
+    final hoy = DateTime.now();
+    final labels = [
+      for (var i = 6; i >= 0; i--)
+        _inicialDia[hoy.subtract(Duration(days: i)).weekday],
+    ];
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg,
+            AppSpacing.lg + MediaQuery.of(context).viewInsets.bottom),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Tu constancia',
+                  style: theme.textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Lo que hiciste y lo que no, sin dramas. Verde: lo hiciste · '
+                'rojo: no · lo demás no te tocaba o quedó sin marcar.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.textTheme.bodySmall?.color
+                        ?.withValues(alpha: 0.7)),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              async.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (e, _) => ErrorEnTarjeta(
+                  mensaje: mensajeDeError(e),
+                  onReintentar: () =>
+                      ref.invalidate(seguimientoHabitosProvider),
+                ),
+                data: (lista) {
+                  if (lista.isEmpty) {
+                    return const _EmptyHint(
+                      icon: Icons.insights,
+                      title: 'Aún no hay nada que mostrar.',
+                      subtitle: 'Cuando marques tus hábitos, verás tu avance.',
+                    );
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Eyebrow('ESTA SEMANA'),
+                      const SizedBox(height: AppSpacing.sm),
+                      _SemanaFila(
+                        izquierda: const SizedBox(width: _nombreAncho),
+                        celdas: [
+                          for (final l in labels)
+                            SizedBox(
+                              width: _celdaLado,
+                              child: Text(l,
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.labelSmall),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      for (final s in lista) ...[
+                        _SemanaFila(
+                          izquierda: SizedBox(
+                            width: _nombreAncho,
+                            child: Text(
+                              '${s.emoji ?? '•'} ${s.nombre}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ),
+                          celdas: [
+                            for (final e in s.semana) _CeldaDia(estado: e),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                      ],
+                      const SizedBox(height: AppSpacing.lg),
+                      const Eyebrow('ÚLTIMOS 30 DÍAS'),
+                      const SizedBox(height: AppSpacing.sm),
+                      for (final s in lista) ...[
+                        _MesFila(s: s),
+                        const SizedBox(height: AppSpacing.sm),
+                      ],
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Una fila de la cuadrícula semanal: etiqueta/nombre a la izquierda y 7 celdas.
+class _SemanaFila extends StatelessWidget {
+  const _SemanaFila({required this.izquierda, required this.celdas});
+  final Widget izquierda;
+  final List<Widget> celdas;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        izquierda,
+        for (final c in celdas)
+          Padding(padding: const EdgeInsets.only(left: 4), child: c),
+      ],
+    );
+  }
+}
+
+/// Una celda de día: verde (hecho), rojo (no), gris (sin marcar), hueca (no tocaba).
+class _CeldaDia extends StatelessWidget {
+  const _CeldaDia({required this.estado});
+  final DiaEstado estado;
+
+  @override
+  Widget build(BuildContext context) {
+    final tenue = (Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey)
+        .withValues(alpha: 0.3);
+    Color fondo;
+    switch (estado) {
+      case DiaEstado.hecho:
+        fondo = AppColors.success;
+        break;
+      case DiaEstado.noHecho:
+        fondo = AppColors.danger;
+        break;
+      case DiaEstado.sinDato:
+        fondo = tenue;
+        break;
+      case DiaEstado.noTocaba:
+        fondo = Colors.transparent;
+        break;
+    }
+    return Container(
+      width: _celdaLado,
+      height: _celdaLado,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: fondo,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+        border: estado == DiaEstado.noTocaba ? Border.all(color: tenue) : null,
+      ),
+    );
+  }
+}
+
+/// Una fila del resumen mensual: nombre, cumplidos/programados y barra.
+class _MesFila extends StatelessWidget {
+  const _MesFila({required this.s});
+  final SeguimientoHabito s;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final valor =
+        s.mesProgramados == 0 ? 0.0 : s.mesCumplidos / s.mesProgramados;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${s.emoji ?? '•'} ${s.nombre}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              '${s.mesCumplidos}/${s.mesProgramados} · ${s.mesPorcentaje}%',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+          child: LinearProgressIndicator(
+            value: valor,
+            minHeight: 6,
+            backgroundColor: AppColors.accent.withValues(alpha: 0.12),
+            valueColor: const AlwaysStoppedAnimation(AppColors.accent),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 /// Diálogo para crear o editar un hábito (emoji + nombre + hora).

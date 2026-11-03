@@ -64,15 +64,30 @@ Deno.serve(async (req) => {
     const partes = String(cq.data ?? "").split("|"); // accion|habito|fecha
     const [accion, habitoId, fecha] = partes;
 
+    const base = cq.message?.text?.split("\n\n")[0] ?? "⏰ Recordatorio VITA";
+    const botonDeshacer = {
+      inline_keyboard: [[{
+        text: "↩️ Deshacer",
+        callback_data: `x|${habitoId}|${fecha}`,
+      }]],
+    };
+    const botonesOriginales = {
+      inline_keyboard: [[
+        { text: "✅ Ya lo hice", callback_data: `d|${habitoId}|${fecha}` },
+        { text: "✖️ No lo hice", callback_data: `n|${habitoId}|${fecha}` },
+      ]],
+    };
+
     if (userId && habitoId && fecha) {
-      if (accion === "d") {
+      if (accion === "d" || accion === "n") {
+        const hecho = accion === "d";
         await supabase.from("habitos_log").upsert({
           user_id: userId,
           habito_id: habitoId,
           fecha,
-          hecho: true,
+          hecho,
         }, { onConflict: "habito_id,fecha" });
-        // Queda pendiente de nota (opcional).
+        // Queda pendiente de nota (opcional, sirva para sí o para no).
         await supabase.from("telegram_pendiente").upsert({
           chat_id: chatId,
           user_id: userId,
@@ -83,54 +98,34 @@ Deno.serve(async (req) => {
 
         await tg("answerCallbackQuery", {
           callback_query_id: cq.id,
-          text: "¡Hecho! ✅  Si quieres, escríbeme una nota.",
+          text: hecho ? "¡Hecho! ✅" : "Anotado: no lo hiciste.",
         });
-        await tg("editMessageReplyMarkup", {
-          chat_id: chatId,
-          message_id: msgId,
-          reply_markup: {
-            inline_keyboard: [[{
-              text: "↩️ Deshacer",
-              callback_data: `u|${habitoId}|${fecha}`,
-            }]],
-          },
-        });
-        const base = cq.message?.text ?? "Recordatorio VITA";
+        const estado = hecho
+          ? "✅ Hecho. ¿Anotar algo? (ej: 4×12, 2 litros, 20 min)"
+          : "✖️ No lo hice. Si quieres, escribe por qué.";
         await tg("editMessageText", {
           chat_id: chatId,
           message_id: msgId,
-          text: `${base}\n\n✅ Hecho. ¿Anotar algo? (ej: 4×12, 2 litros, 20 min)`,
-          reply_markup: {
-            inline_keyboard: [[{
-              text: "↩️ Deshacer",
-              callback_data: `u|${habitoId}|${fecha}`,
-            }]],
-          },
+          text: `${base}\n\n${estado}`,
+          reply_markup: botonDeshacer,
         });
-      } else if (accion === "u") {
-        await supabase.from("habitos_log").upsert({
-          user_id: userId,
-          habito_id: habitoId,
-          fecha,
-          hecho: false,
-        }, { onConflict: "habito_id,fecha" });
+      } else if (accion === "x") {
+        // Deshacer: borra la respuesta del día y vuelve a los dos botones.
+        await supabase.from("habitos_log").delete()
+          .eq("habito_id", habitoId).eq("fecha", fecha);
         await supabase.from("telegram_pendiente").delete().eq(
           "chat_id",
           chatId,
         );
         await tg("answerCallbackQuery", {
           callback_query_id: cq.id,
-          text: "Listo, lo dejé sin marcar.",
+          text: "Listo, lo dejé sin responder.",
         });
-        await tg("editMessageReplyMarkup", {
+        await tg("editMessageText", {
           chat_id: chatId,
           message_id: msgId,
-          reply_markup: {
-            inline_keyboard: [[{
-              text: "✅ Ya lo hice",
-              callback_data: `d|${habitoId}|${fecha}`,
-            }]],
-          },
+          text: base,
+          reply_markup: botonesOriginales,
         });
       } else {
         await tg("answerCallbackQuery", { callback_query_id: cq.id });
@@ -159,7 +154,7 @@ Deno.serve(async (req) => {
     if (pend && reciente) {
       const { data: log } = await supabase
         .from("habitos_log")
-        .select("nota")
+        .select("nota, hecho")
         .eq("habito_id", pend.habito_id)
         .eq("fecha", pend.fecha)
         .maybeSingle();
@@ -171,7 +166,7 @@ Deno.serve(async (req) => {
         user_id: pend.user_id,
         habito_id: pend.habito_id,
         fecha: pend.fecha,
-        hecho: true,
+        hecho: (log?.hecho as boolean | null) ?? true, // conserva sí/no
         nota,
       }, { onConflict: "habito_id,fecha" });
       await supabase.from("telegram_pendiente").delete().eq("chat_id", chatId);

@@ -85,10 +85,16 @@ Deno.serve(async (req) => {
         chat_id: chatId,
         text: `⏰ Recordatorio VITA\n${cuerpo}`,
         reply_markup: {
-          inline_keyboard: [[{
-            text: "✅ Ya lo hice",
-            callback_data: `d|${habitoId}|${hoy}`,
-          }]],
+          inline_keyboard: [[
+            {
+              text: "✅ Ya lo hice",
+              callback_data: `d|${habitoId}|${hoy}`,
+            },
+            {
+              text: "✖️ No lo hice",
+              callback_data: `n|${habitoId}|${hoy}`,
+            },
+          ]],
         },
       }),
     });
@@ -116,9 +122,8 @@ Deno.serve(async (req) => {
       .select("habito_id, hecho")
       .eq("user_id", c.user_id)
       .eq("fecha", hoy);
-    const hechos = new Set(
-      (logs ?? []).filter((l) => l.hecho).map((l) => l.habito_id),
-    );
+    // Ya "respondidos" hoy: marcó sí o no. En ambos casos dejamos de insistir.
+    const respondidos = new Set((logs ?? []).map((l) => l.habito_id));
 
     // Recordatorios que aplican HOY, y cuántos tiene cada hábito hoy.
     const tieneReglas = new Set(
@@ -141,7 +146,7 @@ Deno.serve(async (req) => {
       // Si ya está hecho y es su único aviso del día, no insistir. Los hábitos
       // con dos horas (p. ej. comer) sí avisan ambas veces.
       const soloUna = (cuentaHoy.get(a.habitoId) ?? 0) <= 1;
-      if (hechos.has(a.habitoId) && soloUna) continue;
+      if (respondidos.has(a.habitoId) && soloUna) continue;
       if (!enVentana(parseHora(a.hora))) continue;
       const cuerpo = a.nota && a.nota.trim()
         ? a.nota
@@ -152,7 +157,7 @@ Deno.serve(async (req) => {
 
     // Compatibilidad: hábitos sin reglas pero con su hora simple de siempre.
     for (const h of habitos) {
-      if (tieneReglas.has(h.id as string) || hechos.has(h.id)) continue;
+      if (tieneReglas.has(h.id as string) || respondidos.has(h.id)) continue;
       if (!enVentana(parseHora(h.hora as string | null))) continue;
       await enviar(
         c.chat_id as string,
