@@ -1,6 +1,7 @@
 // Recordatorios de hábitos por Telegram.
 // Lo invoca pg_cron cada 5 min. Revisa qué recordatorio toca en esta ventana
-// (su hora y su día), que el hábito no esté hecho hoy, y le escribe por Telegram.
+// (su hora y su día), que el hábito no esté hecho hoy, y le escribe por Telegram
+// con un botón "✅ Ya lo hice" para marcarlo sin salir del aviso.
 // Secretos: TELEGRAM_BOT_TOKEN, CRON_SECRET. SUPABASE_* se inyectan solos.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -57,15 +58,12 @@ Deno.serve(async (req) => {
     hour12: false,
   });
   const hoy = now.toLocaleDateString("en-CA", { timeZone: TZ }); // YYYY-MM-DD
-  const diaNombre = now.toLocaleDateString("en-US", {
-    timeZone: TZ,
-    weekday: "short",
-  });
-  const dia = DIAS[diaNombre] ?? 0;
+  const dia = DIAS[
+    now.toLocaleDateString("en-US", { timeZone: TZ, weekday: "short" })
+  ] ?? 0;
   const nowMin = parseInt(hhmm.slice(0, 2), 10) * 60 +
     parseInt(hhmm.slice(3, 5), 10);
 
-  // ¿Toca ahora? Su hora cae dentro de la ventana que acaba de pasar.
   const enVentana = (min: number | null) =>
     min !== null && min <= nowMin && min > nowMin - VENTANA_MIN;
 
@@ -74,6 +72,27 @@ Deno.serve(async (req) => {
     .select("user_id, chat_id")
     .eq("activo", true);
   if (!conns?.length) return new Response("sin conexiones", { status: 200 });
+
+  async function enviar(
+    chatId: string,
+    habitoId: string,
+    cuerpo: string,
+  ) {
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: `⏰ Recordatorio VITA\n${cuerpo}`,
+        reply_markup: {
+          inline_keyboard: [[{
+            text: "✅ Ya lo hice",
+            callback_data: `d|${habitoId}|${hoy}`,
+          }]],
+        },
+      }),
+    });
+  }
 
   let enviados = 0;
   for (const c of conns) {
@@ -101,43 +120,45 @@ Deno.serve(async (req) => {
       (logs ?? []).filter((l) => l.hecho).map((l) => l.habito_id),
     );
 
-    const avisos: { habito: Record<string, unknown>; nota: string | null }[] =
+    // Recordatorios que aplican HOY, y cuántos tiene cada hábito hoy.
+    const tieneReglas = new Set(
+      (recordatorios ?? []).map((r) => r.habito_id as string),
+    );
+    const cuentaHoy = new Map<string, number>();
+    const aplican: { habitoId: string; hora: string; nota: string | null }[] =
       [];
-
-    // Recordatorios configurados (varias horas / días).
-    const conRegla = new Set<string>();
     for (const r of recordatorios ?? []) {
-      conRegla.add(r.habito_id as string);
-      const h = porId.get(r.habito_id as string);
-      if (!h || hechos.has(r.habito_id)) continue;
       const dias = (r.dias as number[] | null) ?? [];
       if (dias.length && !dias.includes(dia)) continue; // no toca hoy
-      if (enVentana(parseHora(r.hora as string))) {
-        avisos.push({ habito: h, nota: r.nota as string | null });
-      }
+      const hid = r.habito_id as string;
+      cuentaHoy.set(hid, (cuentaHoy.get(hid) ?? 0) + 1);
+      aplican.push({ habitoId: hid, hora: r.hora as string, nota: r.nota });
+    }
+
+    for (const a of aplican) {
+      const h = porId.get(a.habitoId);
+      if (!h) continue;
+      // Si ya está hecho y es su único aviso del día, no insistir. Los hábitos
+      // con dos horas (p. ej. comer) sí avisan ambas veces.
+      const soloUna = (cuentaHoy.get(a.habitoId) ?? 0) <= 1;
+      if (hechos.has(a.habitoId) && soloUna) continue;
+      if (!enVentana(parseHora(a.hora))) continue;
+      const cuerpo = a.nota && a.nota.trim()
+        ? a.nota
+        : `${h.emoji ?? "•"} ${h.nombre}`;
+      await enviar(c.chat_id as string, a.habitoId, cuerpo);
+      enviados++;
     }
 
     // Compatibilidad: hábitos sin reglas pero con su hora simple de siempre.
     for (const h of habitos) {
-      if (conRegla.has(h.id as string) || hechos.has(h.id)) continue;
-      if (enVentana(parseHora(h.hora as string | null))) {
-        avisos.push({ habito: h, nota: null });
-      }
-    }
-
-    for (const a of avisos) {
-      const h = a.habito;
-      const cuerpo = a.nota && a.nota.trim()
-        ? a.nota
-        : `${h.emoji ?? "•"} ${h.nombre}`;
-      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: c.chat_id,
-          text: `⏰ Recordatorio VITA\n${cuerpo}`,
-        }),
-      });
+      if (tieneReglas.has(h.id as string) || hechos.has(h.id)) continue;
+      if (!enVentana(parseHora(h.hora as string | null))) continue;
+      await enviar(
+        c.chat_id as string,
+        h.id as string,
+        `${h.emoji ?? "•"} ${h.nombre}`,
+      );
       enviados++;
     }
   }
