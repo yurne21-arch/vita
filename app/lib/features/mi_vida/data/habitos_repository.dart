@@ -65,14 +65,12 @@ enum DiaEstado {
   sinDato,
 }
 
-/// Resumen de constancia de un hábito: su semana y su mes.
+/// La semana de un hábito (para el control semanal).
 class SeguimientoHabito {
   const SeguimientoHabito({
     required this.nombre,
     required this.emoji,
     required this.semana,
-    required this.mesCumplidos,
-    required this.mesProgramados,
   });
 
   final String nombre;
@@ -80,14 +78,26 @@ class SeguimientoHabito {
 
   /// Últimos 7 días, del más antiguo (índice 0) a hoy (índice 6).
   final List<DiaEstado> semana;
+}
 
-  /// De los últimos 30 días, cuántos le tocaban y cuántos cumplió.
-  final int mesCumplidos;
-  final int mesProgramados;
+/// La constancia de un hábito en un mes de calendario concreto.
+class MesHabito {
+  const MesHabito({
+    required this.nombre,
+    required this.emoji,
+    required this.cumplidos,
+    required this.programados,
+  });
 
-  /// Porcentaje de constancia del mes (0 si no le tocó ningún día).
-  int get mesPorcentaje =>
-      mesProgramados == 0 ? 0 : ((mesCumplidos * 100) / mesProgramados).round();
+  final String nombre;
+  final String? emoji;
+
+  /// De los días del mes en que existía y le tocaba: cuántos cumplió y de cuántos.
+  final int cumplidos;
+  final int programados;
+
+  int get porcentaje =>
+      programados == 0 ? 0 : ((cumplidos * 100) / programados).round();
 }
 
 class HabitosRepository {
@@ -366,19 +376,104 @@ class HabitosRepository {
             for (var i = 6; i >= 0; i--)
               estado(hid, hoy.subtract(Duration(days: i))),
           ];
-          var prog = 0, cumpl = 0;
-          for (var i = 0; i < 30; i++) {
-            final d = hoy.subtract(Duration(days: i));
-            if (!tocaba(hid, d)) continue;
-            prog++;
-            if (estado(hid, d) == DiaEstado.hecho) cumpl++;
-          }
           salida.add(SeguimientoHabito(
             nombre: h['nombre'] as String,
             emoji: h['emoji'] as String?,
             semana: semana,
-            mesCumplidos: cumpl,
-            mesProgramados: prog,
+          ));
+        }
+        return salida;
+      });
+
+  /// Constancia de un mes de calendario concreto (p. ej. noviembre 2026).
+  /// Solo cuenta días en que el hábito ya existía y le tocaba, sin contar los
+  /// días futuros del mes en curso: así el número es justo.
+  Future<List<MesHabito>> constanciaMes(int anio, int mes) => _guard(() async {
+        final userId = _userId();
+        final ahora = DateTime.now();
+        final hoy = DateTime(ahora.year, ahora.month, ahora.day);
+        final primero = DateTime(anio, mes, 1);
+        final finMes = DateTime(anio, mes + 1, 0); // último día del mes
+        // No contar días futuros del mes en curso.
+        final hasta = finMes.isAfter(hoy) ? hoy : finMes;
+
+        final res = await Future.wait([
+          _c
+              .from('habitos')
+              .select('id, nombre, emoji, orden, created_at')
+              .eq('user_id', userId)
+              .eq('activo', true)
+              .order('orden'),
+          _c
+              .from('habito_recordatorios')
+              .select('habito_id, dias')
+              .eq('user_id', userId)
+              .eq('activo', true),
+          _c
+              .from('habitos_log')
+              .select('habito_id, fecha, hecho')
+              .eq('user_id', userId)
+              .gte('fecha', _fecha(primero))
+              .lte('fecha', _fecha(finMes)),
+        ]);
+
+        final reglas = <String, List<Set<int>>>{};
+        for (final r in (res[1] as List)) {
+          final hid = r['habito_id'] as String;
+          final dias = <int>{
+            for (final d in (r['dias'] as List? ?? const []))
+              (d as num).toInt(),
+          };
+          (reglas[hid] ??= <Set<int>>[]).add(dias);
+        }
+        bool tocaba(String hid, DateTime d) {
+          final rs = reglas[hid];
+          if (rs == null || rs.isEmpty) return true;
+          return rs.any((s) => s.isEmpty || s.contains(d.weekday));
+        }
+
+        final hechoEn = <String, Set<String>>{};
+        for (final l in (res[2] as List)) {
+          if (l['hecho'] != true) continue;
+          final hid = l['habito_id'] as String;
+          (hechoEn[hid] ??= <String>{}).add(l['fecha'] as String);
+        }
+
+        if (hasta.isBefore(primero)) {
+          // Mes futuro: nada que contar todavía.
+          return [
+            for (final h in (res[0] as List))
+              MesHabito(
+                nombre: h['nombre'] as String,
+                emoji: h['emoji'] as String?,
+                cumplidos: 0,
+                programados: 0,
+              ),
+          ];
+        }
+
+        final salida = <MesHabito>[];
+        for (final h in (res[0] as List)) {
+          final hid = h['id'] as String;
+          final creado = DateTime.tryParse(h['created_at'] as String? ?? '');
+          final desdeCreado = creado == null
+              ? null
+              : DateTime(creado.year, creado.month, creado.day);
+
+          var prog = 0, cumpl = 0;
+          for (var d = primero;
+              !d.isAfter(hasta);
+              d = d.add(const Duration(days: 1))) {
+            if (desdeCreado != null && d.isBefore(desdeCreado)) continue;
+            if (!tocaba(hid, d)) continue;
+            prog++;
+            if (hechoEn[hid]?.contains(_fecha(d)) ?? false) cumpl++;
+          }
+          salida.add(MesHabito(
+            nombre: h['nombre'] as String,
+            emoji: h['emoji'] as String?,
+            cumplidos: cumpl,
+            programados: prog,
           ));
         }
         return salida;

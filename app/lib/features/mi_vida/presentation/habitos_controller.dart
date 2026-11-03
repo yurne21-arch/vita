@@ -70,9 +70,16 @@ final habitosControllerProvider =
   HabitosController.new,
 );
 
-/// Control de constancia (semana y mes) para la vista de seguimiento.
+/// Control semanal (últimos 7 días) para la vista de seguimiento.
 final seguimientoHabitosProvider =
     FutureProvider.autoDispose<List<SeguimientoHabito>>((ref) {
   ref.watch(usuarioActualProvider); // recarga si cambia la sesión
   return ref.read(habitosRepositoryProvider).seguimiento();
+});
+
+/// Constancia de un mes de calendario concreto (año, mes).
+final constanciaMesProvider =
+    FutureProvider.autoDispose.family<List<MesHabito>, (int, int)>((ref, par) {
+  ref.watch(usuarioActualProvider);
+  return ref.read(habitosRepositoryProvider).constanciaMes(par.$1, par.$2);
 });

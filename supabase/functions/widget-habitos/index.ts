@@ -105,18 +105,21 @@ Deno.serve(async (req) => {
     return notas.length > 0 ? notas.join("  /  ") : generico;
   };
 
-  // Fechas cumplidas por hábito.
+  // Fechas cumplidas por hábito (para la racha) y respuesta explícita de HOY.
   const cumplidas = new Map<string, Set<string>>();
-  const hechoHoy = new Set<string>();
+  const estadoHoy = new Map<string, boolean>(); // true=hecho, false=no lo hice
   for (const l of logRes.data ?? []) {
-    if (!l.hecho) continue;
-    let s = cumplidas.get(l.habito_id as string);
-    if (!s) {
-      s = new Set<string>();
-      cumplidas.set(l.habito_id as string, s);
+    if (l.hecho) {
+      let s = cumplidas.get(l.habito_id as string);
+      if (!s) {
+        s = new Set<string>();
+        cumplidas.set(l.habito_id as string, s);
+      }
+      s.add(l.fecha as string);
     }
-    s.add(l.fecha as string);
-    if (l.fecha === hoy) hechoHoy.add(l.habito_id as string);
+    if (l.fecha === hoy) {
+      estadoHoy.set(l.habito_id as string, l.hecho as boolean);
+    }
   }
   const racha = (hid: string): number => {
     const set = cumplidas.get(hid) ?? new Set<string>();
@@ -138,9 +141,11 @@ Deno.serve(async (req) => {
         emoji: h.emoji as string | null,
       });
       if (texto === null) return null; // no toca hoy
+      const r = estadoHoy.get(h.id as string);
+      const estado = r === undefined ? "pend" : (r ? "hecho" : "no");
       return {
         texto,
-        hecho: hechoHoy.has(h.id as string),
+        estado, // "hecho" | "no" | "pend"
         racha: racha(h.id as string),
       };
     })

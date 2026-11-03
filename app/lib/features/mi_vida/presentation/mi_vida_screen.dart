@@ -1551,6 +1551,21 @@ Future<void> _administrarHabitos(BuildContext context, WidgetRef ref) {
 
 // Inicial del día de la semana (índice = DateTime.weekday, 1=Lun .. 7=Dom).
 const _inicialDia = ['', 'L', 'M', 'M', 'J', 'V', 'S', 'D'];
+const _meses = [
+  '',
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+];
 const double _celdaLado = 20;
 const double _nombreAncho = 84;
 
@@ -1564,13 +1579,51 @@ Future<void> _seguimientoHabitos(BuildContext context) {
   );
 }
 
-class _SeguimientoSheet extends ConsumerWidget {
+class _SeguimientoSheet extends ConsumerStatefulWidget {
   const _SeguimientoSheet();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SeguimientoSheet> createState() => _SeguimientoSheetState();
+}
+
+class _SeguimientoSheetState extends ConsumerState<_SeguimientoSheet> {
+  late int _anio;
+  late int _mes;
+
+  @override
+  void initState() {
+    super.initState();
+    final hoy = DateTime.now();
+    _anio = hoy.year;
+    _mes = hoy.month;
+  }
+
+  bool get _esMesActual {
+    final hoy = DateTime.now();
+    return _anio == hoy.year && _mes == hoy.month;
+  }
+
+  void _mover(int delta) {
+    var m = _mes + delta;
+    var a = _anio;
+    if (m < 1) {
+      m = 12;
+      a--;
+    } else if (m > 12) {
+      m = 1;
+      a++;
+    }
+    setState(() {
+      _mes = m;
+      _anio = a;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final async = ref.watch(seguimientoHabitosProvider);
+    final semanaAsync = ref.watch(seguimientoHabitosProvider);
+    final mesAsync = ref.watch(constanciaMesProvider((_anio, _mes)));
     final hoy = DateTime.now();
     final labels = [
       for (var i = 6; i >= 0; i--)
@@ -1601,9 +1654,13 @@ class _SeguimientoSheet extends ConsumerWidget {
                         ?.withValues(alpha: 0.7)),
               ),
               const SizedBox(height: AppSpacing.md),
-              async.when(
+
+              // ───────── Semana ─────────
+              const Eyebrow('ESTA SEMANA'),
+              const SizedBox(height: AppSpacing.sm),
+              semanaAsync.when(
                 loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
                   child: Center(child: CircularProgressIndicator()),
                 ),
                 error: (e, _) => ErrorEnTarjeta(
@@ -1622,8 +1679,6 @@ class _SeguimientoSheet extends ConsumerWidget {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Eyebrow('ESTA SEMANA'),
-                      const SizedBox(height: AppSpacing.sm),
                       _SemanaFila(
                         izquierda: const SizedBox(width: _nombreAncho),
                         celdas: [
@@ -1654,11 +1709,58 @@ class _SeguimientoSheet extends ConsumerWidget {
                         ),
                         const SizedBox(height: AppSpacing.xs),
                       ],
-                      const SizedBox(height: AppSpacing.lg),
-                      const Eyebrow('ÚLTIMOS 30 DÍAS'),
-                      const SizedBox(height: AppSpacing.sm),
-                      for (final s in lista) ...[
-                        _MesFila(s: s),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: AppSpacing.lg),
+
+              // ───────── Mes (con selector) ─────────
+              Row(
+                children: [
+                  const Eyebrow('POR MES'),
+                  const Spacer(),
+                  IconButton(
+                    tooltip: 'Mes anterior',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.chevron_left, size: 22),
+                    onPressed: () => _mover(-1),
+                  ),
+                  Text('${_meses[_mes]} $_anio',
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w600)),
+                  IconButton(
+                    tooltip: 'Mes siguiente',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.chevron_right, size: 22),
+                    onPressed: _esMesActual ? null : () => _mover(1),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              mesAsync.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (e, _) => ErrorEnTarjeta(
+                  mensaje: mensajeDeError(e),
+                  onReintentar: () =>
+                      ref.invalidate(constanciaMesProvider((_anio, _mes))),
+                ),
+                data: (lista) {
+                  if (lista.isEmpty) {
+                    return const _EmptyHint(
+                      icon: Icons.calendar_month,
+                      title: 'Aún no hay nada que mostrar.',
+                      subtitle: 'Cuando marques tus hábitos, verás tu avance.',
+                    );
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final m in lista) ...[
+                        _MesFila(m: m),
                         const SizedBox(height: AppSpacing.sm),
                       ],
                     ],
@@ -1730,14 +1832,14 @@ class _CeldaDia extends StatelessWidget {
 
 /// Una fila del resumen mensual: nombre, cumplidos/programados y barra.
 class _MesFila extends StatelessWidget {
-  const _MesFila({required this.s});
-  final SeguimientoHabito s;
+  const _MesFila({required this.m});
+  final MesHabito m;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final valor =
-        s.mesProgramados == 0 ? 0.0 : s.mesCumplidos / s.mesProgramados;
+    final sinDatos = m.programados == 0;
+    final valor = sinDatos ? 0.0 : m.cumplidos / m.programados;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1745,7 +1847,7 @@ class _MesFila extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                '${s.emoji ?? '•'} ${s.nombre}',
+                '${m.emoji ?? '•'} ${m.nombre}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyMedium,
@@ -1753,7 +1855,9 @@ class _MesFila extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.sm),
             Text(
-              '${s.mesCumplidos}/${s.mesProgramados} · ${s.mesPorcentaje}%',
+              sinDatos
+                  ? 'sin días'
+                  : '${m.cumplidos}/${m.programados} · ${m.porcentaje}%',
               style: theme.textTheme.bodySmall?.copyWith(
                 fontWeight: FontWeight.w600,
                 fontFeatures: const [FontFeature.tabularFigures()],
