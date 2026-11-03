@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
       .order("orden"),
     supabase
       .from("habito_recordatorios")
-      .select("habito_id, dias")
+      .select("habito_id, dias, nota")
       .eq("user_id", userId)
       .eq("activo", true),
     supabase
@@ -74,18 +74,35 @@ Deno.serve(async (req) => {
       .gte("fecha", desde),
   ]);
 
-  // Reglas de día por hábito.
-  const reglas = new Map<string, number[][]>();
+  // Reglas (días + nota) por hábito.
+  type Regla = { dias: number[]; nota: string | null };
+  const reglas = new Map<string, Regla[]>();
   for (const r of recRes.data ?? []) {
     const arr = reglas.get(r.habito_id as string) ?? [];
-    arr.push((r.dias as number[] | null) ?? []);
+    arr.push({
+      dias: (r.dias as number[] | null) ?? [],
+      nota: r.nota as string | null,
+    });
     reglas.set(r.habito_id as string, arr);
   }
-  // Un hábito "toca hoy" si no tiene reglas (diario) o alguna incluye hoy.
-  const tocaHoy = (hid: string): boolean => {
-    const rs = reglas.get(hid);
-    if (!rs || rs.length === 0) return true;
-    return rs.some((d) => d.length === 0 || d.includes(dia));
+
+  // Qué mostrar hoy para un hábito. Si sus reglas de hoy traen una nota (p. ej.
+  // "Ir a caminar" los sábados), se usa esa en vez del nombre genérico. Devuelve
+  // null si el hábito no toca hoy.
+  const etiquetaHoy = (
+    h: { id: string; nombre: string; emoji: string | null },
+  ): string | null => {
+    const rs = reglas.get(h.id);
+    const generico = `${h.emoji ?? "•"} ${h.nombre}`;
+    if (!rs || rs.length === 0) return generico; // diario, sin reglas
+    const hoyRs = rs.filter((r) => r.dias.length === 0 || r.dias.includes(dia));
+    if (hoyRs.length === 0) return null; // no toca hoy
+    const notas = [
+      ...new Set(
+        hoyRs.map((r) => (r.nota ?? "").trim()).filter((n) => n.length > 0),
+      ),
+    ];
+    return notas.length > 0 ? notas.join("  /  ") : generico;
   };
 
   // Fechas cumplidas por hábito.
@@ -114,13 +131,20 @@ Deno.serve(async (req) => {
   };
 
   const items = (habRes.data ?? [])
-    .filter((h) => tocaHoy(h.id as string))
-    .map((h) => ({
-      nombre: h.nombre as string,
-      emoji: (h.emoji as string | null) ?? "•",
-      hecho: hechoHoy.has(h.id as string),
-      racha: racha(h.id as string),
-    }));
+    .map((h) => {
+      const texto = etiquetaHoy({
+        id: h.id as string,
+        nombre: h.nombre as string,
+        emoji: h.emoji as string | null,
+      });
+      if (texto === null) return null; // no toca hoy
+      return {
+        texto,
+        hecho: hechoHoy.has(h.id as string),
+        racha: racha(h.id as string),
+      };
+    })
+    .filter((x) => x !== null);
 
   return json({ fecha: hoy, items });
 });
